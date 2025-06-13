@@ -1,0 +1,4 @@
+(executable
+ (public_name mucaml)
+ (name main)
+ (libraries mucaml))
