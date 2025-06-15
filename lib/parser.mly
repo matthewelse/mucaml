@@ -39,58 +39,59 @@
 
 %%
 
-prog:
-  | expr EOF { $1 }
-  ;
+let prog :=
+  ~ = toplevel; EOF; <>
 
-expr:
-  | INT                                       { Int $1 }
-  | BOOL                                      { Bool $1 }
-  | VAR                                       { Var $1 }
-  | LPAREN RPAREN                             { Unit }
-  | UNARY_MINUS expr                          { App (App (Var "-", Int 0), $2) }
-  | expr binop expr                           { App (App (Var $2, $1), $3) }
-  | LET VAR type_annot? EQ expr IN expr       { Let (($2, $3), $5, $7) }
-  | LET REC VAR type_annot EQ expr IN expr    { Letrec (($3, $4), $6, $8) }
-  | IF expr THEN expr ELSE expr %prec IF      { If ($2, $4, $6) }
-  | FUN param_list DARROW expr %prec FUN      { `Fun ($2, $4) |> desugar }
-  | expr expr %prec APP                       { App ($1, $2) }
-  | LPAREN expr RPAREN                        { $2 }
-  ;
+let toplevel :=
+  LET; var = VAR; param_list; type_annot?; EQ; body = expr; EOF;
+    { Let ((var, None), body, Unit) }
 
-param_list:
-  | separated_list(COMMA, param) { $1 }
-  ;
+let expr :=
+  | ~ = INT;                                  <Int>
+  | ~ = BOOL;                                 <Bool>
+  | ~ = VAR;                                  <Var>
+  | LPAREN; RPAREN;                           { Unit }
+  | UNARY_MINUS; ~ = expr;                    { App (App (Var "-", Int 0), expr) }
+  | l = expr; ~ = binop; r = expr;            { App (App (Var binop, l), r) }
+  | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
+    { Let ((var, type_), value, body) }
+  | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
+    { Letrec ((var, type_), value, body) }
+  | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
+    { If (cond, if_true, if_false) }
+  | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
+    { `Fun (param_list, expr) |> desugar }
+  | f = expr; arg = expr; %prec APP           { App (f, arg) }
+  | LPAREN; ~ = expr; RPAREN;                     <> 
 
-param:
-  | VAR type_annot { ($1, $2) }
-  ;
+let param_list :=
+  | ~ = separated_list(COMMA, param); <>
 
-type_annot:
-  | preceded(COLON, type_name) { $1 }
-  ;
+let param :=
+  | var = VAR; ~ = type_annot; { (var, type_annot) }
 
-type_name:
-  | VAR
-    { match $1 with
+let type_annot :=
+  | ~ = preceded(COLON, type_name); <>
+
+let type_name:=
+  | var = VAR;
+    { match var with
       | "int" -> Type.Int
       | "bool" -> Type.Bool
       | "unit" -> Type.Unit
       | name -> failwith ("Unknown type name " ^ name)
     }
-  | type_name ARROW type_name { Type.Fun ($1, $3) }
-  ;
+  | l = type_name; ARROW; r = type_name; { Type.Fun (l, r) }
 
-%inline binop:
-  | PLUS  { "+" }
-  | MINUS { "-" }
-  | TIMES { "*" }
-  | DIV   { "/" }
-  | EQ    { "=" }
-  | NE    { "<>" }
-  | LT    { "<" }
-  | GT    { ">" }
-  | LE    { "<=" }
-  | GE    { ">=" }
-  ;
+let binop == 
+  | PLUS;  { "+" }
+  | MINUS; { "-" }
+  | TIMES; { "*" }
+  | DIV;   { "/" }
+  | EQ;    { "=" }
+  | NE;    { "<>" }
+  | LT;    { "<" }
+  | GT;    { ">" }
+  | LE;    { "<=" }
+  | GE;    { ">=" }
 

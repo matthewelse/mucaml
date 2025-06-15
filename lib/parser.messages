@@ -1,4 +1,4 @@
-prog: TIMES
+prog: VAR
 ##
 ## Ends in an error in state: 0.
 ##
@@ -10,9 +10,148 @@ prog: TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: UNARY_MINUS TIMES
+prog: LET UNARY_MINUS
+##
+## Ends in an error in state: 1.
+##
+## toplevel -> LET . VAR param_list option(type_annot) EQ expr EOF [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## LET
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR UNARY_MINUS
 ##
 ## Ends in an error in state: 2.
+##
+## toplevel -> LET VAR . param_list option(type_annot) EQ expr EOF [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## LET VAR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR VAR VAR
+##
+## Ends in an error in state: 3.
+##
+## param -> VAR . type_annot [ EQ DARROW COMMA COLON ]
+##
+## The known suffix of the stack is as follows:
+## VAR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR COLON UNARY_MINUS
+##
+## Ends in an error in state: 4.
+##
+## type_annot -> COLON . type_name [ EQ DARROW COMMA COLON ]
+##
+## The known suffix of the stack is as follows:
+## COLON
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR COLON VAR VAR
+##
+## Ends in an error in state: 6.
+##
+## type_annot -> COLON type_name . [ EQ DARROW COMMA COLON ]
+## type_name -> type_name . ARROW type_name [ EQ DARROW COMMA COLON ARROW ]
+##
+## The known suffix of the stack is as follows:
+## COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR COLON VAR ARROW UNARY_MINUS
+##
+## Ends in an error in state: 7.
+##
+## type_name -> type_name ARROW . type_name [ EQ DARROW COMMA COLON ARROW ]
+##
+## The known suffix of the stack is as follows:
+## type_name ARROW
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR COLON VAR ARROW VAR VAR
+##
+## Ends in an error in state: 8.
+##
+## type_name -> type_name . ARROW type_name [ EQ DARROW COMMA COLON ARROW ]
+## type_name -> type_name ARROW type_name . [ EQ DARROW COMMA COLON ARROW ]
+##
+## The known suffix of the stack is as follows:
+## type_name ARROW type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR VAR COLON VAR DARROW
+##
+## Ends in an error in state: 11.
+##
+## toplevel -> LET VAR param_list . option(type_annot) EQ expr EOF [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## LET VAR param_list
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 6, spurious reduction of production type_annot -> COLON type_name
+## In state 9, spurious reduction of production param -> VAR type_annot
+## In state 51, spurious reduction of production separated_nonempty_list(COMMA,param) -> param
+## In state 10, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
+## In state 54, spurious reduction of production param_list -> loption(separated_nonempty_list(COMMA,param))
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR COLON VAR DARROW
+##
+## Ends in an error in state: 13.
+##
+## toplevel -> LET VAR param_list option(type_annot) . EQ expr EOF [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## LET VAR param_list option(type_annot)
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 6, spurious reduction of production type_annot -> COLON type_name
+## In state 12, spurious reduction of production option(type_annot) -> type_annot
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR EQ TIMES
+##
+## Ends in an error in state: 14.
+##
+## toplevel -> LET VAR param_list option(type_annot) EQ . expr EOF [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## LET VAR param_list option(type_annot) EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR EQ UNARY_MINUS TIMES
+##
+## Ends in an error in state: 16.
 ##
 ## expr -> UNARY_MINUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -22,9 +161,9 @@ prog: UNARY_MINUS TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LPAREN TIMES
+prog: LET VAR EQ LPAREN TIMES
 ##
-## Ends in an error in state: 3.
+## Ends in an error in state: 17.
 ##
 ## expr -> LPAREN . RPAREN [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> LPAREN . expr RPAREN [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -35,9 +174,9 @@ prog: LPAREN TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET UNARY_MINUS
+prog: LET VAR EQ LET UNARY_MINUS
 ##
-## Ends in an error in state: 5.
+## Ends in an error in state: 19.
 ##
 ## expr -> LET . VAR option(type_annot) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> LET . REC VAR type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -46,11 +185,11 @@ prog: LET UNARY_MINUS
 ## LET
 ##
 
-Expected a variable name or `rec` after `let`.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR VAR
+prog: LET VAR EQ LET VAR VAR
 ##
-## Ends in an error in state: 6.
+## Ends in an error in state: 20.
 ##
 ## expr -> LET VAR . option(type_annot) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -60,59 +199,9 @@ prog: LET VAR VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN VAR COLON UNARY_MINUS
+prog: LET VAR EQ LET VAR COLON VAR DARROW
 ##
-## Ends in an error in state: 7.
-##
-## type_annot -> COLON . type_name [ EQ DARROW COMMA ]
-##
-## The known suffix of the stack is as follows:
-## COLON
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: FUN VAR COLON VAR VAR
-##
-## Ends in an error in state: 9.
-##
-## type_annot -> COLON type_name . [ EQ DARROW COMMA ]
-## type_name -> type_name . ARROW type_name [ EQ DARROW COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## COLON type_name
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: FUN VAR COLON VAR ARROW UNARY_MINUS
-##
-## Ends in an error in state: 10.
-##
-## type_name -> type_name ARROW . type_name [ EQ DARROW COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## type_name ARROW
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: FUN VAR COLON VAR ARROW VAR VAR
-##
-## Ends in an error in state: 11.
-##
-## type_name -> type_name . ARROW type_name [ EQ DARROW COMMA ARROW ]
-## type_name -> type_name ARROW type_name . [ EQ DARROW COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## type_name ARROW type_name
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: LET VAR COLON VAR DARROW
-##
-## Ends in an error in state: 13.
+## Ends in an error in state: 21.
 ##
 ## expr -> LET VAR option(type_annot) . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -123,15 +212,15 @@ prog: LET VAR COLON VAR DARROW
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 9, spurious reduction of production type_annot -> COLON type_name
+## In state 6, spurious reduction of production type_annot -> COLON type_name
 ## In state 12, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ TIMES
+prog: LET VAR EQ LET VAR EQ TIMES
 ##
-## Ends in an error in state: 14.
+## Ends in an error in state: 22.
 ##
 ## expr -> LET VAR option(type_annot) EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -141,9 +230,9 @@ prog: LET VAR EQ TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF TIMES
+prog: LET VAR EQ IF TIMES
 ##
-## Ends in an error in state: 16.
+## Ends in an error in state: 24.
 ##
 ## expr -> IF . expr THEN expr ELSE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -153,9 +242,9 @@ prog: IF TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN UNARY_MINUS
+prog: LET VAR EQ FUN UNARY_MINUS
 ##
-## Ends in an error in state: 17.
+## Ends in an error in state: 25.
 ##
 ## expr -> FUN . param_list DARROW expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -165,21 +254,31 @@ prog: FUN UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN VAR VAR
+prog: LET VAR EQ FUN VAR COLON VAR EQ
 ##
-## Ends in an error in state: 18.
+## Ends in an error in state: 26.
 ##
-## param -> VAR . type_annot [ DARROW COMMA ]
+## expr -> FUN param_list . DARROW expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## VAR
+## FUN param_list
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 6, spurious reduction of production type_annot -> COLON type_name
+## In state 9, spurious reduction of production param -> VAR type_annot
+## In state 51, spurious reduction of production separated_nonempty_list(COMMA,param) -> param
+## In state 10, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
+## In state 54, spurious reduction of production param_list -> loption(separated_nonempty_list(COMMA,param))
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN DARROW TIMES
+prog: LET VAR EQ FUN DARROW TIMES
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 27.
 ##
 ## expr -> FUN param_list DARROW . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -189,9 +288,9 @@ prog: FUN DARROW TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN DARROW BOOL REC
+prog: LET VAR EQ FUN DARROW BOOL REC
 ##
-## Ends in an error in state: 24.
+## Ends in an error in state: 29.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -212,9 +311,9 @@ prog: FUN DARROW BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL TIMES TIMES
+prog: LET VAR EQ BOOL TIMES TIMES
 ##
-## Ends in an error in state: 25.
+## Ends in an error in state: 30.
 ##
 ## expr -> expr TIMES . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -224,9 +323,9 @@ prog: BOOL TIMES TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL TIMES BOOL REC
+prog: LET VAR EQ BOOL TIMES BOOL REC
 ##
-## Ends in an error in state: 26.
+## Ends in an error in state: 31.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -247,9 +346,9 @@ prog: BOOL TIMES BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL PLUS TIMES
+prog: LET VAR EQ BOOL PLUS TIMES
 ##
-## Ends in an error in state: 28.
+## Ends in an error in state: 33.
 ##
 ## expr -> expr PLUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -259,9 +358,9 @@ prog: BOOL PLUS TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL PLUS BOOL REC
+prog: LET VAR EQ BOOL PLUS BOOL REC
 ##
-## Ends in an error in state: 29.
+## Ends in an error in state: 34.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr PLUS expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -282,9 +381,9 @@ prog: BOOL PLUS BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL DIV TIMES
+prog: LET VAR EQ BOOL DIV TIMES
 ##
-## Ends in an error in state: 30.
+## Ends in an error in state: 35.
 ##
 ## expr -> expr DIV . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -294,9 +393,9 @@ prog: BOOL DIV TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL DIV BOOL REC
+prog: LET VAR EQ BOOL DIV BOOL REC
 ##
-## Ends in an error in state: 31.
+## Ends in an error in state: 36.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -317,9 +416,9 @@ prog: BOOL DIV BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL NE TIMES
+prog: LET VAR EQ BOOL NE TIMES
 ##
-## Ends in an error in state: 32.
+## Ends in an error in state: 37.
 ##
 ## expr -> expr NE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -329,9 +428,9 @@ prog: BOOL NE TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL NE BOOL REC
+prog: LET VAR EQ BOOL NE BOOL REC
 ##
-## Ends in an error in state: 33.
+## Ends in an error in state: 38.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -352,9 +451,9 @@ prog: BOOL NE BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL MINUS TIMES
+prog: LET VAR EQ BOOL MINUS TIMES
 ##
-## Ends in an error in state: 34.
+## Ends in an error in state: 39.
 ##
 ## expr -> expr MINUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -364,9 +463,9 @@ prog: BOOL MINUS TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL MINUS BOOL REC
+prog: LET VAR EQ BOOL MINUS BOOL REC
 ##
-## Ends in an error in state: 35.
+## Ends in an error in state: 40.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -387,9 +486,9 @@ prog: BOOL MINUS BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL LT TIMES
+prog: LET VAR EQ BOOL LT TIMES
 ##
-## Ends in an error in state: 36.
+## Ends in an error in state: 41.
 ##
 ## expr -> expr LT . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -399,9 +498,9 @@ prog: BOOL LT TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL LT BOOL REC
+prog: LET VAR EQ BOOL LT BOOL REC
 ##
-## Ends in an error in state: 37.
+## Ends in an error in state: 42.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -422,9 +521,9 @@ prog: BOOL LT BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL LE TIMES
+prog: LET VAR EQ BOOL LE TIMES
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 43.
 ##
 ## expr -> expr LE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -434,9 +533,9 @@ prog: BOOL LE TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL LE BOOL REC
+prog: LET VAR EQ BOOL LE BOOL REC
 ##
-## Ends in an error in state: 39.
+## Ends in an error in state: 44.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -457,9 +556,9 @@ prog: BOOL LE BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL GT TIMES
+prog: LET VAR EQ BOOL GT TIMES
 ##
-## Ends in an error in state: 40.
+## Ends in an error in state: 45.
 ##
 ## expr -> expr GT . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -469,9 +568,9 @@ prog: BOOL GT TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL GT BOOL REC
+prog: LET VAR EQ BOOL GT BOOL REC
 ##
-## Ends in an error in state: 41.
+## Ends in an error in state: 46.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -492,9 +591,9 @@ prog: BOOL GT BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL GE TIMES
+prog: LET VAR EQ BOOL GE TIMES
 ##
-## Ends in an error in state: 42.
+## Ends in an error in state: 47.
 ##
 ## expr -> expr GE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -504,9 +603,9 @@ prog: BOOL GE TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL GE BOOL REC
+prog: LET VAR EQ BOOL GE BOOL REC
 ##
-## Ends in an error in state: 43.
+## Ends in an error in state: 48.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -527,9 +626,9 @@ prog: BOOL GE BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL EQ TIMES
+prog: LET VAR EQ BOOL EQ TIMES
 ##
-## Ends in an error in state: 44.
+## Ends in an error in state: 49.
 ##
 ## expr -> expr EQ . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -539,9 +638,9 @@ prog: BOOL EQ TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL EQ BOOL REC
+prog: LET VAR EQ BOOL EQ BOOL REC
 ##
-## Ends in an error in state: 45.
+## Ends in an error in state: 50.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -562,31 +661,11 @@ prog: BOOL EQ BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: FUN VAR COLON VAR EQ
+prog: LET VAR VAR COLON VAR COMMA UNARY_MINUS
 ##
-## Ends in an error in state: 46.
+## Ends in an error in state: 52.
 ##
-## separated_nonempty_list(COMMA,param) -> param . [ DARROW ]
-## separated_nonempty_list(COMMA,param) -> param . COMMA separated_nonempty_list(COMMA,param) [ DARROW ]
-##
-## The known suffix of the stack is as follows:
-## param
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 9, spurious reduction of production type_annot -> COLON type_name
-## In state 19, spurious reduction of production param -> VAR type_annot
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: FUN VAR COLON VAR COMMA UNARY_MINUS
-##
-## Ends in an error in state: 47.
-##
-## separated_nonempty_list(COMMA,param) -> param COMMA . separated_nonempty_list(COMMA,param) [ DARROW ]
+## separated_nonempty_list(COMMA,param) -> param COMMA . separated_nonempty_list(COMMA,param) [ EQ DARROW COLON ]
 ##
 ## The known suffix of the stack is as follows:
 ## param COMMA
@@ -594,9 +673,9 @@ prog: FUN VAR COLON VAR COMMA UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF BOOL REC
+prog: LET VAR EQ IF BOOL REC
 ##
-## Ends in an error in state: 50.
+## Ends in an error in state: 55.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ DIV BOOL ]
@@ -617,9 +696,9 @@ prog: IF BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF BOOL THEN TIMES
+prog: LET VAR EQ IF BOOL THEN TIMES
 ##
-## Ends in an error in state: 51.
+## Ends in an error in state: 56.
 ##
 ## expr -> IF expr THEN . expr ELSE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -629,9 +708,9 @@ prog: IF BOOL THEN TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF BOOL THEN BOOL REC
+prog: LET VAR EQ IF BOOL THEN BOOL REC
 ##
-## Ends in an error in state: 52.
+## Ends in an error in state: 57.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ ELSE DIV BOOL ]
@@ -652,9 +731,9 @@ prog: IF BOOL THEN BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF BOOL THEN BOOL ELSE TIMES
+prog: LET VAR EQ IF BOOL THEN BOOL ELSE TIMES
 ##
-## Ends in an error in state: 53.
+## Ends in an error in state: 58.
 ##
 ## expr -> IF expr THEN expr ELSE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -664,9 +743,9 @@ prog: IF BOOL THEN BOOL ELSE TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: IF BOOL THEN BOOL ELSE BOOL REC
+prog: LET VAR EQ IF BOOL THEN BOOL ELSE BOOL REC
 ##
-## Ends in an error in state: 54.
+## Ends in an error in state: 59.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -687,9 +766,9 @@ prog: IF BOOL THEN BOOL ELSE BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL REC
+prog: LET VAR EQ LET VAR EQ BOOL REC
 ##
-## Ends in an error in state: 55.
+## Ends in an error in state: 60.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ DIV BOOL ]
@@ -710,9 +789,9 @@ prog: LET VAR EQ BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL IN TIMES
+prog: LET VAR EQ LET VAR EQ BOOL IN TIMES
 ##
-## Ends in an error in state: 56.
+## Ends in an error in state: 61.
 ##
 ## expr -> LET VAR option(type_annot) EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -720,11 +799,11 @@ prog: LET VAR EQ BOOL IN TIMES
 ## LET VAR option(type_annot) EQ expr IN
 ##
 
-The body of a let expression should be an expression.
+<YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL IN BOOL REC
+prog: LET VAR EQ LET VAR EQ BOOL IN BOOL REC
 ##
-## Ends in an error in state: 57.
+## Ends in an error in state: 62.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -745,9 +824,9 @@ prog: LET VAR EQ BOOL IN BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC UNARY_MINUS
+prog: LET VAR EQ LET REC UNARY_MINUS
 ##
-## Ends in an error in state: 58.
+## Ends in an error in state: 63.
 ##
 ## expr -> LET REC . VAR type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -757,9 +836,9 @@ prog: LET REC UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR VAR
+prog: LET VAR EQ LET REC VAR VAR
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 64.
 ##
 ## expr -> LET REC VAR . type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -769,9 +848,9 @@ prog: LET REC VAR VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR COLON VAR DARROW
+prog: LET VAR EQ LET REC VAR COLON VAR DARROW
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 65.
 ##
 ## expr -> LET REC VAR type_annot . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -782,14 +861,14 @@ prog: LET REC VAR COLON VAR DARROW
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 9, spurious reduction of production type_annot -> COLON type_name
+## In state 6, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR COLON VAR EQ TIMES
+prog: LET VAR EQ LET REC VAR COLON VAR EQ TIMES
 ##
-## Ends in an error in state: 61.
+## Ends in an error in state: 66.
 ##
 ## expr -> LET REC VAR type_annot EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -799,9 +878,9 @@ prog: LET REC VAR COLON VAR EQ TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR COLON VAR EQ BOOL REC
+prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL REC
 ##
-## Ends in an error in state: 62.
+## Ends in an error in state: 67.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ DIV BOOL ]
@@ -822,9 +901,9 @@ prog: LET REC VAR COLON VAR EQ BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR COLON VAR EQ BOOL IN TIMES
+prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL IN TIMES
 ##
-## Ends in an error in state: 63.
+## Ends in an error in state: 68.
 ##
 ## expr -> LET REC VAR type_annot EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ##
@@ -834,9 +913,9 @@ prog: LET REC VAR COLON VAR EQ BOOL IN TIMES
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET REC VAR COLON VAR EQ BOOL IN BOOL REC
+prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL IN BOOL REC
 ##
-## Ends in an error in state: 64.
+## Ends in an error in state: 69.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -857,9 +936,9 @@ prog: LET REC VAR COLON VAR EQ BOOL IN BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LPAREN BOOL REC
+prog: LET VAR EQ LPAREN BOOL REC
 ##
-## Ends in an error in state: 65.
+## Ends in an error in state: 70.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ DIV BOOL ]
@@ -880,9 +959,9 @@ prog: LPAREN BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: UNARY_MINUS BOOL REC
+prog: LET VAR EQ UNARY_MINUS BOOL REC
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 72.
 ##
 ## expr -> UNARY_MINUS expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT IN IF GT GE FUN EQ EOF ELSE DIV BOOL ]
@@ -903,9 +982,9 @@ prog: UNARY_MINUS BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: BOOL REC
+prog: LET VAR EQ BOOL REC
 ##
-## Ends in an error in state: 69.
+## Ends in an error in state: 73.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ EOF DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ EOF DIV BOOL ]
@@ -918,10 +997,22 @@ prog: BOOL REC
 ## expr -> expr . LE expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ EOF DIV BOOL ]
 ## expr -> expr . GE expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ EOF DIV BOOL ]
 ## expr -> expr . expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT IF GT GE FUN EQ EOF DIV BOOL ]
-## prog -> expr . EOF [ # ]
+## toplevel -> LET VAR param_list option(type_annot) EQ expr . EOF [ EOF ]
 ##
 ## The known suffix of the stack is as follows:
-## expr
+## LET VAR param_list option(type_annot) EQ expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: LET VAR EQ BOOL EOF VAR
+##
+## Ends in an error in state: 75.
+##
+## prog -> toplevel . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## toplevel
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>

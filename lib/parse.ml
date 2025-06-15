@@ -9,13 +9,6 @@ module Recovery = struct
 
   let succeed _v = assert false
 
-  let show text positions =
-    E.extract text positions
-    |> E.sanitize
-    |> E.compress
-    |> E.shorten 20 (* max width 43 *)
-  ;;
-
   let env checkpoint =
     match checkpoint with
     | I.HandlingError env -> env
@@ -31,17 +24,6 @@ module Recovery = struct
          state. It is usually 0, so we return 0. This is unsatisfactory
          and should be fixed in the future. *)
       0
-  ;;
-
-  let get text checkpoint i =
-    match I.get i (env checkpoint) with
-    | Some (I.Element (_, _, pos1, pos2)) -> show text (pos1, pos2)
-    | None ->
-      (* The index is out of range. This should not happen if [$i]
-         keywords are correctly inside the syntax error message
-         database. The integer [i] should always be a valid offset
-         into the known suffix of the stack. *)
-      "???"
   ;;
 
   let fail text buffer (checkpoint : _ I.checkpoint) =

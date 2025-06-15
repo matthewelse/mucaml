@@ -32,8 +32,6 @@ module Frontend_demo = struct
               (match Parse.parse_toplevel input ~filename:"<stdin>" with
                | Ok ast ->
                  Ast.pprint_prog ast;
-                 (* Here you would typically parse the input and generate code *)
-                 print_endline "This is a demo, no actual code generation done.";
                  true
                | Error () -> true)
           do
