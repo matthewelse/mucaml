@@ -22,3 +22,5 @@
  (depends ocaml)
  (tags
   ("add topics" "to describe" your project)))
+
+(using menhir 3.0)
