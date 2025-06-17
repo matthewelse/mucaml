@@ -30,7 +30,8 @@
 %nonassoc INT BOOL VAR LPAREN
 %nonassoc APP
 
-%type <Ast.expr> prog expr
+%type <Ast.prog> prog
+%type <Ast.expr> expr
 %type <Ast.name * Type.t> param
 %type <(Ast.name * Type.t) list> param_list
 %type <Type.t> type_annot type_name
@@ -43,16 +44,16 @@ let prog :=
   ~ = toplevel; EOF; <>
 
 let toplevel :=
-  LET; var = VAR; param_list; type_annot?; EQ; body = expr; EOF;
-    { Let ((var, None), body, Unit) }
+  LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr; EOF;
+  { Function { name; params = param_list; body } }
 
 let expr :=
   | ~ = INT;                                  <Int>
   | ~ = BOOL;                                 <Bool>
   | ~ = VAR;                                  <Var>
   | LPAREN; RPAREN;                           { Unit }
-  | UNARY_MINUS; ~ = expr;                    { App (App (Var "-", Int 0), expr) }
-  | l = expr; ~ = binop; r = expr;            { App (App (Var binop, l), r) }
+  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int 0; expr ]) }
+  | l = expr; ~ = binop; r = expr;            { App (Var binop, [l; r]) }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
     { Let ((var, type_), value, body) }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
@@ -61,7 +62,7 @@ let expr :=
     { If (cond, if_true, if_false) }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
     { `Fun (param_list, expr) |> desugar }
-  | f = expr; arg = expr; %prec APP           { App (f, arg) }
+  | f = expr; arg = expr; %prec APP           { App (f, [ arg ]) }
   | LPAREN; ~ = expr; RPAREN;                     <> 
 
 let param_list :=
@@ -76,7 +77,7 @@ let type_annot :=
 let type_name:=
   | var = VAR;
     { match var with
-      | "int" -> Type.Int
+      | "int32" -> Type.Int32
       | "bool" -> Type.Bool
       | "unit" -> Type.Unit
       | name -> failwith ("Unknown type name " ^ name)

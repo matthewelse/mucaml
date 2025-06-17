@@ -13,9 +13,9 @@ let emit_line t line =
 
 let emit_newline t = add_char t '\n'
 
-let emit_program_prologue t ~target =
+let emit_program_prologue t =
   emit_line t ".syntax unified";
-  emit_line t [%string ".cpu %{target#Target}"];
+  emit_line t [%string ".cpu cortex-m33"];
   emit_line t ".thumb";
   emit_newline t
 ;;
@@ -46,3 +46,7 @@ let push t regs =
 let mov t ~dst ~src = emit_line t [%string "  mov %{dst#Register}, %{src#Register}"]
 let mov_imm t ~dst value = emit_line t [%string "  mov %{dst#Register}, #%{value#Int}"]
 let ret t = emit_line t "  bx lr"
+
+let add t ~dst ~src1 ~src2 =
+  emit_line t [%string "  add %{dst#Register}, %{src1#Register}, %{src2#Register}"]
+;;

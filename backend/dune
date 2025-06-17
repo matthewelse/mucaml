@@ -1,0 +1,5 @@
+(library
+ (name mucaml_backend_arm)
+ (libraries core grace mucaml_middle)
+ (preprocess
+  (pps ppx_jane)))

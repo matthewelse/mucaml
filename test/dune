@@ -1,2 +1,6 @@
-(test
- (name test_mucaml))
+(library
+ (name test_mucaml)
+ (inline_tests)
+ (libraries core mucaml)
+ (preprocess
+  (pps ppx_jane)))

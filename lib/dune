@@ -6,52 +6,8 @@
   grace
   grace.rendering
   linenoise
-  menhirLib)
+  menhirLib
+  mucaml_frontend
+  mucaml_backend_arm)
  (preprocess
   (pps ppx_jane)))
-
-(ocamllex lexer)
-
-(menhir
- (modules parser))
-
-(menhir
- (modules recovery_parser)
- (flags --table --external-tokens Parser))
-
-(rule
- (action
-  (with-stdout-to
-   recovery_parser.mly
-   (run menhir %{dep:parser.mly} --only-preprocess-u))))
-
-(rule
- (deps parser_messages.check)
- (action
-  (with-stdout-to
-   parser_messages.ml
-   (run menhir %{dep:parser.mly} --compile-errors %{dep:parser.messages}))))
-
-;; This rule generates a file "parserMessages.auto.messages" that contains a
-;; list of all error states. It is used by the completeness check.
-
-(rule
- (with-stdout-to
-  parser.auto.messages
-  (run menhir %{dep:parser.mly} --list-errors)))
-
-;; This rule implements the completeness check. It checks that every error
-;; state listed in the auto-generated file "parserMessages.auto.messages"
-;; is also listed in the file "parserMessages.messages" that is maintained
-;; by the programmer.
-
-(rule
- (with-stdout-to
-  parser_messages.check
-  (run
-   menhir
-   %{dep:parser.mly}
-   --compare-errors
-   %{dep:parser.auto.messages}
-   --compare-errors
-   %{dep:parser.messages})))
