@@ -7,7 +7,10 @@
 .globl mucaml_main
 .fnstart
 mucaml_main:
-  mov r0, #10
+  mov r0, #100
+  mov r1, #1000000000
+  add r2, r0, r1
+  mov r0, r2
   bx lr
 .fnend
 .size mucaml_main, . - mucaml_main

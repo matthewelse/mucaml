@@ -7,4 +7,4 @@ val parse_toplevel
   :  string
   -> filename:string
   -> files:Grace.Files.t
-  -> (Ast.prog, Grace.Diagnostic.t) result
+  -> (Ast.t, Grace.Diagnostic.t) result

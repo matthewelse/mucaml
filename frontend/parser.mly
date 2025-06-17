@@ -30,10 +30,10 @@
 %nonassoc INT BOOL VAR LPAREN
 %nonassoc APP
 
-%type <Ast.prog> prog
+%type <Ast.t> prog
 %type <Ast.expr> expr
-%type <Ast.name * Type.t> param
-%type <(Ast.name * Type.t) list> param_list
+%type <string * Type.t> param
+%type <(string * Type.t) list> param_list
 %type <Type.t> type_annot type_name
 
 %start prog
@@ -61,7 +61,7 @@ let expr :=
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
     { If (cond, if_true, if_false) }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
-    { `Fun (param_list, expr) |> desugar }
+    { Fun (param_list, expr)  }
   | f = expr; arg = expr; %prec APP           { App (f, [ arg ]) }
   | LPAREN; ~ = expr; RPAREN;                     <> 
 

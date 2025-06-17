@@ -22,12 +22,16 @@ module Stage = struct
   let arg_type = Command.Arg_type.enumerated_sexpable ~case_sensitive:false (module T)
 end
 
-let compile_and_link assembly =
+let compile assembly ~should_run =
   Out_channel.write_all "runtime/src/program.s" ~data:assembly;
-  Process.run_expect_no_output ~prog:"cargo" ~working_dir:"runtime" ~args:[ "build" ] ()
+  if should_run
+  then
+    Process.run_forwarding ~prog:"cargo" ~working_dir:"runtime" ~args:[ "run"; "-q" ] ()
+  else
+    Process.run_expect_no_output ~prog:"cargo" ~working_dir:"runtime" ~args:[ "build" ] ()
 ;;
 
-let run_toplevel (module Target : Backend_intf.S) input ~dump_stage =
+let run_toplevel (module Target : Backend_intf.S) input ~dump_stage ~should_run =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
   (* The only time [history_add] returns an error is when you have a duplicate  message,
@@ -35,15 +39,12 @@ let run_toplevel (module Target : Backend_intf.S) input ~dump_stage =
   LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
   match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
   | Ok ast ->
-    if Stage.equal dump_stage Ast then Ast.pprint_prog ast;
+    if Stage.equal dump_stage Ast then Ast.to_string_hum ast |> print_endline;
     let cmm = Cmm.of_ast ast in
     if Stage.equal dump_stage Cmm then Cmm.to_string cmm |> print_endline;
     let assembly = Target.Emit.emit_cmm cmm in
     if Stage.equal dump_stage Assembly then print_endline assembly;
-    let%bind () = compile_and_link assembly in
-    let%bind () =
-      Process.run_forwarding ~prog:"cargo" ~working_dir:"runtime" ~args:[ "run"; "-q" ] ()
-    in
+    let%bind () = compile assembly ~should_run in
     return ()
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
@@ -65,6 +66,8 @@ let command =
           "target"
           (optional_with_default Target.Cortex_M33 Target.arg_type)
           ~doc:"TARGET the target architecture to emit assembly for"
+      and should_run =
+        flag "run" no_arg ~doc:"RUN whether to run the compiled program after compilation"
       in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
@@ -77,7 +80,7 @@ let command =
             match LNoise.linenoise "> " with
             | None -> return (`Finished ())
             | Some input ->
-              let%bind () = run_toplevel (module Target) input ~dump_stage in
+              let%bind () = run_toplevel (module Target) input ~dump_stage ~should_run in
               return (`Repeat ()))
         in
         return ()]

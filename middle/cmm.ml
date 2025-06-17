@@ -73,7 +73,7 @@ let to_string { functions } =
   String.concat ~sep:"\n\n" (List.map functions ~f:Function.to_string)
 ;;
 
-let rec of_ast (ast : Ast.prog) =
+let rec of_ast (ast : Ast.t) =
   match ast with
   | Function { name; params; body } ->
     let params =

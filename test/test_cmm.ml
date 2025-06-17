@@ -15,7 +15,7 @@ let%expect_test "test code gen" =
     |};
   [%expect
     {|
-    function main (x: int32) {
+    function mucaml_main (x: int32) {
       $0 := 3
       $1 := 4
       $2 := $0 + $1
