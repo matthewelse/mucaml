@@ -1,4 +1,5 @@
 open! Core
+open! Import
 open Bigbuffer
 
 type t = Bigbuffer.t
@@ -44,9 +45,32 @@ let push t regs =
 ;;
 
 let mov t ~dst ~src = emit_line t [%string "  mov %{dst#Register}, %{src#Register}"]
-let mov_imm t ~dst value = emit_line t [%string "  mov %{dst#Register}, #%{value#Int}"]
+
+let is_valid_arm_imm value =
+  let open I32.O in
+  (* ARM immediate values must be in the range 0-255 and must be a multiple of 4 *)
+  let tz = I32.ctz value in
+  let tz = Int.O.(tz land lnot 1) in
+  let value = value lsr tz in
+  I32.unsigned_compare value #256l < 0
+;;
+
+let mov_imm t ~dst value =
+  if is_valid_arm_imm value
+  then emit_line t [%string "  mov %{dst#Register}, #%{value#I32}"]
+  else (
+    let lw = I32.O.(value land #0xFFFFl) in
+    let hw = I32.O.(value lsr 16) in
+    emit_line t [%string "  mov %{dst#Register}, #%{lw#I32}"];
+    emit_line t [%string "  movt %{dst#Register}, #%{hw#I32}"])
+;;
+
 let ret t = emit_line t "  bx lr"
 
 let add t ~dst ~src1 ~src2 =
   emit_line t [%string "  add %{dst#Register}, %{src1#Register}, %{src2#Register}"]
+;;
+
+let sub t ~dst ~src1 ~src2 =
+  emit_line t [%string "  sub %{dst#Register}, %{src1#Register}, %{src2#Register}"]
 ;;

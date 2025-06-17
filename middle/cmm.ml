@@ -22,6 +22,11 @@ module Instruction = struct
         ; src1 : Register.t
         ; src2 : Register.t
         }
+    | Sub of
+        { dest : Register.t
+        ; src1 : Register.t
+        ; src2 : Register.t
+        }
     | Set of
         { dest : Register.t
         ; value : int
@@ -32,6 +37,8 @@ module Instruction = struct
   let to_string = function
     | Add { dest; src1; src2 } ->
       [%string "%{dest#Register} := %{src1#Register} + %{src2#Register}"]
+    | Sub { dest; src1; src2 } ->
+      [%string "%{dest#Register} := %{src1#Register} - %{src2#Register}"]
     | Set { dest; value } -> [%string "%{dest#Register} := %{value#Int}"]
     | Return reg -> [%string "return %{reg#Register}"]
   ;;
@@ -104,5 +111,11 @@ and walk_expr (expr : Ast.expr) : Instruction.t list * result:Register.t =
     let dest = Register.create () in
     let add_ins : Instruction.t = Add { dest; src1 = reg1; src2 = reg2 } in
     ins1 @ ins2 @ [ add_ins ], ~result:dest
+  | App (Var "-", [ e1; e2 ]) ->
+    let ins1, ~result:reg1 = walk_expr e1 in
+    let ins2, ~result:reg2 = walk_expr e2 in
+    let dest = Register.create () in
+    let sub_ins : Instruction.t = Sub { dest; src1 = reg1; src2 = reg2 } in
+    ins1 @ ins2 @ [ sub_ins ], ~result:dest
   | _ -> failwith "todo"
 ;;

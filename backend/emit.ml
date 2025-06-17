@@ -27,22 +27,39 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
       let src1_reg = Registers.allocate registers src1 in
       let src2_reg = Registers.allocate registers src2 in
       add buf ~dst:dest_reg ~src1:src1_reg ~src2:src2_reg
+    | Sub { dest; src1; src2 } ->
+      let dest_reg = Registers.allocate registers dest in
+      let src1_reg = Registers.allocate registers src1 in
+      let src2_reg = Registers.allocate registers src2 in
+      sub buf ~dst:dest_reg ~src1:src1_reg ~src2:src2_reg
     | Set { dest; value } ->
       let dest_reg = Registers.allocate registers dest in
-      mov_imm buf ~dst:dest_reg value
+      mov_imm buf ~dst:dest_reg (I32.of_int value)
     | Return reg ->
       let reg = Registers.allocate registers reg in
       if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg;
       ret buf)
 ;;
 
-let emit_cmm (program : Cmm.t) =
+let emit_cmm_without_prologue (program : Cmm.t) buf =
   let open Arm_dsl in
-  let buf = Arm_dsl.create () in
-  emit_program_prologue buf;
   List.iter program.functions ~f:(fun func ->
     emit_function_prologue buf ~name:func.name;
     emit_block func.body buf ~registers:(Registers.create ());
     emit_function_epilogue buf ~name:func.name);
   Arm_dsl.to_string buf
 ;;
+
+let emit_cmm (program : Cmm.t) =
+  let open Arm_dsl in
+  let buf = Arm_dsl.create () in
+  emit_program_prologue buf;
+  emit_cmm_without_prologue program buf
+;;
+
+module For_testing = struct
+  let emit_cmm_without_prologue program =
+    let buf = Arm_dsl.create () in
+    emit_cmm_without_prologue program buf
+  ;;
+end
