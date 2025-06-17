@@ -1,0 +1,5 @@
+(library
+ (name union_find)
+ (libraries core stdlib_upstream_compatible)
+ (preprocess
+  (pps ppx_jane)))

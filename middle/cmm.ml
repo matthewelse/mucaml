@@ -31,7 +31,6 @@ module Instruction = struct
         { dest : Register.t
         ; value : int
         }
-    | Return of Register.t
   [@@deriving sexp_of]
 
   let to_string = function
@@ -40,18 +39,32 @@ module Instruction = struct
     | Sub { dest; src1; src2 } ->
       [%string "%{dest#Register} := %{src1#Register} - %{src2#Register}"]
     | Set { dest; value } -> [%string "%{dest#Register} := %{value#Int}"]
+  ;;
+end
+
+module Terminator = struct
+  type t = Return of Register.t [@@deriving sexp_of]
+
+  let to_string = function
     | Return reg -> [%string "return %{reg#Register}"]
   ;;
 end
 
 module Block = struct
-  type t = { instructions : Instruction.t list } [@@deriving sexp_of]
+  type t =
+    { instructions : Instruction.t Doubly_linked.t
+    ; terminator : Terminator.t
+    }
+  [@@deriving sexp_of]
 
-  let to_string ?(indent = "") { instructions } =
+  let to_string ?(indent = "") { instructions; terminator } =
     String.concat
       ~sep:"\n"
-      (List.map instructions ~f:(fun instruction ->
+      (List.map (Doubly_linked.to_list instructions) ~f:(fun instruction ->
          indent ^ Instruction.to_string instruction))
+    ^ "\n"
+    ^ indent
+    ^ Terminator.to_string terminator
   ;;
 end
 
@@ -92,30 +105,34 @@ let rec of_ast (ast : Ast.t) =
         in
         param, ty)
     in
-    let body, ~result = walk_expr body in
-    let instructions = body @ [ Instruction.Return result ] in
-    let block = { Block.instructions } in
+    let acc = Doubly_linked.create () in
+    let result = walk_expr body ~acc in
+    let block = { Block.instructions = acc; terminator = Return result } in
     let function_ =
       { Function.name = [%string "mucaml_%{name}"]; params; body = block }
     in
     { functions = [ function_ ] }
 
-and walk_expr (expr : Ast.expr) : Instruction.t list * result:Register.t =
+and walk_expr (expr : Ast.expr) ~(acc : Instruction.t Doubly_linked.t) : Register.t =
   match expr with
   | Int i ->
     let reg = Register.create () in
-    [ Instruction.Set { dest = reg; value = i } ], ~result:reg
+    Doubly_linked.insert_last acc (Set { dest = reg; value = i })
+    |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    reg
   | App (Var "+", [ e1; e2 ]) ->
-    let ins1, ~result:reg1 = walk_expr e1 in
-    let ins2, ~result:reg2 = walk_expr e2 in
+    let reg1 = walk_expr e1 ~acc in
+    let reg2 = walk_expr e2 ~acc in
     let dest = Register.create () in
     let add_ins : Instruction.t = Add { dest; src1 = reg1; src2 = reg2 } in
-    ins1 @ ins2 @ [ add_ins ], ~result:dest
+    Doubly_linked.insert_last acc add_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    dest
   | App (Var "-", [ e1; e2 ]) ->
-    let ins1, ~result:reg1 = walk_expr e1 in
-    let ins2, ~result:reg2 = walk_expr e2 in
+    let reg1 = walk_expr e1 ~acc in
+    let reg2 = walk_expr e2 ~acc in
     let dest = Register.create () in
     let sub_ins : Instruction.t = Sub { dest; src1 = reg1; src2 = reg2 } in
-    ins1 @ ins2 @ [ sub_ins ], ~result:dest
+    Doubly_linked.insert_last acc sub_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    dest
   | _ -> failwith "todo"
 ;;
