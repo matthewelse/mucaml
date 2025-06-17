@@ -3,12 +3,10 @@
 
 extern crate alloc;
 
-use alloc::vec;
-
 use panic_semihosting as _;
 
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
+use cortex_m_semihosting::{hprintln, debug};
 
 use embedded_alloc::LlffHeap as Heap;
 
@@ -28,16 +26,15 @@ fn main() -> ! {
         unsafe { HEAP.init(&raw mut HEAP_MEM as usize, HEAP_SIZE) }
     }
 
-    let mut vec = vec![1, 2, 3, 4];
-    vec.push(1000);
-
-    hprintln!("hello, world: {:?}", vec);
-
     let result = unsafe {
          mucaml_main()
     };
 
     hprintln!("program returned: {:?}", result);
+
+    // exit QEMU
+    // NOTE do not run this on hardware; it can corrupt OpenOCD state
+    debug::exit(debug::EXIT_SUCCESS);
 
     loop { }
 }

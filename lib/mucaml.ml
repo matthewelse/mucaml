@@ -1,4 +1,5 @@
 open! Core
+open! Async
 open! Import
 module E = MenhirLib.ErrorReports
 module Ast = Ast
@@ -11,16 +12,48 @@ module Stage = struct
       | Ast
       | Cmm
       | Assembly
+      | Compile
+      | Run
     [@@deriving sexp_of, compare, enumerate, equal]
   end
 
   include T
 
-  let arg_type = Command.Arg_type.enumerated_sexpable (module T)
+  let arg_type = Command.Arg_type.enumerated_sexpable ~case_sensitive:false (module T)
 end
 
+let compile_and_link assembly =
+  Out_channel.write_all "runtime/src/program.s" ~data:assembly;
+  Process.run_expect_no_output ~prog:"cargo" ~working_dir:"runtime" ~args:[ "build" ] ()
+;;
+
+let run_toplevel (module Target : Backend_intf.S) input ~dump_stage =
+  let open Deferred.Or_error.Let_syntax in
+  let files = Grace.Files.create () in
+  LNoise.history_add input |> Result.ok_or_failwith;
+  match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
+  | Ok ast ->
+    if Stage.equal dump_stage Ast then Ast.pprint_prog ast;
+    let cmm = Cmm.of_ast ast in
+    if Stage.equal dump_stage Cmm then Cmm.to_string cmm |> print_endline;
+    let assembly = Target.Emit.emit_cmm cmm in
+    if Stage.equal dump_stage Assembly then print_endline assembly;
+    let%bind () = compile_and_link assembly in
+    let%bind () =
+      Process.run_forwarding ~prog:"cargo" ~working_dir:"runtime" ~args:[ "run"; "-q" ] ()
+    in
+    return ()
+  | Error diagnostic ->
+    let diagnostic_config = Grace_rendering.Config.default in
+    Fmt_doc.render
+      Fmt.stderr
+      Grace_rendering.(ppd_rich ~config:diagnostic_config ~files diagnostic);
+    Format.fprintf Fmt.stderr "%!";
+    return ()
+;;
+
 let command =
-  Command.basic
+  Command.async_or_error
     ~summary:"mucaml frontend demo"
     [%map_open.Command
       let stage =
@@ -32,40 +65,20 @@ let command =
           ~doc:"TARGET the target architecture to emit assembly for"
       in
       fun () ->
+        let open Deferred.Or_error.Let_syntax in
         let (module Target) =
           match target with
           | Cortex_M33 -> (module Mucaml_backend_arm : Backend_intf.S)
         in
-        while
-          match LNoise.linenoise "> " with
-          | None -> false
-          | Some input ->
-            let files = Grace.Files.create () in
-            LNoise.history_add input |> Result.ok_or_failwith;
-            (match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
-             | Ok ast ->
-               if Stage.equal stage Ast
-               then Ast.pprint_prog ast
-               else (
-                 let cmm = Cmm.of_ast ast in
-                 if Stage.equal stage Cmm
-                 then Cmm.to_string cmm |> print_endline
-                 else if Stage.equal stage Assembly
-                 then (
-                   let assembly = Target.Emit.emit_cmm cmm in
-                   print_endline assembly)
-                 else ());
-               true
-             | Error diagnostic ->
-               let diagnostic_config = Grace_rendering.Config.default in
-               Fmt_doc.render
-                 Fmt.stderr
-                 Grace_rendering.(ppd_rich ~config:diagnostic_config ~files diagnostic);
-               Format.fprintf Fmt.stderr "%!";
-               false)
-        do
-          ()
-        done]
+        let%bind () =
+          Deferred.Or_error.repeat_until_finished () (fun () ->
+            match LNoise.linenoise "> " with
+            | None -> return (`Finished ())
+            | Some input ->
+              let%bind () = run_toplevel (module Target) input ~dump_stage:stage in
+              return (`Repeat ()))
+        in
+        return ()]
 ;;
 
 let main () = Command_unix.run command

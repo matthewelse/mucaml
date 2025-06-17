@@ -40,4 +40,11 @@ fn main() {
 
     // Set the linker script to the one provided by cortex-m-rt.
     println!("cargo:rustc-link-arg=-Tlink.x");
+
+    cc::Build::new()
+        .file("src/program.s")  // Path to your assembly file
+        .compile("program");             // Output library name
+    
+    // Tell cargo to rerun if the assembly file changes
+    println!("cargo:rerun-if-changed=src/program.s");
 }

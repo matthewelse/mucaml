@@ -1,6 +1,8 @@
 (library
  (name mucaml)
  (libraries
+  async
+  async_unix
   core
   core_unix.command_unix
   grace

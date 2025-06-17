@@ -34,5 +34,3 @@ lto = true # better optimizations
 [build-dependencies]
 cc = "1.2.27"
 
-[lib]
-crate-type=["staticlib"]
