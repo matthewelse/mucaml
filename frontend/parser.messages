@@ -356,7 +356,7 @@ prog: LET VAR EQ BOOL PLUS TIMES
 ## expr PLUS
 ##
 
-<YOUR SYNTAX ERROR MESSAGE HERE>
+Expected an expression on the right hand side of a binary operator.
 
 prog: LET VAR EQ BOOL PLUS BOOL REC
 ##

@@ -30,7 +30,9 @@ let compile_and_link assembly =
 let run_toplevel (module Target : Backend_intf.S) input ~dump_stage =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
-  LNoise.history_add input |> Result.ok_or_failwith;
+  (* The only time [history_add] returns an error is when you have a duplicate  message,
+     which is not a problem. *)
+  LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
   match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
   | Ok ast ->
     if Stage.equal dump_stage Ast then Ast.pprint_prog ast;
@@ -56,8 +58,8 @@ let command =
   Command.async_or_error
     ~summary:"mucaml frontend demo"
     [%map_open.Command
-      let stage =
-        flag "stage" (required Stage.arg_type) ~doc:"STAGE the stage to print out"
+      let dump_stage =
+        flag "dump-stage" (required Stage.arg_type) ~doc:"STAGE the stage to print out"
       and target =
         flag
           "target"
@@ -75,7 +77,7 @@ let command =
             match LNoise.linenoise "> " with
             | None -> return (`Finished ())
             | Some input ->
-              let%bind () = run_toplevel (module Target) input ~dump_stage:stage in
+              let%bind () = run_toplevel (module Target) input ~dump_stage in
               return (`Repeat ()))
         in
         return ()]

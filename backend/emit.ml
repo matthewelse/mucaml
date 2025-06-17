@@ -1,13 +1,6 @@
 open! Core
 open! Import
 
-module Function_name =
-  String_id.Make
-    (struct
-      let module_name = "Function_name"
-    end)
-    ()
-
 module Registers = struct
   type t =
     { mapping : Register.t Cmm.Register.Table.t

@@ -88,7 +88,9 @@ let rec of_ast (ast : Ast.prog) =
     let body, ~result = walk_expr body in
     let instructions = body @ [ Instruction.Return result ] in
     let block = { Block.instructions } in
-    let function_ = { Function.name; params; body = block } in
+    let function_ =
+      { Function.name = [%string "mucaml_%{name}"]; params; body = block }
+    in
     { functions = [ function_ ] }
 
 and walk_expr (expr : Ast.expr) : Instruction.t list * result:Register.t =
