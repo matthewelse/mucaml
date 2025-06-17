@@ -25,14 +25,17 @@ let command =
     [%map_open.Command
       let stage =
         flag "stage" (required Stage.arg_type) ~doc:"STAGE the stage to print out"
-      and _target =
+      and target =
         flag
           "target"
           (optional_with_default Target.Cortex_M33 Target.arg_type)
           ~doc:"TARGET the target architecture to emit assembly for"
       in
       fun () ->
-        let (module Target) = (module Mucaml_backend_arm : Backend_intf.S) in
+        let (module Target) =
+          match target with
+          | Cortex_M33 -> (module Mucaml_backend_arm : Backend_intf.S)
+        in
         while
           match LNoise.linenoise "> " with
           | None -> false
@@ -51,7 +54,7 @@ let command =
                  then (
                    let assembly = Target.Emit.emit_cmm cmm in
                    print_endline assembly)
-                 else failwith "Unknown stage");
+                 else ());
                true
              | Error diagnostic ->
                let diagnostic_config = Grace_rendering.Config.default in

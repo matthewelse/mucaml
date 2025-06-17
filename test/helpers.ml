@@ -8,10 +8,7 @@ let parse text =
     Fmt_doc.render
       Fmt.stderr
       Grace_rendering.(
-        ppd_rich
-          ~config:{ Grace_rendering.Config.default with color = false }
-          ~files
-          diagnostic);
+        ppd_rich ~config:{ Config.default with color = false } ~files diagnostic);
     Format.fprintf Fmt.stderr "%!";
     Error ()
 ;;
