@@ -22,29 +22,72 @@ module Stage = struct
   let arg_type = Command.Arg_type.enumerated_sexpable ~case_sensitive:false (module T)
 end
 
-let compile assembly ~should_run =
-  Out_channel.write_all "runtime/src/program.s" ~data:assembly;
-  if should_run
-  then
-    Process.run_forwarding ~prog:"cargo" ~working_dir:"runtime" ~args:[ "run"; "-q" ] ()
-  else
-    Process.run_expect_no_output ~prog:"cargo" ~working_dir:"runtime" ~args:[ "build" ] ()
+let run_using_qemu elf_file =
+  let open Deferred.Or_error.Let_syntax in
+  let qemu_command = "qemu-system-arm" in
+  let args =
+    [ "-machine"
+    ; "mps2-an505"
+    ; "-cpu"
+    ; "cortex-m33"
+    ; "-nographic"
+    ; "-semihosting-config"
+    ; "enable=on,target=native"
+    ; "-m"
+    ; "16M"
+    ; "-kernel"
+    ; elf_file
+    ]
+  in
+  let%bind () = Process.run_forwarding ~prog:qemu_command ~args () in
+  return ()
 ;;
 
-let run_toplevel (module Target : Backend_intf.S) input ~dump_stage ~should_run =
+let compile assembly ~env ~output_binary =
+  let open Deferred.Or_error.Let_syntax in
+  let link_command = "arm-none-eabi-gcc" in
+  let args =
+    [ (* TODO: make the cpu configurable *)
+      "-mcpu=cortex-m33"
+    ; (* otherwise we get linker errors for symbols we don't care about *)
+      "-nostdlib"
+    ; "-Tlink.x"
+    ; "-L"
+    ; Env.runtime_lib_dir env
+    ; "-lmucaml_runtime"
+    ; "-x"
+    ; "assembler"
+    ; "-"
+    ; "-o"
+    ; output_binary
+    ]
+  in
+  let%bind () =
+    Process.run_expect_no_output ~prog:link_command ~args ~stdin:assembly ()
+  in
+  return ()
+;;
+
+let compile_toplevel
+  (module Target : Backend_intf.S)
+  input
+  ~output_binary
+  ~dump_stage
+  ~env
+  =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
-  (* The only time [history_add] returns an error is when you have a duplicate  message,
-     which is not a problem. *)
-  LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
   match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
   | Ok ast ->
-    if Stage.equal dump_stage Ast then Ast.to_string_hum ast |> print_endline;
+    if [%compare.equal: Stage.t option] dump_stage (Some Ast)
+    then Ast.to_string_hum ast |> print_endline;
     let cmm = Cmm.of_ast ast in
-    if Stage.equal dump_stage Cmm then Cmm.to_string cmm |> print_endline;
+    if [%compare.equal: Stage.t option] dump_stage (Some Cmm)
+    then Cmm.to_string cmm |> print_endline;
     let assembly = Target.Emit.emit_cmm cmm in
-    if Stage.equal dump_stage Assembly then print_endline assembly;
-    let%bind () = compile assembly ~should_run in
+    if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
+    then print_endline assembly;
+    let%bind () = compile ~env assembly ~output_binary in
     return ()
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
@@ -55,12 +98,12 @@ let run_toplevel (module Target : Backend_intf.S) input ~dump_stage ~should_run 
     return ()
 ;;
 
-let command =
+let repl =
   Command.async_or_error
-    ~summary:"mucaml frontend demo"
+    ~summary:"mucaml repl"
     [%map_open.Command
       let dump_stage =
-        flag "dump-stage" (required Stage.arg_type) ~doc:"STAGE the stage to print out"
+        flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
       and target =
         flag
           "target"
@@ -75,15 +118,65 @@ let command =
           match target with
           | Cortex_M33 -> (module Mucaml_backend_arm : Backend_intf.S)
         in
+        let env = Env.create () in
         let%bind () =
           Deferred.Or_error.repeat_until_finished () (fun () ->
             match LNoise.linenoise "> " with
             | None -> return (`Finished ())
             | Some input ->
-              let%bind () = run_toplevel (module Target) input ~dump_stage ~should_run in
+              (* The only time [history_add] returns an error is when you have a
+                 duplicate message, which is not a problem. *)
+              LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
+              let output_binary = "program.elf" in
+              let%bind () =
+                compile_toplevel (module Target) input ~output_binary ~dump_stage ~env
+              in
+              let%bind () =
+                if should_run then run_using_qemu output_binary else return ()
+              in
               return (`Repeat ()))
         in
         return ()]
 ;;
 
-let main () = Command_unix.run command
+let build ~run =
+  Command.async_or_error
+    ~summary:"mucaml build tool"
+    [%map_open.Command
+      let project_file =
+        flag
+          "project"
+          (optional_with_default "mucaml.toml" string)
+          ~doc:"FILE path to project file (default: mucaml.toml)"
+      and dump_stage =
+        flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
+      in
+      fun () ->
+        let open Deferred.Or_error.Let_syntax in
+        let env = Env.create () in
+        let%bind.Deferred.Or_error project =
+          Project.parse_file project_file
+          |> Result.map_error ~f:Error.of_string
+          |> Deferred.return
+        in
+        let (module Target : Backend_intf.S) =
+          match project.cpu with
+          | Cortex_M33 -> (module Mucaml_backend_arm)
+        in
+        let%bind code =
+          Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)
+        in
+        let output_binary = [%string "%{project.name#String_id}.elf"] in
+        let%bind () =
+          compile_toplevel (module Target) code ~dump_stage ~env ~output_binary
+        in
+        let%bind () = if run then run_using_qemu output_binary else return () in
+        return ()]
+;;
+
+let main () =
+  Command_unix.run
+  @@ Command.group
+       ~summary:"mucaml"
+       [ "repl", repl; "build", build ~run:false; "run", build ~run:true ]
+;;
