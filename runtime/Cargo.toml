@@ -10,8 +10,10 @@ cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 cortex-m-semihosting = "0.5"
 embedded-alloc = "0.6.0"
+embedded-hal = "1.0.0"
 panic-halt = "1.0.0"
 panic-semihosting = "0.6.0"
+rp235x-hal = "0.3.0"
 
 # Uncomment for the panic example.
 # panic-itm = "0.4.1"
