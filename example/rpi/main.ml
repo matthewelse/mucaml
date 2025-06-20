@@ -1,1 +1,1 @@
-let main _ : int32 = 10
+let main _ : int32 = 8

@@ -74,6 +74,7 @@ let compile_toplevel
   ~output_binary
   ~dump_stage
   ~env
+  ~program_name
   =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
@@ -85,6 +86,26 @@ let compile_toplevel
     if [%compare.equal: Stage.t option] dump_stage (Some Cmm)
     then Cmm.to_string cmm |> print_endline;
     let assembly = Target.Emit.emit_cmm cmm in
+    let rpi_build_info =
+      Rpi_binary_info.generate_assembly
+        [ T
+            { type_ = IdAndString
+            ; namespace = 'R', 'P'
+            ; value = Rpi_binary_info.Entry.Id.rp_program_name, program_name
+            }
+        ; T
+            { type_ = IdAndString
+            ; namespace = 'R', 'P'
+            ; value = Rpi_binary_info.Entry.Id.rp_pico_board, "adafruit_feather_rp2350"
+            }
+        ; T
+            { type_ = IdAndIntLabel
+            ; namespace = 'R', 'P'
+            ; value = Rpi_binary_info.Entry.Id.rp_binary_end, "__flash_binary_end"
+            }
+        ]
+    in
+    let assembly = assembly ^ "\n\n" ^ rpi_build_info in
     if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
     then print_endline assembly;
     let%bind () = compile ~env assembly ~output_binary in
@@ -129,7 +150,13 @@ let repl =
               LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
               let output_binary = "program.elf" in
               let%bind () =
-                compile_toplevel (module Target) input ~output_binary ~dump_stage ~env
+                compile_toplevel
+                  (module Target)
+                  input
+                  ~output_binary
+                  ~dump_stage
+                  ~env
+                  ~program_name:"repl"
               in
               let%bind () =
                 if should_run then run_using_qemu output_binary else return ()
@@ -168,7 +195,13 @@ let build ~run =
         in
         let output_binary = [%string "%{project.name#String_id}.elf"] in
         let%bind () =
-          compile_toplevel (module Target) code ~dump_stage ~env ~output_binary
+          compile_toplevel
+            (module Target)
+            code
+            ~dump_stage
+            ~env
+            ~output_binary
+            ~program_name:(String_id.to_string project.name)
         in
         let%bind () = if run then run_using_qemu output_binary else return () in
         return ()]
