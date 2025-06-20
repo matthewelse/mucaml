@@ -87,31 +87,66 @@ module Function = struct
   ;;
 end
 
-type t = { functions : Function.t list } [@@deriving sexp_of]
+module External = struct
+  type t =
+    { name : string
+    ; arg_types : Type.t list
+    ; return_type : Type.t
+    ; c_name : string
+    }
+  [@@deriving sexp_of]
 
-let to_string { functions } =
+  let to_string { name; arg_types; return_type; c_name } =
+    let type_ = List.map arg_types ~f:Type.to_string |> String.concat ~sep:" -> " in
+    [%string "external %{name} : %{type_} -> %{return_type#Type} = \"%{c_name}\""]
+  ;;
+end
+
+type t =
+  { functions : Function.t list
+  ; externs : External.t list
+  }
+[@@deriving sexp_of]
+
+let to_string { functions; externs } =
   String.concat ~sep:"\n\n" (List.map functions ~f:Function.to_string)
+  ^ "\n\n"
+  ^ String.concat ~sep:"\n\n" (List.map externs ~f:External.to_string)
 ;;
 
 let rec of_ast (ast : Ast.t) =
-  match ast with
-  | Function { name; params; body } ->
-    let params =
-      List.map params ~f:(fun (param, ty) ->
-        let ty : Type.t =
-          match ty with
-          | Int32 -> Type.Int32
-          | _ -> failwith "Unsupported type"
+  let functions, externs =
+    List.partition_map ast ~f:(fun ast ->
+      match ast with
+      | Function { name; params; body } ->
+        let params =
+          List.map params ~f:(fun (param, ty) ->
+            let ty : Type.t =
+              match ty with
+              | Int32 -> Type.Int32
+              | _ -> failwith "Unsupported type"
+            in
+            param, ty)
         in
-        param, ty)
-    in
-    let acc = Doubly_linked.create () in
-    let result = walk_expr body ~acc in
-    let block = { Block.instructions = acc; terminator = Return result } in
-    let function_ =
-      { Function.name = [%string "mucaml_%{name}"]; params; body = block }
-    in
-    { functions = [ function_ ] }
+        let acc = Doubly_linked.create () in
+        let result = walk_expr body ~acc in
+        let block = { Block.instructions = acc; terminator = Return result } in
+        First { Function.name = [%string "mucaml_%{name}"]; params; body = block }
+      | External { name; type_; c_name } ->
+        let arg_types, return_type =
+          let rec args acc (ret : Mucaml_frontend.Type.t) =
+            match ret with
+            | Fun (Int32, ret) -> args (Type.Int32 :: acc) ret
+            | Fun ((Bool | Unit | Fun _), _) -> failwith "Unsupported external type"
+            | Int32 -> List.rev acc, Type.Int32
+            | Bool -> failwith "Unsupported external type"
+            | Unit -> failwith "Unsupported external type"
+          in
+          args [] type_
+        in
+        Second { External.name; arg_types; return_type; c_name })
+  in
+  { functions; externs }
 
 and walk_expr (expr : Ast.expr) ~(acc : Instruction.t Doubly_linked.t) : Register.t =
   match expr with

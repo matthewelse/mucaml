@@ -37,6 +37,7 @@ rule read = parse
   | ">"                { GT }
   | "<="               { LE }
   | ">="               { GE }
+  | '"'                { read_string (Buffer.create 17) lexbuf }
   | "let"              { LET }
   | "rec"              { REC }
   | "in"               { IN }
@@ -44,6 +45,7 @@ rule read = parse
   | "then"             { THEN }
   | "else"             { ELSE }
   | "fun"              { FUN }
+  | "external"         { EXTERNAL }
   | "->"               { ARROW }
   | "=>"               { DARROW }
   | ":"                { COLON }
@@ -55,3 +57,20 @@ rule read = parse
   | identifier as n    { VAR n }
   | eof                { EOF }
   | _                  { lexing_error lexbuf }
+
+and read_string buf =
+  parse
+  | '"'       { STRING (Buffer.contents buf) }
+  | '\\' '/'  { Buffer.add_char buf '/'; read_string buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; read_string buf lexbuf }
+  | '\\' 'b'  { Buffer.add_char buf '\b'; read_string buf lexbuf }
+  | '\\' 'f'  { Buffer.add_char buf '\012'; read_string buf lexbuf }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
+  | [^ '"' '\\']+
+    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+      read_string buf lexbuf
+    }
+  | _ { raise (Error ("Illegal string character: " ^ Lexing.lexeme lexbuf)) }
+  | eof { raise (Error ("String is not terminated")) }

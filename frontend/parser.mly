@@ -5,6 +5,7 @@
 %token <int> INT
 %token <bool> BOOL
 %token <string> VAR
+%token <string> STRING
 %token UNARY_MINUS
 %token PLUS MINUS
 %token TIMES DIV
@@ -16,6 +17,7 @@
 %token ARROW DARROW
 %token COLON COMMA
 %token EOF
+%token EXTERNAL
 
 %nonassoc IN
 %nonassoc LET
@@ -41,11 +43,13 @@
 %%
 
 let prog :=
-  ~ = toplevel; EOF; <>
+  ~ = toplevel*; EOF; <>
 
 let toplevel :=
-  LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr; EOF;
-  { Function { name; params = param_list; body } }
+  | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
+    { Function { name; params = param_list; body } }
+  | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
+    { External { name; type_; c_name } }
 
 let expr :=
   | ~ = INT;                                  <Int>

@@ -1005,11 +1005,65 @@ prog: LET VAR EQ BOOL REC
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL EOF VAR
+prog: EXTERNAL UNARY_MINUS
+##
+## Ends in an error in state: 74.
+##
+## toplevel -> EXTERNAL . VAR type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL VAR VAR
 ##
 ## Ends in an error in state: 75.
 ##
-## prog -> toplevel . EOF [ # ]
+## toplevel -> EXTERNAL VAR . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL VAR
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL VAR COLON VAR DARROW
+##
+## Ends in an error in state: 76.
+##
+## toplevel -> EXTERNAL VAR type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL VAR type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 6, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL VAR COLON VAR EQ VAR
+##
+## Ends in an error in state: 77.
+##
+## toplevel -> EXTERNAL VAR type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL VAR type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL VAR COLON VAR EQ STRING VAR
+##
+## Ends in an error in state: 79.
+##
+## list(toplevel) -> toplevel . list(toplevel) [ EOF ]
 ##
 ## The known suffix of the stack is as follows:
 ## toplevel

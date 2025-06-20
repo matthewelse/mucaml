@@ -12,13 +12,20 @@ type expr =
   | App of expr * expr list
 [@@deriving sexp_of]
 
-type t =
+type toplevel =
   | Function of
       { name : string
       ; params : (string * Type.t) list
       ; body : expr
       }
+  | External of
+      { name : string
+      ; type_ : Type.t
+      ; c_name : string
+      }
 [@@deriving sexp_of]
+
+type t = toplevel list [@@deriving sexp_of]
 
 let expr_to_string_hum ?indent (expr : expr) =
   let rec aux ?(indent = "") = function
@@ -69,18 +76,26 @@ let expr_to_string_hum ?indent (expr : expr) =
 ;;
 
 let to_string_hum ?(indent = "") t =
-  match t with
-  | Function { name; params; body } ->
-    let params_str =
-      String.concat
-        ~sep:", "
-        (List.map params ~f:(fun (name, t) ->
-           Printf.sprintf "%s : %s" name (Type.to_string t)))
-    in
-    Printf.sprintf
-      "%slet %s %s =\n%s"
-      indent
-      name
-      params_str
-      (expr_to_string_hum ~indent:(indent ^ "  ") body)
+  List.map t ~f:(function
+    | Function { name; params; body } ->
+      let params_str =
+        String.concat
+          ~sep:", "
+          (List.map params ~f:(fun (name, t) ->
+             Printf.sprintf "%s : %s" name (Type.to_string t)))
+      in
+      Printf.sprintf
+        "%slet %s %s =\n%s"
+        indent
+        name
+        params_str
+        (expr_to_string_hum ~indent:(indent ^ "  ") body)
+    | External { name; type_; c_name } ->
+      Printf.sprintf
+        "%sexternal %s : %s = \"%s\""
+        indent
+        name
+        (Type.to_string type_)
+        c_name)
+  |> String.concat ~sep:"\n"
 ;;
