@@ -75,15 +75,18 @@ module Registers = struct
     in
     let block = func.body in
     let precoloured = Cmm.Register.Table.create () in
-    let rec loop elt ~live_variables =
-      match elt with
-      | None -> ()
-      | Some elt ->
-        let (instruction : Cmm.Instruction.t) = Doubly_linked.Elt.value elt in
+    let rec loop idx ~live_variables =
+      match idx >= 0 && idx < Iarray.length block.instructions with
+      | false -> ()
+      | true ->
+        let (instruction : Cmm.Instruction.t) = Iarray.get block.instructions idx in
         let dest =
           match instruction with
-          | Add { dest; _ } | Sub { dest; _ } | Set { dest; _ } | C_call { dest; _ } ->
-            dest
+          | Add { dest; _ }
+          | Sub { dest; _ }
+          | Set { dest; _ }
+          | C_call { dest; _ }
+          | Mov { dest; _ } -> dest
         in
         (* [live_variables] are "live-out", so interfere with [dest]. *)
         Set.iter live_variables ~f:(fun var -> interfere dest var);
@@ -101,8 +104,11 @@ module Registers = struct
               Hashtbl.set precoloured ~key:arg ~data:reg);
             Hashtbl.set precoloured ~key:dest ~data:Register.return_register;
             List.fold args ~init:live_variables ~f:(fun acc reg -> consumes acc ~reg)
+          | Mov { dest; src } ->
+            let live_variables = assigns live_variables ~reg:dest in
+            consumes live_variables ~reg:src
         in
-        loop (Doubly_linked.prev block.instructions elt) ~live_variables
+        loop (idx - 1) ~live_variables
     in
     let live_variables =
       match block.terminator with
@@ -111,7 +117,7 @@ module Registers = struct
         Hashtbl.set interference ~key:reg ~data:Cmm.Register.Set.empty;
         Cmm.Register.Set.singleton reg
     in
-    loop (Doubly_linked.last_elt block.instructions) ~live_variables;
+    loop (Iarray.length block.instructions - 1) ~live_variables;
     let mapping = colour interference ~precoloured in
     { mapping; used = Hashtbl.data mapping |> Register.Set.of_list }
   ;;
@@ -132,7 +138,7 @@ let c_call buf ~dst ~func ~args =
 
 let emit_block (block : Cmm.Block.t) buf ~registers =
   let open Arm_dsl in
-  Doubly_linked.iter block.instructions ~f:(fun instruction ->
+  Iarray.iter block.instructions ~f:(fun instruction ->
     match instruction with
     | Add { dest; src1; src2 } ->
       let dest_reg = Registers.find_exn registers dest in
@@ -147,6 +153,10 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
     | Set { dest; value } ->
       let dest_reg = Registers.find_exn registers dest in
       mov_imm buf ~dst:dest_reg (I32.of_int value)
+    | Mov { dest; src } ->
+      let dest_reg = Registers.find_exn registers dest in
+      let src_reg = Registers.find_exn registers src in
+      mov buf ~dst:dest_reg ~src:src_reg
     | C_call { dest; func; args } ->
       let dest_reg = Registers.find registers dest in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in

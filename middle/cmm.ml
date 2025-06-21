@@ -31,6 +31,10 @@ module Instruction = struct
         { dest : Register.t
         ; value : int
         }
+    | Mov of
+        { dest : Register.t
+        ; src : Register.t
+        }
     | C_call of
         { dest : Register.t
         ; func : string
@@ -44,6 +48,7 @@ module Instruction = struct
     | Sub { dest; src1; src2 } ->
       [%string "%{dest#Register} := %{src1#Register} - %{src2#Register}"]
     | Set { dest; value } -> [%string "%{dest#Register} := %{value#Int}"]
+    | Mov { dest; src } -> [%string "%{dest#Register} := %{src#Register}"]
     | C_call { dest; func; args } ->
       let args_str =
         String.concat ~sep:", " (List.map args ~f:(fun r -> Register.to_string r))
@@ -62,7 +67,7 @@ end
 
 module Block = struct
   type t =
-    { instructions : Instruction.t Doubly_linked.t
+    { instructions : Instruction.t iarray
     ; terminator : Terminator.t
     }
   [@@deriving sexp_of]
@@ -70,7 +75,7 @@ module Block = struct
   let to_string ?(indent = "") { instructions; terminator } =
     String.concat
       ~sep:"\n"
-      (List.map (Doubly_linked.to_list instructions) ~f:(fun instruction ->
+      (List.map (Iarray.to_list instructions) ~f:(fun instruction ->
          indent ^ Instruction.to_string instruction))
     ^ "\n"
     ^ indent
@@ -152,8 +157,9 @@ let rec of_ast (ast : Ast.t) =
             in
             param, ty)
         in
-        let acc = Doubly_linked.create () in
+        let acc = Queue.create () in
         let result = walk_expr body ~env:!env ~acc in
+        let acc = Queue.to_array acc |> Iarray.unsafe_of_array__promise_no_mutation in
         let block = { Block.instructions = acc; terminator = Return result } in
         First { Function.name = [%string "mucaml_%{name}"]; params; body = block }
       | External { name; type_; c_name } ->
@@ -172,28 +178,26 @@ let rec of_ast (ast : Ast.t) =
   in
   { functions; externs }
 
-and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Doubly_linked.t)
-  : Register.t
+and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Queue.t) : Register.t
   =
   match expr with
   | Int i ->
     let reg = Register.create () in
-    Doubly_linked.insert_last acc (Set { dest = reg; value = i })
-    |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    Queue.enqueue acc (Set { dest = reg; value = i });
     reg
   | App (Var "+", [ e1; e2 ]) ->
     let reg1 = walk_expr e1 ~env ~acc in
     let reg2 = walk_expr e2 ~env ~acc in
     let dest = Register.create () in
     let add_ins : Instruction.t = Add { dest; src1 = reg1; src2 = reg2 } in
-    Doubly_linked.insert_last acc add_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    Queue.enqueue acc add_ins;
     dest
   | App (Var "-", [ e1; e2 ]) ->
     let reg1 = walk_expr e1 ~env ~acc in
     let reg2 = walk_expr e2 ~env ~acc in
     let dest = Register.create () in
     let sub_ins : Instruction.t = Sub { dest; src1 = reg1; src2 = reg2 } in
-    Doubly_linked.insert_last acc sub_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
+    Queue.enqueue acc sub_ins;
     dest
   | Let ((var, _), value, body) ->
     let reg1 = walk_expr value ~env ~acc in
@@ -209,8 +213,7 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Doubly_link
      | Global c_name ->
        let dest = Register.create () in
        let c_call_ins : Instruction.t = C_call { dest; func = c_name; args } in
-       Doubly_linked.insert_last acc c_call_ins
-       |> (ignore : _ Doubly_linked.Elt.t -> unit);
+       Queue.enqueue acc c_call_ins;
        dest)
   | Var name ->
     let value = Map.find_exn env name in
