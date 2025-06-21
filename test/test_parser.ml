@@ -26,14 +26,6 @@ let%expect_test "test parser" =
       let _ = led_on 7 in
       let _ = sleep_ms 100 in
       let _ = led_off 7 in
-      let _ = sleep_ms 100 in
-      let _ = led_on 7 in
-      let _ = sleep_ms 100 in
-      let _ = led_off 7 in
-      let _ = sleep_ms 100 in
-      let _ = led_on 7 in
-      let _ = sleep_ms 100 in
-      let _ = led_off 7 in
       0     
     |};
   [%expect
@@ -46,14 +38,6 @@ let%expect_test "test parser" =
         let _ : None = app ($led_on, [7]) in
           let _ : None = app ($sleep_ms, [100]) in
             let _ : None = app ($led_off, [7]) in
-              let _ : None = app ($sleep_ms, [100]) in
-                let _ : None = app ($led_on, [7]) in
-                  let _ : None = app ($sleep_ms, [100]) in
-                    let _ : None = app ($led_off, [7]) in
-                      let _ : None = app ($sleep_ms, [100]) in
-                        let _ : None = app ($led_on, [7]) in
-                          let _ : None = app ($sleep_ms, [100]) in
-                            let _ : None = app ($led_off, [7]) in
-                              0
+              0
     |}]
 ;;

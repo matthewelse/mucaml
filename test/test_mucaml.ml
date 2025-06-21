@@ -49,5 +49,38 @@ let%expect_test _ =
       bx lr
     .fnend
     .size mucaml_main, . - mucaml_main
+    |}];
+  test
+    {|
+    external sleep_ms : int32 -> unit = "sleep_ms"
+    external led_on : int32 -> unit = "led_on"
+    external led_off : int32 -> unit = "led_off"
+
+    let main x : int32 =
+      let _ = sleep_ms 100 in
+      let _ = led_on 7 in
+      let _ = sleep_ms 100 in
+      let _ = led_off 7 in
+      0     
+    |};
+  [%expect
+    {|
+    .thumb_func
+    .type mucaml_main, %function
+    .globl mucaml_main
+    .fnstart
+    mucaml_main:
+      mov r0, #100
+      bl sleep_ms
+      mov r0, #7
+      bl led_on
+      mov r0, #100
+      bl sleep_ms
+      mov r0, #7
+      bl led_off
+      mov r0, #0
+      bx lr
+    .fnend
+    .size mucaml_main, . - mucaml_main
     |}]
 ;;

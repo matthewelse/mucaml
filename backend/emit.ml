@@ -2,12 +2,15 @@ open! Core
 open! Import
 
 module Registers = struct
-  type t = { mapping : Register.t Cmm.Register.Table.t }
+  type t =
+    { mapping : Register.t Cmm.Register.Table.t
+    ; used : Register.Set.t
+    }
 
-  let create () = { mapping = Cmm.Register.Table.create () }
   let find_exn t register = Hashtbl.find_exn t.mapping register
+  let find t register = Hashtbl.find t.mapping register
 
-  let colour (interference : Cmm.Register.Set.t Cmm.Register.Table.t) =
+  let colour ~precoloured (interference : Cmm.Register.Set.t Cmm.Register.Table.t) =
     (* This is a very crappy register allocation algorithm. It goes through the registers
        left to allocate one-by-one, and checks whether there are any available registers
        that don't interfere with it, and picks an arbitrary one.
@@ -32,7 +35,18 @@ module Registers = struct
             | None -> acc
             | Some mapping -> Set.remove acc mapping)
         in
-        let phys_register = Set.min_elt_exn available_registers in
+        let phys_register =
+          match Hashtbl.find precoloured virtual_register with
+          | Some reg ->
+            if Set.mem available_registers reg
+            then reg
+            else
+              failwithf
+                "Register allocation failed: precoloured register %s is not available"
+                (Register.to_string reg)
+                ()
+          | None -> Set.min_elt_exn available_registers
+        in
         Hashtbl.set mapping ~key:virtual_register ~data:phys_register;
         Hashtbl.remove interference virtual_register;
         loop ()
@@ -60,6 +74,7 @@ module Registers = struct
           | Some x -> x)
     in
     let block = func.body in
+    let precoloured = Cmm.Register.Table.create () in
     let rec loop elt ~live_variables =
       match elt with
       | None -> ()
@@ -67,7 +82,8 @@ module Registers = struct
         let (instruction : Cmm.Instruction.t) = Doubly_linked.Elt.value elt in
         let dest =
           match instruction with
-          | Add { dest; _ } | Sub { dest; _ } | Set { dest; _ } -> dest
+          | Add { dest; _ } | Sub { dest; _ } | Set { dest; _ } | C_call { dest; _ } ->
+            dest
         in
         (* [live_variables] are "live-out", so interfere with [dest]. *)
         Set.iter live_variables ~f:(fun var -> interfere dest var);
@@ -78,18 +94,41 @@ module Registers = struct
           | Add { dest; src1; src2 } | Sub { dest; src1; src2 } ->
             assigns live_variables ~reg:dest |> consumes ~reg:src1 |> consumes ~reg:src2
           | Set { dest; value = _ } -> assigns live_variables ~reg:dest
+          | C_call { dest; func = _; args } ->
+            let live_variables = assigns live_variables ~reg:dest in
+            List.iteri args ~f:(fun i arg ->
+              let reg = Iarray.get Register.function_args i in
+              Hashtbl.set precoloured ~key:arg ~data:reg);
+            Hashtbl.set precoloured ~key:dest ~data:Register.return_register;
+            List.fold args ~init:live_variables ~f:(fun acc reg -> consumes acc ~reg)
         in
         loop (Doubly_linked.prev block.instructions elt) ~live_variables
     in
     let live_variables =
       match block.terminator with
-      | Return reg -> Cmm.Register.Set.singleton reg
+      | Return reg ->
+        Hashtbl.set precoloured ~key:reg ~data:Register.return_register;
+        Hashtbl.set interference ~key:reg ~data:Cmm.Register.Set.empty;
+        Cmm.Register.Set.singleton reg
     in
     loop (Doubly_linked.last_elt block.instructions) ~live_variables;
-    let mapping = colour interference in
-    { mapping }
+    let mapping = colour interference ~precoloured in
+    { mapping; used = Hashtbl.data mapping |> Register.Set.of_list }
   ;;
 end
+
+let c_call buf ~dst ~func ~args =
+  let open Arm_dsl in
+  List.iteri args ~f:(fun i arg ->
+    let reg = Iarray.get Register.function_args i in
+    if not (Register.equal reg arg) then mov buf ~dst:reg ~src:arg);
+  bl buf ~func;
+  match dst with
+  | None -> ()
+  | Some dst ->
+    if not (Register.equal dst Register.return_register)
+    then mov buf ~dst ~src:Register.return_register
+;;
 
 let emit_block (block : Cmm.Block.t) buf ~registers =
   let open Arm_dsl in
@@ -107,7 +146,11 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
       sub buf ~dst:dest_reg ~src1:src1_reg ~src2:src2_reg
     | Set { dest; value } ->
       let dest_reg = Registers.find_exn registers dest in
-      mov_imm buf ~dst:dest_reg (I32.of_int value));
+      mov_imm buf ~dst:dest_reg (I32.of_int value)
+    | C_call { dest; func; args } ->
+      let dest_reg = Registers.find registers dest in
+      let args_regs = List.map args ~f:(Registers.find_exn registers) in
+      c_call buf ~dst:dest_reg ~func ~args:args_regs);
   match block.terminator with
   | Return reg ->
     let reg = Registers.find_exn registers reg in
@@ -118,8 +161,15 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
 let emit_function (func : Cmm.Function.t) buf =
   let open Arm_dsl in
   let registers = Registers.allocate func in
+  let clobbered_callee_saved_registers =
+    Set.inter registers.used Register.callee_saved |> Set.to_list
+  in
   emit_function_prologue buf ~name:func.name;
+  if not (List.is_empty clobbered_callee_saved_registers)
+  then push buf clobbered_callee_saved_registers;
   emit_block func.body buf ~registers;
+  if not (List.is_empty clobbered_callee_saved_registers)
+  then pop buf clobbered_callee_saved_registers;
   emit_function_epilogue buf ~name:func.name
 ;;
 

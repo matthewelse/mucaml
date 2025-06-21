@@ -31,6 +31,11 @@ module Instruction = struct
         { dest : Register.t
         ; value : int
         }
+    | C_call of
+        { dest : Register.t
+        ; func : string
+        ; args : Register.t list
+        }
   [@@deriving sexp_of]
 
   let to_string = function
@@ -39,6 +44,11 @@ module Instruction = struct
     | Sub { dest; src1; src2 } ->
       [%string "%{dest#Register} := %{src1#Register} - %{src2#Register}"]
     | Set { dest; value } -> [%string "%{dest#Register} := %{value#Int}"]
+    | C_call { dest; func; args } ->
+      let args_str =
+        String.concat ~sep:", " (List.map args ~f:(fun r -> Register.to_string r))
+      in
+      [%string "%{dest#Register} := c_call %{func}(%{args_str})"]
   ;;
 end
 
@@ -108,6 +118,19 @@ type t =
   }
 [@@deriving sexp_of]
 
+module Value = struct
+  type t =
+    | Register of Register.t
+    | Global of string
+  [@@deriving sexp_of]
+end
+
+module Env = struct
+  type t = Value.t String.Map.t [@@deriving sexp_of]
+
+  let empty = String.Map.empty
+end
+
 let to_string { functions; externs } =
   String.concat ~sep:"\n\n" (List.map functions ~f:Function.to_string)
   ^ "\n\n"
@@ -115,6 +138,7 @@ let to_string { functions; externs } =
 ;;
 
 let rec of_ast (ast : Ast.t) =
+  let env = ref Env.empty in
   let functions, externs =
     List.partition_map ast ~f:(fun ast ->
       match ast with
@@ -124,12 +148,12 @@ let rec of_ast (ast : Ast.t) =
             let ty : Type.t =
               match ty with
               | Int32 -> Type.Int32
-              | _ -> failwith "Unsupported type"
+              | _ -> failwith "todo: unsupported type"
             in
             param, ty)
         in
         let acc = Doubly_linked.create () in
-        let result = walk_expr body ~acc in
+        let result = walk_expr body ~env:!env ~acc in
         let block = { Block.instructions = acc; terminator = Return result } in
         First { Function.name = [%string "mucaml_%{name}"]; params; body = block }
       | External { name; type_; c_name } ->
@@ -137,18 +161,20 @@ let rec of_ast (ast : Ast.t) =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
             match ret with
             | Fun (Int32, ret) -> args (Type.Int32 :: acc) ret
-            | Fun ((Bool | Unit | Fun _), _) -> failwith "Unsupported external type"
-            | Int32 -> List.rev acc, Type.Int32
-            | Bool -> failwith "Unsupported external type"
-            | Unit -> failwith "Unsupported external type"
+            | Fun ((Bool | Unit | Fun _), _) -> failwith "todo: unsupported type"
+            | Unit | Int32 -> List.rev acc, Type.Int32
+            | Bool -> failwith "todo: bools"
           in
           args [] type_
         in
+        env := Map.set !env ~key:name ~data:(Value.Global c_name);
         Second { External.name; arg_types; return_type; c_name })
   in
   { functions; externs }
 
-and walk_expr (expr : Ast.expr) ~(acc : Instruction.t Doubly_linked.t) : Register.t =
+and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Doubly_linked.t)
+  : Register.t
+  =
   match expr with
   | Int i ->
     let reg = Register.create () in
@@ -156,18 +182,40 @@ and walk_expr (expr : Ast.expr) ~(acc : Instruction.t Doubly_linked.t) : Registe
     |> (ignore : _ Doubly_linked.Elt.t -> unit);
     reg
   | App (Var "+", [ e1; e2 ]) ->
-    let reg1 = walk_expr e1 ~acc in
-    let reg2 = walk_expr e2 ~acc in
+    let reg1 = walk_expr e1 ~env ~acc in
+    let reg2 = walk_expr e2 ~env ~acc in
     let dest = Register.create () in
     let add_ins : Instruction.t = Add { dest; src1 = reg1; src2 = reg2 } in
     Doubly_linked.insert_last acc add_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
     dest
   | App (Var "-", [ e1; e2 ]) ->
-    let reg1 = walk_expr e1 ~acc in
-    let reg2 = walk_expr e2 ~acc in
+    let reg1 = walk_expr e1 ~env ~acc in
+    let reg2 = walk_expr e2 ~env ~acc in
     let dest = Register.create () in
     let sub_ins : Instruction.t = Sub { dest; src1 = reg1; src2 = reg2 } in
     Doubly_linked.insert_last acc sub_ins |> (ignore : _ Doubly_linked.Elt.t -> unit);
     dest
-  | _ -> failwith "todo"
+  | Let ((var, _), value, body) ->
+    let reg1 = walk_expr value ~env ~acc in
+    (* TODO: Handle variable assignment *)
+    let env = Map.set env ~key:var ~data:(Value.Register reg1) in
+    let reg2 = walk_expr body ~env ~acc in
+    reg2
+  | App (Var var, args) ->
+    let args = List.map args ~f:(fun arg -> walk_expr arg ~env ~acc) in
+    let func = Map.find_exn env var in
+    (match func with
+     | Register _ -> failwith "todo: indirect function calls"
+     | Global c_name ->
+       let dest = Register.create () in
+       let c_call_ins : Instruction.t = C_call { dest; func = c_name; args } in
+       Doubly_linked.insert_last acc c_call_ins
+       |> (ignore : _ Doubly_linked.Elt.t -> unit);
+       dest)
+  | Var name ->
+    let value = Map.find_exn env name in
+    (match value with
+     | Register reg -> reg
+     | Global _ -> failwith "todo: global variables in expressions")
+  | _ -> raise_s [%message "todo:" (expr : Ast.expr)]
 ;;

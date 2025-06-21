@@ -74,3 +74,5 @@ let add t ~dst ~src1 ~src2 =
 let sub t ~dst ~src1 ~src2 =
   emit_line t [%string "  sub %{dst#Register}, %{src1#Register}, %{src2#Register}"]
 ;;
+
+let bl t ~func = emit_line t [%string "  bl %{func}"]
