@@ -1,0 +1,5 @@
+(library
+ (name mucaml_backend_common)
+ (libraries core mucaml_middle)
+ (preprocess
+  (pps ppx_jane)))

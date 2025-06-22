@@ -1,6 +1,5 @@
 (library
- (name mucaml_backend_arm)
- (libraries core grace mucaml_middle stdlib_upstream_compatible)
- (inline_tests)
+ (name mucaml_backend)
+ (libraries mucaml_backend_arm)
  (preprocess
   (pps ppx_jane)))

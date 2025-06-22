@@ -69,7 +69,7 @@ let compile assembly ~env ~output_binary =
 ;;
 
 let compile_toplevel
-  (module Target : Backend_intf.S)
+  (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
   input
   ~output_binary
   ~dump_stage
@@ -85,7 +85,7 @@ let compile_toplevel
     let cmm = Cmm.of_ast ast in
     if [%compare.equal: Stage.t option] dump_stage (Some Cmm)
     then Cmm.to_string cmm |> print_endline;
-    let assembly = Target.Emit.emit_cmm cmm in
+    let%bind assembly = Deferred.return (Target.build_program cmm) in
     let rpi_build_info =
       Rpi_binary_info.generate_assembly
         [ T
@@ -105,7 +105,7 @@ let compile_toplevel
             }
         ]
     in
-    let assembly = assembly ^ "\n\n" ^ rpi_build_info in
+    let assembly = Target.Assembly.to_string assembly ^ "\n\n" ^ rpi_build_info in
     if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
     then print_endline assembly;
     let%bind () = compile ~env assembly ~output_binary in
@@ -128,17 +128,13 @@ let repl =
       and target =
         flag
           "target"
-          (optional_with_default Target.Cortex_M33 Target.arg_type)
+          (required Mucaml_backend_common.Triple.arg_type)
           ~doc:"TARGET the target architecture to emit assembly for"
       and should_run =
         flag "run" no_arg ~doc:"RUN whether to run the compiled program after compilation"
       in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
-        let (module Target) =
-          match target with
-          | Cortex_M33 -> (module Mucaml_backend_arm : Backend_intf.S)
-        in
         let env = Env.create () in
         let%bind () =
           Deferred.Or_error.repeat_until_finished () (fun () ->
@@ -149,9 +145,12 @@ let repl =
                  duplicate message, which is not a problem. *)
               LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
               let output_binary = "program.elf" in
+              let%bind (module Backend) =
+                Deferred.return (Mucaml_backend.of_triple target)
+              in
               let%bind () =
                 compile_toplevel
-                  (module Target)
+                  (module Backend)
                   input
                   ~output_binary
                   ~dump_stage
@@ -186,9 +185,8 @@ let build ~run =
           |> Result.map_error ~f:Error.of_string
           |> Deferred.return
         in
-        let (module Target : Backend_intf.S) =
-          match project.cpu with
-          | Cortex_M33 -> (module Mucaml_backend_arm)
+        let%bind (module Target) =
+          Deferred.return (Mucaml_backend.of_triple project.target)
         in
         let%bind code =
           Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)

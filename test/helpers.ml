@@ -16,10 +16,14 @@ let parse text =
 ;;
 
 let compile text =
+  let target = "arm-unknown-none-eabi" in
+  let (module Target) =
+    Mucaml_backend.of_triple (Mucaml_backend_common.Triple.of_string target) |> ok_exn
+  in
   match parse text with
   | Ok ast ->
     let cmm = Cmm.of_ast ast in
-    let assembly = Emit.For_testing.emit_cmm_without_prologue cmm in
-    print_endline assembly
+    let assembly = Target.build_program cmm |> ok_exn in
+    print_endline (Target.Assembly.to_string assembly)
   | Error () -> ()
 ;;

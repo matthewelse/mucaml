@@ -10,7 +10,7 @@
   linenoise
   menhirLib
   mucaml_frontend
-  mucaml_backend_arm
+  mucaml_backend
   otoml)
  (preprocess
   (pps ppx_jane)))

@@ -1,9 +1,10 @@
 open! Core
+open! Import
 
 type t =
   { name : String_id.t
   ; top_level : string
-  ; cpu : Target.t
+  ; target : Triple.t
   }
 
 let parse_file filename =
@@ -16,11 +17,11 @@ let parse_file filename =
   let top_level =
     Otoml.find_or toml Otoml.get_string [ "top_level" ] ~default:"main.ml"
   in
-  let%bind cpu =
+  let%bind target =
     Otoml.find_result
       toml
-      (fun toml -> Otoml.get_string toml |> Target.of_string)
-      [ "target"; "cpu" ]
+      (fun toml -> Otoml.get_string toml |> Triple.of_string)
+      [ "target" ]
   in
-  Ok { name; top_level; cpu }
+  Ok { name; top_level; target }
 ;;

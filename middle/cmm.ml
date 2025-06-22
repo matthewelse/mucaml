@@ -201,7 +201,6 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Queue.t) : 
     dest
   | Let ((var, _), value, body) ->
     let reg1 = walk_expr value ~env ~acc in
-    (* TODO: Handle variable assignment *)
     let env = Map.set env ~key:var ~data:(Value.Register reg1) in
     let reg2 = walk_expr body ~env ~acc in
     reg2

@@ -7,6 +7,10 @@ let%expect_test _ =
   test {| let main _ : int32 = 10 + 32 |};
   [%expect
     {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
     .thumb_func
     .type mucaml_main, %function
     .globl mucaml_main
@@ -24,6 +28,10 @@ let%expect_test _ =
   test {| let main _ : int32 = 100000 |};
   [%expect
     {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
     .thumb_func
     .type mucaml_main, %function
     .globl mucaml_main
@@ -39,6 +47,10 @@ let%expect_test _ =
   test {| let main _ : int32 = (~32) |};
   [%expect
     {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
     .thumb_func
     .type mucaml_main, %function
     .globl mucaml_main
@@ -67,6 +79,10 @@ let%expect_test _ =
     |};
   [%expect
     {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
     .thumb_func
     .type mucaml_main, %function
     .globl mucaml_main

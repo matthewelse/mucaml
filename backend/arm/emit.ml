@@ -1,5 +1,6 @@
 open! Core
 open! Import
+module Linscan = Mucaml_backend_common.Linscan.Make (Register)
 
 module Registers = struct
   type t =
