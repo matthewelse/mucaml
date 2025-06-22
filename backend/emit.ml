@@ -9,131 +9,22 @@ module Registers = struct
 
   let find_exn t register = Hashtbl.find_exn t.mapping register
   let find t register = Hashtbl.find t.mapping register
-
-  let colour ~precoloured (interference : Cmm.Register.Set.t Cmm.Register.Table.t) =
-    (* This is a very crappy register allocation algorithm. It goes through the registers
-       left to allocate one-by-one, and checks whether there are any available registers
-       that don't interfere with it, and picks an arbitrary one.
-
-       If no non-interfering physical registers are available, we raise lol.
-
-       At some point, I'm going to need to spill things to the stack, but I'm too lazy to
-       do that now, and we'll cross that bridge when we get to it. *)
-    let mapping = Cmm.Register.Table.create () in
-    let available_registers =
-      Register.Set.of_list Register.all_available_for_allocation
-    in
-    let rec loop () =
-      match Hashtbl.choose interference with
-      | None ->
-        (* Done! *)
-        ()
-      | Some (virtual_register, interfering_regs) ->
-        let available_registers =
-          Set.fold interfering_regs ~init:available_registers ~f:(fun acc virtual_reg ->
-            match Hashtbl.find mapping virtual_reg with
-            | None -> acc
-            | Some mapping -> Set.remove acc mapping)
-        in
-        let phys_register =
-          match Hashtbl.find precoloured virtual_register with
-          | Some reg ->
-            if Set.mem available_registers reg
-            then reg
-            else
-              failwithf
-                "Register allocation failed: precoloured register %s is not available"
-                (Register.to_string reg)
-                ()
-          | None -> Set.min_elt_exn available_registers
-        in
-        Hashtbl.set mapping ~key:virtual_register ~data:phys_register;
-        Hashtbl.remove interference virtual_register;
-        loop ()
-    in
-    loop ();
-    mapping
-  ;;
-
-  let allocate (func : Cmm.Function.t) =
-    let interference : Cmm.Register.Set.t Cmm.Register.Table.t =
-      Cmm.Register.Table.create ()
-    in
-    let interfere x y =
-      if not (Cmm.Register.equal x y)
-      then (
-        Hashtbl.update interference x ~f:(function
-          | None -> Cmm.Register.Set.singleton y
-          | Some vars -> Set.add vars y);
-        Hashtbl.update interference y ~f:(function
-          | None -> Cmm.Register.Set.singleton x
-          | Some vars -> Set.add vars x))
-      else
-        Hashtbl.update interference x ~f:(function
-          | None -> Cmm.Register.Set.empty
-          | Some x -> x)
-    in
-    let block = func.body in
-    let precoloured = Cmm.Register.Table.create () in
-    let rec loop idx ~live_variables =
-      match idx >= 0 && idx < Iarray.length block.instructions with
-      | false -> ()
-      | true ->
-        let (instruction : Cmm.Instruction.t) = Iarray.get block.instructions idx in
-        let dest =
-          match instruction with
-          | Add { dest; _ }
-          | Sub { dest; _ }
-          | Set { dest; _ }
-          | C_call { dest; _ }
-          | Mov { dest; _ } -> dest
-        in
-        (* [live_variables] are "live-out", so interfere with [dest]. *)
-        Set.iter live_variables ~f:(fun var -> interfere dest var);
-        let consumes acc ~reg = Set.add acc reg in
-        let assigns acc ~reg = Set.remove acc reg in
-        let live_variables =
-          match instruction with
-          | Add { dest; src1; src2 } | Sub { dest; src1; src2 } ->
-            assigns live_variables ~reg:dest |> consumes ~reg:src1 |> consumes ~reg:src2
-          | Set { dest; value = _ } -> assigns live_variables ~reg:dest
-          | C_call { dest; func = _; args } ->
-            let live_variables = assigns live_variables ~reg:dest in
-            List.iteri args ~f:(fun i arg ->
-              let reg = Iarray.get Register.function_args i in
-              Hashtbl.set precoloured ~key:arg ~data:reg);
-            Hashtbl.set precoloured ~key:dest ~data:Register.return_register;
-            List.fold args ~init:live_variables ~f:(fun acc reg -> consumes acc ~reg)
-          | Mov { dest; src } ->
-            let live_variables = assigns live_variables ~reg:dest in
-            consumes live_variables ~reg:src
-        in
-        loop (idx - 1) ~live_variables
-    in
-    let live_variables =
-      match block.terminator with
-      | Return reg ->
-        Hashtbl.set precoloured ~key:reg ~data:Register.return_register;
-        Hashtbl.set interference ~key:reg ~data:Cmm.Register.Set.empty;
-        Cmm.Register.Set.singleton reg
-    in
-    loop (Iarray.length block.instructions - 1) ~live_variables;
-    let mapping = colour interference ~precoloured in
-    { mapping; used = Hashtbl.data mapping |> Register.Set.of_list }
-  ;;
 end
 
 let c_call buf ~dst ~func ~args =
   let open Arm_dsl in
+  (* TODO: only push r0/r1/r2 if they are live after the call *)
+  push buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i));
   List.iteri args ~f:(fun i arg ->
     let reg = Iarray.get Register.function_args i in
     if not (Register.equal reg arg) then mov buf ~dst:reg ~src:arg);
   bl buf ~func;
-  match dst with
-  | None -> ()
-  | Some dst ->
-    if not (Register.equal dst Register.return_register)
-    then mov buf ~dst ~src:Register.return_register
+  (match dst with
+   | None -> ()
+   | Some dst ->
+     if not (Register.equal dst Register.return_register)
+     then mov buf ~dst ~src:Register.return_register);
+  pop buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i))
 ;;
 
 let emit_block (block : Cmm.Block.t) buf ~registers =
@@ -170,7 +61,10 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
 
 let emit_function (func : Cmm.Function.t) buf =
   let open Arm_dsl in
-  let registers = Registers.allocate func in
+  let registers : Registers.t =
+    let mapping, used = Linscan.allocate_registers func.body ~inputs:[] in
+    { mapping; used }
+  in
   let clobbered_callee_saved_registers =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in

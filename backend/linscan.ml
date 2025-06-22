@@ -1,6 +1,11 @@
 open! Core
 module Cmm = Mucaml_middle.Cmm
 
+(* Linear scan register allocator.
+
+   Algorithm described in detail in poletto and sarkar's paper:
+   https://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf *)
+
 let live_intervals (block : Cmm.Block.t) ~inputs =
   let live_intervals = Cmm.Register.Table.create () in
   List.iter inputs ~f:(fun reg ->
@@ -42,6 +47,18 @@ let live_intervals (block : Cmm.Block.t) ~inputs =
    | Return reg -> consumes ~idx:(Iarray.length block.instructions) reg);
   live_intervals
 ;;
+
+module Interval = struct
+  type t = int * int [@@deriving compare, sexp_of]
+
+  module By_end = struct
+    type t = int * int [@@deriving compare, sexp_of]
+
+    let compare (start, end_) = compare (end_, start)
+
+    include functor Comparable.Make_plain
+  end
+end
 
 let%expect_test "live_intervals" =
   Cmm.Register.For_testing.reset_counter ();
@@ -95,5 +112,125 @@ let%expect_test "live_intervals" =
     d, e, f
     d
     g
+    |}]
+;;
+
+(* Precondition [active] is non-empty. *)
+let spill_at_interval
+  (active : Cmm.Register.t Interval.By_end.Map.t)
+  (current_start, current_end)
+  current_register
+  ~registers
+  ~spills
+  =
+  let (spill_start, spill_end), spill_virtual_register = Map.max_elt_exn active in
+  let stolen_register = Hashtbl.find_exn registers spill_virtual_register in
+  if spill_end > current_end
+  then (
+    Hashtbl.set registers ~key:current_register ~data:stolen_register;
+    Queue.enqueue spills spill_virtual_register;
+    let active = Map.remove active (spill_start, spill_end) in
+    let active =
+      Map.set active ~key:(current_start, current_end) ~data:current_register
+    in
+    active)
+  else (
+    Queue.enqueue spills current_register;
+    active)
+;;
+
+let expire_old_intervals active current_interval ~free_registers ~registers =
+  let expired, active = Map.split_lt_ge active current_interval in
+  Map.iter expired ~f:(fun register ->
+    Queue.enqueue free_registers (Hashtbl.find_exn registers register));
+  active
+;;
+
+let allocate_registers block ~inputs =
+  let free_registers = Queue.of_list Register.all_available_for_allocation in
+  let live_intervals =
+    live_intervals block ~inputs
+    |> Hashtbl.to_alist
+    |> List.filter_map ~f:(fun (virtual_register, (live_start, live_end)) ->
+      let%bind.Option live_start and live_end in
+      Some ((live_start, live_end), virtual_register))
+    |> List.sort ~compare:[%compare: Interval.t * Cmm.Register.t]
+  in
+  let registers = Cmm.Register.Table.create () in
+  let _active =
+    List.fold
+      live_intervals
+      ~init:Interval.By_end.Map.empty
+      ~f:(fun active (interval, virtual_register) ->
+        let active = expire_old_intervals active interval ~free_registers ~registers in
+        let reg =
+          match Queue.dequeue free_registers with
+          | Some reg -> reg
+          | None -> failwith "todo: spill"
+        in
+        Hashtbl.set registers ~key:virtual_register ~data:reg;
+        Map.set active ~key:interval ~data:virtual_register)
+  in
+  let used_registers = Hashtbl.data registers |> Register.Set.of_list in
+  registers, used_registers
+;;
+
+let%expect_test "allocate_registers" =
+  Cmm.Register.For_testing.reset_counter ();
+  let a = Cmm.Register.create () in
+  let b = Cmm.Register.create () in
+  let c = Cmm.Register.create () in
+  let d = Cmm.Register.create () in
+  let e = Cmm.Register.create () in
+  let f = Cmm.Register.create () in
+  let g = Cmm.Register.create () in
+  let (instructions, g) : Cmm.Instruction.t iarray * Cmm.Register.t =
+    ( [: Add { dest = e; src1 = d; src2 = a }
+       ; Add { dest = f; src1 = b; src2 = c }
+       ; Add { dest = f; src1 = f; src2 = b }
+       ; Add { dest = d; src1 = e; src2 = f }
+       ; Mov { dest = g; src = d }
+      :]
+    , g )
+  in
+  let block : Cmm.Block.t = { instructions; terminator = Return g } in
+  let inputs = [ a; b; c; d ] in
+  let registers, _ = allocate_registers block ~inputs in
+  Iarray.iter instructions ~f:(fun instruction ->
+    match instruction with
+    | Add { dest; src1; src2 } ->
+      let dest_reg = Hashtbl.find_exn registers dest in
+      let src1_reg = Hashtbl.find_exn registers src1 in
+      let src2_reg = Hashtbl.find_exn registers src2 in
+      print_endline
+        [%string "%{dest_reg#Register} := %{src1_reg#Register} + %{src2_reg#Register}"]
+    | Sub { dest; src1; src2 } ->
+      let dest_reg = Hashtbl.find_exn registers dest in
+      let src1_reg = Hashtbl.find_exn registers src1 in
+      let src2_reg = Hashtbl.find_exn registers src2 in
+      print_endline
+        [%string "%{dest_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
+    | Set { dest; value = _ } ->
+      let dest_reg = Hashtbl.find_exn registers dest in
+      print_endline [%string "%{dest_reg#Register} := <set value>"]
+    | C_call { dest; func = _; args } ->
+      let dest_reg = Hashtbl.find_exn registers dest in
+      let args_regs =
+        List.map args ~f:(Hashtbl.find_exn registers)
+        |> List.map ~f:Register.to_string
+        |> String.concat ~sep:", "
+      in
+      print_endline [%string "%{dest_reg#Register} := c_call(%{args_regs})"]
+    | Mov { dest; src } ->
+      let dest_reg = Hashtbl.find_exn registers dest in
+      let src_reg = Hashtbl.find_exn registers src in
+      print_endline [%string "%{dest_reg#Register} := %{src_reg#Register}"]);
+  [%expect
+    {|
+    r4 := r3 + r0
+    r5 := r2 + r1
+    r5 := r5 + r2
+    r3 := r4 + r5
+    r6 := r3
     |}]
 ;;

@@ -14,7 +14,8 @@ let%expect_test _ =
     mucaml_main:
       mov r0, #10
       mov r1, #32
-      add r0, r0, r1
+      add r2, r0, r1
+      mov r0, r2
       bx lr
     .fnend
     .size mucaml_main, . - mucaml_main
@@ -45,7 +46,8 @@ let%expect_test _ =
     mucaml_main:
       mov r0, #0
       mov r1, #32
-      sub r0, r0, r1
+      sub r2, r0, r1
+      mov r0, r2
       bx lr
     .fnend
     .size mucaml_main, . - mucaml_main
@@ -70,16 +72,30 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
+      push {r4}
       mov r0, #100
+      push {r0}
       bl sleep_ms
-      mov r0, #7
+      pop {r0}
+      mov r1, #7
+      push {r0}
+      mov r0, r1
       bl led_on
-      mov r0, #100
+      pop {r0}
+      mov r2, #100
+      push {r0}
+      mov r0, r2
       bl sleep_ms
-      mov r0, #7
+      pop {r0}
+      mov r3, #7
+      push {r0}
+      mov r0, r3
       bl led_off
-      mov r0, #0
+      pop {r0}
+      mov r4, #0
+      mov r0, r4
       bx lr
+      pop {r4}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}]
