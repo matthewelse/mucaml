@@ -46,6 +46,5 @@ let build_target_isa (triple : Triple.t) () =
       let name = name
       let triple = triple
       let build_program cmm = Ok (Emit.emit_cmm cmm)
-    end : Backend_intf.Target_isa
-      with type Settings.t = Settings.t)
+    end : Backend_intf.Target_isa)
 ;;

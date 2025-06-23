@@ -15,17 +15,12 @@ let emit_line t line =
 let emit_program_prologue _ = ()
 
 let emit_function_prologue t ~name =
-  emit_line t ".thumb_func";
   emit_line t [%string ".type %{name}, %function"];
   emit_line t [%string ".globl %{name}"];
-  emit_line t ".fnstart";
   emit_line t [%string "%{name}:"]
 ;;
 
-let emit_function_epilogue t ~name =
-  emit_line t ".fnend";
-  emit_line t [%string ".size %{name}, . - %{name}"]
-;;
+let emit_function_epilogue t ~name = emit_line t [%string ".size %{name}, . - %{name}"]
 
 let pop t regs =
   let regs = List.map regs ~f:Register.to_string |> String.concat ~sep:"," in
@@ -58,7 +53,7 @@ let mov_imm t ~dst value =
     emit_line t [%string "  movt %{dst#Register}, #%{hw#I32}"])
 ;;
 
-let ret t = emit_line t "  bx lr"
+let ret t = emit_line t "  ret"
 
 let add t ~dst ~src1 ~src2 =
   emit_line t [%string "  add %{dst#Register}, %{src1#Register}, %{src2#Register}"]

@@ -22,9 +22,5 @@ module type S = sig
   end
 
   val name : string
-
-  val build_target_isa
-    :  Triple.t
-    -> Settings.t
-    -> (module Target_isa with type Settings.t = Settings.t) Or_error.t
+  val build_target_isa : Triple.t -> Settings.t -> (module Target_isa) Or_error.t
 end

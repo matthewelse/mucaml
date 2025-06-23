@@ -45,14 +45,9 @@ let run_using_qemu elf_file =
 
 let compile assembly ~env ~output_binary =
   let open Deferred.Or_error.Let_syntax in
-  let link_command = "arm-none-eabi-gcc" in
+  let link_command = "gcc" in
   let args =
-    [ (* TODO: make the cpu configurable *)
-      "-mcpu=cortex-m33"
-    ; (* otherwise we get linker errors for symbols we don't care about *)
-      "-nostdlib"
-    ; "-Tlink.x"
-    ; "-L"
+    [ "-L"
     ; Env.runtime_lib_dir env
     ; "-lmucaml_runtime"
     ; "-x"
@@ -74,7 +69,7 @@ let compile_toplevel
   ~output_binary
   ~dump_stage
   ~env
-  ~program_name
+  ~program_name:_
   =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
@@ -86,7 +81,8 @@ let compile_toplevel
     if [%compare.equal: Stage.t option] dump_stage (Some Cmm)
     then Cmm.to_string cmm |> print_endline;
     let%bind assembly = Deferred.return (Target.build_program cmm) in
-    let rpi_build_info =
+    (*
+       let rpi_build_info =
       Rpi_binary_info.generate_assembly
         [ T
             { type_ = IdAndString
@@ -105,7 +101,8 @@ let compile_toplevel
             }
         ]
     in
-    let assembly = Target.Assembly.to_string assembly ^ "\n\n" ^ rpi_build_info in
+    *)
+    let assembly = Target.Assembly.to_string assembly (* ^ "\n\n"  ^ rpi_build_info*) in
     if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
     then print_endline assembly;
     let%bind () = compile ~env assembly ~output_binary in

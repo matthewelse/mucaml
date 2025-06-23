@@ -1,5 +1,5 @@
 (library
  (name mucaml_backend)
- (libraries mucaml_backend_arm)
+ (libraries mucaml_backend_arm mucaml_backend_arm64)
  (preprocess
   (pps ppx_jane)))

@@ -38,7 +38,6 @@ let build_target_isa (triple : Triple.t) () =
 
       let name = name
       let triple = triple
-      let build_program _ = Or_error.error_string "TODO"
-    end : Backend_intf.Target_isa
-      with type Settings.t = Settings.t)
+      let build_program program = Ok (Emit.emit_cmm program)
+    end : Backend_intf.Target_isa)
 ;;
