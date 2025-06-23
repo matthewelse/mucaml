@@ -12,6 +12,12 @@ module type Target_isa = sig
   val name : string
   val triple : Triple.t
   val build_program : Mucaml_middle.Cmm.t -> Assembly.t Or_error.t
+
+  val compile_and_link
+    :  Assembly.t
+    -> linker_args:string list
+    -> output_binary:string
+    -> unit Async_kernel.Deferred.Or_error.t
 end
 
 module type S = sig

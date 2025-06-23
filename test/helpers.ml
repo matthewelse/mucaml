@@ -18,7 +18,10 @@ let parse text =
 let compile text =
   let target = "thumbv8m.main-none-eabi" in
   let (module Target) =
-    Mucaml_backend.of_triple (Mucaml_backend_common.Triple.of_string target) |> ok_exn
+    Mucaml_backend.create
+      (Mucaml_backend_common.Triple.of_string target)
+      { cpu = Some "cortex-m33" }
+    |> ok_exn
   in
   match parse text with
   | Ok ast ->

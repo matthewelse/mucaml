@@ -5,6 +5,7 @@ type t =
   { name : String_id.t
   ; top_level : string
   ; target : Triple.t
+  ; backend_params : Mucaml_backend.Generic_params.t
   }
 
 let parse_file filename =
@@ -23,5 +24,6 @@ let parse_file filename =
       (fun toml -> Otoml.get_string toml |> Triple.of_string)
       [ "target" ]
   in
-  Ok { name; top_level; target }
+  let backend_params = Mucaml_backend.Generic_params.of_toml toml in
+  Ok { name; top_level; target; backend_params }
 ;;

@@ -1,5 +1,6 @@
 open! Core
 open! Import
+module Cpu = Cpu
 
 module Settings = struct
   type t = { cpu : Cpu.t } [@@deriving sexp_of]
@@ -19,7 +20,7 @@ end
 
 let name = "arm64"
 
-let build_target_isa (triple : Triple.t) () =
+let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
   let open Or_error.Let_syntax in
   let%bind () =
     match triple with
@@ -39,5 +40,23 @@ let build_target_isa (triple : Triple.t) () =
       let name = name
       let triple = triple
       let build_program program = Ok (Emit.emit_cmm program)
+
+      let compile_and_link program ~linker_args ~output_binary =
+        let open Async in
+        let open Deferred.Or_error.Let_syntax in
+        let link_command = "gcc" in
+        let args =
+          linker_args
+          @ [ "-mcpu"; Cpu.to_string cpu; "-x"; "assembler"; "-"; "-o"; output_binary ]
+        in
+        let%bind () =
+          Process.run_expect_no_output
+            ~prog:link_command
+            ~args
+            ~stdin:(Assembly.to_string program)
+            ()
+        in
+        return ()
+      ;;
     end : Backend_intf.Target_isa)
 ;;

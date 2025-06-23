@@ -1,6 +1,7 @@
 (library
  (name mucaml_backend_arm)
  (libraries
+  async
   core
   grace
   mucaml_backend_common

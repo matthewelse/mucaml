@@ -122,11 +122,7 @@ let repl =
     [%map_open.Command
       let dump_stage =
         flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
-      and target =
-        flag
-          "target"
-          (required Mucaml_backend_common.Triple.arg_type)
-          ~doc:"TARGET the target architecture to emit assembly for"
+      and (module Backend) = Mucaml_backend.target_param
       and should_run =
         flag "run" no_arg ~doc:"RUN whether to run the compiled program after compilation"
       in
@@ -142,9 +138,6 @@ let repl =
                  duplicate message, which is not a problem. *)
               LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
               let output_binary = "program.elf" in
-              let%bind (module Backend) =
-                Deferred.return (Mucaml_backend.of_triple target)
-              in
               let%bind () =
                 compile_toplevel
                   (module Backend)
@@ -183,7 +176,7 @@ let build ~run =
           |> Deferred.return
         in
         let%bind (module Target) =
-          Deferred.return (Mucaml_backend.of_triple project.target)
+          Deferred.return (Mucaml_backend.create project.target project.backend_params)
         in
         let%bind code =
           Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)

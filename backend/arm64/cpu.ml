@@ -10,3 +10,5 @@ include T
 let arg_type =
   Command.Arg_type.enumerated ~case_sensitive:false ~list_values_in_help:true (module T)
 ;;
+
+let default = (* TODO: "native" *) Apple_m1
