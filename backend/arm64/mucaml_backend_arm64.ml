@@ -47,14 +47,22 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
         let link_command = "gcc" in
         let args =
           linker_args
-          @ [ "-mcpu"; Cpu.to_string cpu; "-x"; "assembler"; "-"; "-o"; output_binary ]
+          @ [ "-mcpu=" ^ Cpu.to_string cpu; "-x"; "assembler"; "-"; "-o"; output_binary ]
+        in
+        (* TODO: Use a real runtime. For the time being, just call directly into the
+           main function. *)
+        let assembly =
+          [%string
+            {|.type main, %function
+.globl main
+main:
+b mucaml_main
+.size main, . - main
+
+%{program#Assembly}|}]
         in
         let%bind () =
-          Process.run_expect_no_output
-            ~prog:link_command
-            ~args
-            ~stdin:(Assembly.to_string program)
-            ()
+          Process.run_expect_no_output ~prog:link_command ~args ~stdin:assembly ()
         in
         return ()
       ;;

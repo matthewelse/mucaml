@@ -15,6 +15,8 @@ module Arm64 = Mucaml_backend_arm64
 module Settings = struct
   type t = { cpu : string option } [@@deriving fields ~getters]
 
+  let default = { cpu = None }
+
   let param =
     [%map_open.Command
       let cpu =

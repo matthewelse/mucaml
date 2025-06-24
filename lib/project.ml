@@ -7,6 +7,7 @@ type t =
   ; target : Triple.t
   ; backend_params : Mucaml_backend.Settings.t
   ; linker_args : string list
+  ; run_command : string list option
   }
 
 let parse_file filename =
@@ -30,5 +31,18 @@ let parse_file filename =
     Otoml.find_opt toml (Otoml.get_array Otoml.get_string) [ "linker_args" ]
     |> Option.value ~default:[]
   in
-  Ok { name; top_level; target; backend_params; linker_args }
+  let run_command =
+    Otoml.find_opt toml (Otoml.get_array Otoml.get_string) [ "run_command" ]
+  in
+  Ok { name; top_level; target; backend_params; linker_args; run_command }
+;;
+
+let native_repl =
+  { name = String_id.of_string "repl"
+  ; top_level = "<repl>"
+  ; target = Triple.default
+  ; backend_params = Mucaml_backend.Settings.default
+  ; linker_args = []
+  ; run_command = None
+  }
 ;;

@@ -22,24 +22,20 @@ module Stage = struct
   let arg_type = Command.Arg_type.enumerated_sexpable ~case_sensitive:false (module T)
 end
 
-let run_using_qemu elf_file =
+let run (project : Project.t) elf_file =
   let open Deferred.Or_error.Let_syntax in
-  let qemu_command = "qemu-system-arm" in
-  let args =
-    [ "-machine"
-    ; "mps2-an505"
-    ; "-cpu"
-    ; "cortex-m33"
-    ; "-nographic"
-    ; "-semihosting-config"
-    ; "enable=on,target=native"
-    ; "-m"
-    ; "16M"
-    ; "-kernel"
-    ; elf_file
-    ]
+  let command, args =
+    match project.run_command with
+    | None | Some [] -> elf_file, []
+    | Some (cmd :: args) ->
+      let subst s =
+        match s with
+        | "{elf_file}" -> elf_file
+        | _ -> s
+      in
+      subst cmd, List.map args ~f:subst
   in
-  let%bind () = Process.run_forwarding ~prog:qemu_command ~args () in
+  let%bind () = Process.run_forwarding ~prog:command ~args () in
   return ()
 ;;
 
@@ -108,7 +104,7 @@ let repl =
       in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
-        let env = Env.create () in
+        let project = Project.native_repl in
         let%bind () =
           Deferred.Or_error.repeat_until_finished () (fun () ->
             match LNoise.linenoise "> " with
@@ -124,18 +120,15 @@ let repl =
                   input
                   ~output_binary
                   ~dump_stage
-                  ~env
                   ~linker_args:[]
               in
-              let%bind () =
-                if should_run then run_using_qemu output_binary else return ()
-              in
+              let%bind () = if should_run then run project output_binary else return () in
               return (`Repeat ()))
         in
         return ()]
 ;;
 
-let build ~run =
+let build ~should_run =
   Command.async_or_error
     ~summary:"mucaml build tool"
     [%map_open.Command
@@ -149,7 +142,6 @@ let build ~run =
       in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
-        let env = Env.create () in
         let%bind.Deferred.Or_error project =
           Project.parse_file project_file
           |> Result.map_error ~f:Error.of_string
@@ -170,7 +162,7 @@ let build ~run =
             ~output_binary
             ~linker_args:project.linker_args
         in
-        let%bind () = if run then run_using_qemu output_binary else return () in
+        let%bind () = if should_run then run project output_binary else return () in
         return ()]
 ;;
 
@@ -178,5 +170,5 @@ let main () =
   Command_unix.run
   @@ Command.group
        ~summary:"mucaml"
-       [ "repl", repl; "build", build ~run:false; "run", build ~run:true ]
+       [ "repl", repl; "build", build ~should_run:false; "run", build ~should_run:true ]
 ;;
