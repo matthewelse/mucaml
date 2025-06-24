@@ -1,5 +1,6 @@
 (library
  (name mucaml_backend_common)
- (libraries async_kernel core mucaml_middle)
+ (libraries async core mucaml_middle)
+ (inline_tests)
  (preprocess
   (pps ppx_jane)))

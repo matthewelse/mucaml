@@ -2,7 +2,7 @@
 
 exception Key_error of string
 exception Type_error of string
-exception Parse_error of ((int * int) option * string)
+exception Parse_error of ((lexing_position * lexing_position) option * string)
 exception Duplicate_key of string
 
 (* Convenience functions for throwing exceptions *)

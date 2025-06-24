@@ -2,37 +2,48 @@ open! Core
 
 module Architecture = struct
   module Arm = struct
-    type t = V8m_main [@@deriving sexp_of, string]
+    type t = V8m_main [@@deriving equal, sexp_of]
 
     let to_string = function
       | V8m_main -> "thumbv8m.main"
+    ;;
+
+    let of_string = function
+      | "thumbv8m.main" -> Ok V8m_main
+      | _ -> Error "Unsupported ARM architecture"
     ;;
   end
 
   type t =
     | Arm of Arm.t
     | Arm64
-  [@@deriving sexp_of]
+  [@@deriving equal, sexp_of]
 
   let to_string = function
     | Arm arm -> Arm.to_string arm
     | Arm64 -> "aarch64"
   ;;
+
+  let of_string = function
+    | "thumbv8m.main" -> Ok (Arm Arm.V8m_main)
+    | "aarch64" -> Ok Arm64
+    | _ -> Error "Unsupported architecture"
+  ;;
 end
 
 module Vendor = struct
-  type t = Unknown [@@deriving sexp_of, string]
+  type t = Unknown [@@deriving equal, sexp_of, string ~capitalize:"kebab-case"]
 end
 
 module Operating_system = struct
   type t =
     | Linux
     | None
-  [@@deriving sexp_of, string]
+  [@@deriving equal, sexp_of, string ~capitalize:"kebab-case"]
 end
 
 module Binary_format = struct
-  type t = Elf [@@deriving sexp_of]
+  type t = Elf [@@deriving equal, sexp_of]
 end
 
 module Environment = struct
@@ -40,7 +51,7 @@ module Environment = struct
     | Eabi
     | Eabihf
     | Gnu
-  [@@deriving sexp_of, string]
+  [@@deriving equal, sexp_of, string ~capitalize:"kebab-case"]
 end
 
 type t =
@@ -50,11 +61,24 @@ type t =
   ; environment : Environment.t
   ; binary_format : Binary_format.t
   }
-[@@deriving sexp_of]
+[@@deriving equal, sexp_of]
 
-let to_string t =
-  [%string
-    "%{t.architecture#Architecture}-%{t.vendor#Vendor}-%{t.operating_system#Operating_system}-%{t.environment#Environment}"]
+let to_string = function
+  | { architecture = Arm V8m_main
+    ; vendor = Unknown
+    ; operating_system = None
+    ; environment = Eabi
+    ; binary_format = Elf
+    } -> "thumbv8m.main-none-eabi"
+  | { architecture = Arm V8m_main
+    ; vendor = Unknown
+    ; operating_system = None
+    ; environment = Eabihf
+    ; binary_format = Elf
+    } -> "thumbv8m.main-none-eabihf"
+  | { architecture; vendor; operating_system; environment; binary_format = Elf } ->
+    [%string
+      "%{architecture#Architecture}-%{vendor#Vendor}-%{operating_system#Operating_system}-%{environment#Environment}"]
 ;;
 
 let of_string
@@ -96,6 +120,8 @@ let default =
   (* TODO: use the host triple if available *)
   of_string "aarch64-unknown-linux-gnu"
 ;;
+
+let is_host t = equal t default
 
 let arg_type =
   Command.Arg_type.enumerated

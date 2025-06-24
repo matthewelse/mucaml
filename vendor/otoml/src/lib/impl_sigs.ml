@@ -51,7 +51,7 @@ module type TomlImplementation = sig
      The first member of the tuple is the source file position
      (line and column).
    *)
-  exception Parse_error of ((int * int) option * string)
+  exception Parse_error of ((lexing_position * lexing_position) option * string)
 
   (** Raised when a table field or a table name is defined twice,
       which is prohibited to the TOML standard. *)
@@ -105,7 +105,7 @@ module type TomlImplementation = sig
     (** Converts the value attached to a {!Parse_error} exception
         to an error message string.
      *)
-    val format_parse_error : (int * int) option -> string -> string
+    val format_parse_error : (lexing_position * lexing_position) option -> string -> string
   end
 
   (** {2 Constructors}

@@ -1,4 +1,5 @@
 name = "blinky"
 
 [target]
+triple = "thumbv8m.main-none-eabihf"
 cpu = "cortex-m33"

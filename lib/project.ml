@@ -10,9 +10,42 @@ type t =
   ; run_command : string list option
   }
 
-let parse_file filename =
+let parse_file filename ~files =
   let open Result.Let_syntax in
-  let%bind toml = Otoml.Parser.from_file_result filename in
+  let contents = In_channel.read_all filename in
+  let file = Grace.Files.add files filename contents in
+  let wrap =
+    let open Grace in
+    Result.map_error ~f:(fun error : Diagnostic.t ->
+      { severity = Error
+      ; message = (fun fmt -> Format.fprintf fmt "Error parsing project file: %s" error)
+      ; labels = []
+      ; notes = []
+      })
+  in
+  let%bind toml =
+    try Ok (Otoml.Parser.from_string contents) with
+    | Otoml.Parse_error (pos, err) ->
+      let open Grace in
+      let labels =
+        match pos with
+        | None -> []
+        | Some (start, stop) ->
+          [ Diagnostic.Label.primary ~id:file ~range:(Range.of_lex start stop) (fun ppf ->
+              Format.fprintf ppf "%s" err)
+          ]
+      in
+      let diagnostic =
+        { Diagnostic.severity = Error
+        ; message = (fun fmt -> Format.fprintf fmt "Unable to parse toml file")
+        ; labels
+        ; notes = []
+        }
+      in
+      Error diagnostic
+  in
+  wrap
+  @@
   let%bind name =
     Otoml.find_result toml Otoml.get_string [ "name" ]
     |> Result.map ~f:String_id.of_string
@@ -24,7 +57,7 @@ let parse_file filename =
     Otoml.find_result
       toml
       (fun toml -> Otoml.get_string toml |> Triple.of_string)
-      [ "target" ]
+      [ "target"; "triple" ]
   in
   let backend_params = Mucaml_backend.Settings.of_toml toml in
   let linker_args =

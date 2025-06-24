@@ -26,8 +26,9 @@ open Common
 open Toml_parser
 
 let lexing_error lexbuf msg =
-  let line, column = Parser_utils.get_lexing_position lexbuf in
-  raise (Parse_error (Some (line, column), msg))
+  let start = Lexing.lexeme_start_p lexbuf in
+  let stop = Lexing.lexeme_end_p lexbuf in
+  raise (Parse_error (Some (start, stop), msg))
 
 exception Bad_unicode of (string * int)
 

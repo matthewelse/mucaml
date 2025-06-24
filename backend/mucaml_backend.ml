@@ -49,6 +49,9 @@ let create (triple : Triple.t) (settings : Settings.t) =
     | Ok None -> Or_error.error_string error_if_missing
     | Error _ as e -> e
   in
+  (* TODO melse: Arguably this parsing is happening "too deep" in the program, and should
+     be pushed up closer to command-line parsing. That will allow us to give clearer error
+     messages about specifying the CPU in the TOML file, vs. via the command line. *)
   match triple.architecture with
   | Arm _ ->
     let%tydi { cpu } = settings in
@@ -56,7 +59,9 @@ let create (triple : Triple.t) (settings : Settings.t) =
       parse_req
         Arm.Cpu.of_string
         cpu
-        ~error_if_missing:"Missing CPU flag"
+        ~error_if_missing:
+          "No CPU specified for 32-bit ARM target. You should set the 'target.cpu' field \
+           in the project file."
         ~error_if_invalid:(fun cpu -> [%string "Unknown CPU '%{cpu}'"])
     in
     Arm.build_target_isa triple { cpu }

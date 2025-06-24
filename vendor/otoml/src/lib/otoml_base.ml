@@ -614,9 +614,10 @@ module Make (N: TomlNumber) (D: TomlDate) = struct
 	let checkpoint = MI.resume checkpoint in
 	_parse state lexbuf checkpoint
       | MI.HandlingError _env ->
-	let line, pos = Parser_utils.get_lexing_position lexbuf in
+  let start = Lexing.lexeme_start_p lexbuf in
+  let stop  = Lexing.lexeme_end_p lexbuf in
 	let err = get_parse_error _env in
-	raise (Parse_error (Some (line, pos), err))
+	raise (Parse_error (Some (start, stop), err))
       | MI.Accepted v -> v
       | MI.Rejected ->
 	 raise (Parse_error (None, "invalid syntax (parser rejected the input)"))
@@ -793,7 +794,9 @@ module Make (N: TomlNumber) (D: TomlDate) = struct
 
     let format_parse_error pos err =
       match pos with
-      | Some (line, pos) ->
+      | Some (p,_) ->
+        let line = p.Lexing.pos_lnum in
+        let pos = p.Lexing.pos_cnum - p.Lexing.pos_bol + 1 in
         Printf.sprintf "Syntax error on line %d, character %d: %s" line pos err
       | None ->
         Printf.sprintf "Parse error: %s" err

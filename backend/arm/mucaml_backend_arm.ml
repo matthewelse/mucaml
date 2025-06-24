@@ -48,14 +48,14 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
       let triple = triple
       let build_program cmm = Ok (Emit.emit_cmm cmm)
 
-      let compile_and_link program ~linker_args ~output_binary =
+      let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in
         let open Deferred.Or_error.Let_syntax in
         let link_command = "arm-none-eabi-gcc" in
         let args =
           linker_args
-          @ [ "-mcpu"
-            ; Cpu.to_string cpu
+          @ [ "-L" ^ Env.runtime_lib_dir env triple; "-lmucaml_runtime" ]
+          @ [ "-mcpu=" ^ Cpu.to_string cpu
             ; "-nostdlib"
             ; "-x"
             ; "assembler"

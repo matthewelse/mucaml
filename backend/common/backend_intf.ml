@@ -15,9 +15,10 @@ module type Target_isa = sig
 
   val compile_and_link
     :  Assembly.t
+    -> env:Env.t
     -> linker_args:string list
     -> output_binary:string
-    -> unit Async_kernel.Deferred.Or_error.t
+    -> unit Async.Deferred.Or_error.t
 end
 
 module type S = sig

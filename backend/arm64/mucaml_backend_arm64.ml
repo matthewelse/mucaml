@@ -41,16 +41,16 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
       let triple = triple
       let build_program program = Ok (Emit.emit_cmm program)
 
-      let compile_and_link program ~linker_args ~output_binary =
+      let compile_and_link program ~env:(_ : Env.t) ~linker_args ~output_binary =
         let open Async in
         let open Deferred.Or_error.Let_syntax in
         let link_command = "gcc" in
+        (* TODO: Link a real runtime. For the time being, just call directly into the
+           main function. *)
         let args =
           linker_args
           @ [ "-mcpu=" ^ Cpu.to_string cpu; "-x"; "assembler"; "-"; "-o"; output_binary ]
         in
-        (* TODO: Use a real runtime. For the time being, just call directly into the
-           main function. *)
         let assembly =
           [%string
             {|.type main, %function

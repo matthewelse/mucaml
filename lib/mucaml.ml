@@ -45,6 +45,7 @@ let compile_toplevel
   ~output_binary
   ~dump_stage
   ~linker_args
+  ~env
   =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
@@ -81,7 +82,7 @@ let compile_toplevel
     then (
       let assembly = Target.Assembly.to_string assembly in
       print_endline assembly);
-    let%bind () = Target.compile_and_link assembly ~linker_args ~output_binary in
+    let%bind () = Target.compile_and_link assembly ~env ~linker_args ~output_binary in
     return ()
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
@@ -104,6 +105,7 @@ let repl =
       in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
+        let env = Env.create () in
         let project = Project.native_repl in
         let%bind () =
           Deferred.Or_error.repeat_until_finished () (fun () ->
@@ -121,6 +123,7 @@ let repl =
                   ~output_binary
                   ~dump_stage
                   ~linker_args:[]
+                  ~env
               in
               let%bind () = if should_run then run project output_binary else return () in
               return (`Repeat ()))
@@ -128,8 +131,27 @@ let repl =
         return ()]
 ;;
 
+let async_or_diagnostic ~summary param =
+  let files = Grace.Files.create () in
+  Command.async
+    ~summary
+    [%map_open.Command
+      let param = param in
+      fun () ->
+        match%bind param ~files () with
+        | Ok () -> return ()
+        | Error diagnostic ->
+          let diagnostic_config = Grace_rendering.Config.default in
+          Fmt_doc.render
+            Fmt.stderr
+            Grace_rendering.(ppd_rich ~config:diagnostic_config ~files diagnostic);
+          Format.fprintf Fmt.stderr "%!";
+          Shutdown.shutdown 1;
+          return ()]
+;;
+
 let build ~should_run =
-  Command.async_or_error
+  async_or_diagnostic
     ~summary:"mucaml build tool"
     [%map_open.Command
       let project_file =
@@ -140,29 +162,43 @@ let build ~should_run =
       and dump_stage =
         flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
       in
-      fun () ->
-        let open Deferred.Or_error.Let_syntax in
-        let%bind.Deferred.Or_error project =
-          Project.parse_file project_file
-          |> Result.map_error ~f:Error.of_string
-          |> Deferred.return
+      fun ~files () ->
+        let open Deferred.Result.Let_syntax in
+        let env = Env.create () in
+        let wrap =
+          let open Grace in
+          Result.map_error ~f:(fun error : Diagnostic.t ->
+            { severity = Error
+            ; message =
+                (fun fmt -> Format.fprintf fmt "Error: %s" (Error.to_string_hum error))
+            ; labels = []
+            ; notes = []
+            })
         in
+        let%bind project = Project.parse_file project_file ~files |> Deferred.return in
         let%bind (module Target) =
-          Deferred.return (Mucaml_backend.create project.target project.backend_params)
+          Deferred.return
+            (wrap (Mucaml_backend.create project.target project.backend_params))
         in
         let%bind code =
-          Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)
+          Deferred.map ~f:wrap
+          @@ Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)
         in
         let output_binary = [%string "%{project.name#String_id}.elf"] in
         let%bind () =
-          compile_toplevel
-            (module Target)
-            code
-            ~dump_stage
-            ~output_binary
-            ~linker_args:project.linker_args
+          Deferred.map ~f:wrap
+          @@ compile_toplevel
+               (module Target)
+               code
+               ~dump_stage
+               ~output_binary
+               ~linker_args:project.linker_args
+               ~env
         in
-        let%bind () = if should_run then run project output_binary else return () in
+        let%bind () =
+          Deferred.map ~f:wrap
+          @@ if should_run then run project output_binary else return ()
+        in
         return ()]
 ;;
 
