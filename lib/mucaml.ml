@@ -43,33 +43,12 @@ let run_using_qemu elf_file =
   return ()
 ;;
 
-let compile assembly ~env ~output_binary =
-  let open Deferred.Or_error.Let_syntax in
-  let link_command = "gcc" in
-  let args =
-    [ "-L"
-    ; Env.runtime_lib_dir env
-    ; "-lmucaml_runtime"
-    ; "-x"
-    ; "assembler"
-    ; "-"
-    ; "-o"
-    ; output_binary
-    ]
-  in
-  let%bind () =
-    Process.run_expect_no_output ~prog:link_command ~args ~stdin:assembly ()
-  in
-  return ()
-;;
-
 let compile_toplevel
   (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
   input
   ~output_binary
   ~dump_stage
-  ~env
-  ~program_name:_
+  ~linker_args
   =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
@@ -102,10 +81,11 @@ let compile_toplevel
         ]
     in
     *)
-    let assembly = Target.Assembly.to_string assembly (* ^ "\n\n"  ^ rpi_build_info*) in
     if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
-    then print_endline assembly;
-    let%bind () = compile ~env assembly ~output_binary in
+    then (
+      let assembly = Target.Assembly.to_string assembly in
+      print_endline assembly);
+    let%bind () = Target.compile_and_link assembly ~linker_args ~output_binary in
     return ()
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
@@ -145,7 +125,7 @@ let repl =
                   ~output_binary
                   ~dump_stage
                   ~env
-                  ~program_name:"repl"
+                  ~linker_args:[]
               in
               let%bind () =
                 if should_run then run_using_qemu output_binary else return ()
@@ -187,9 +167,8 @@ let build ~run =
             (module Target)
             code
             ~dump_stage
-            ~env
             ~output_binary
-            ~program_name:(String_id.to_string project.name)
+            ~linker_args:project.linker_args
         in
         let%bind () = if run then run_using_qemu output_binary else return () in
         return ()]
