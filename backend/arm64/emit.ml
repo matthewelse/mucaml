@@ -4,7 +4,7 @@ module Linscan = Mucaml_backend_common.Linscan.Make (Register)
 
 module Registers = struct
   type t =
-    { mapping : Register.t Mirl.Register.Table.t
+    { mapping : Register.t Virtual_register.Table.t
     ; used : Register.Set.t
     }
 

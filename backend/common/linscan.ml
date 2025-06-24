@@ -1,5 +1,6 @@
 open! Core
 module Mirl = Mucaml_middle.Mirl
+module Virtual_register = Mirl.Virtual_register
 
 (* Linear scan register allocator.
 
@@ -15,7 +16,7 @@ module Make (Register : sig
   end) =
 struct
   let live_intervals (block : Mirl.Block.t) ~inputs =
-    let live_intervals = Mirl.Register.Table.create () in
+    let live_intervals = Virtual_register.Table.create () in
     List.iter inputs ~f:(fun reg ->
       Hashtbl.set live_intervals ~key:reg ~data:(Some 0, None));
     let consumes ~idx reg =
@@ -70,7 +71,7 @@ struct
 
   (* Precondition [active] is non-empty. *)
   let spill_at_interval
-    (active : Mirl.Register.t Interval.By_end.Map.t)
+    (active : Virtual_register.t Interval.By_end.Map.t)
     (current_start, current_end)
     current_register
     ~registers
@@ -107,9 +108,9 @@ struct
       |> List.filter_map ~f:(fun (virtual_register, (live_start, live_end)) ->
         let%bind.Option live_start and live_end in
         Some ((live_start, live_end), virtual_register))
-      |> List.sort ~compare:[%compare: Interval.t * Mirl.Register.t]
+      |> List.sort ~compare:[%compare: Interval.t * Virtual_register.t]
     in
-    let registers = Mirl.Register.Table.create () in
+    let registers = Virtual_register.Table.create () in
     let _active =
       List.fold
         live_intervals
@@ -143,15 +144,15 @@ module%test _ = struct
   open Allocator
 
   let%expect_test "live_intervals" =
-    Mirl.Register.For_testing.reset_counter ();
-    let a = Mirl.Register.create () in
-    let b = Mirl.Register.create () in
-    let c = Mirl.Register.create () in
-    let d = Mirl.Register.create () in
-    let e = Mirl.Register.create () in
-    let f = Mirl.Register.create () in
-    let g = Mirl.Register.create () in
-    let (instructions, g) : Mirl.Instruction.t iarray * Mirl.Register.t =
+    Virtual_register.For_testing.reset_counter ();
+    let a = Virtual_register.create () in
+    let b = Virtual_register.create () in
+    let c = Virtual_register.create () in
+    let d = Virtual_register.create () in
+    let e = Virtual_register.create () in
+    let f = Virtual_register.create () in
+    let g = Virtual_register.create () in
+    let (instructions, g) : Mirl.Instruction.t iarray * Virtual_register.t =
       ( [: Add { dest = e; src1 = d; src2 = a }
          ; Add { dest = f; src1 = b; src2 = c }
          ; Add { dest = f; src1 = f; src2 = b }
@@ -165,15 +166,15 @@ module%test _ = struct
     let live_vars =
       Iarray.Local.create
         ~len:(Iarray.length block.instructions + 1)
-        { global = Mirl.Register.Set.empty }
+        { global = Virtual_register.Set.empty }
         ~mutate:(fun live_vars ->
           Hashtbl.iteri live_intervals ~f:(fun ~key:reg ~data:(start, ends) ->
             match start, ends with
             | None, None -> ()
             | Some _, None ->
-              print_s [%message "Variable never used" (reg : Mirl.Register.t)]
+              print_s [%message "Variable never used" (reg : Virtual_register.t)]
             | None, Some _ ->
-              raise_s [%message "Variable never assigned" (reg : Mirl.Register.t)]
+              raise_s [%message "Variable never assigned" (reg : Virtual_register.t)]
             | Some start, Some end_ ->
               for idx = start to end_ - 1 do
                 live_vars.(idx) <- { global = Set.add live_vars.(idx).global reg }
@@ -184,7 +185,7 @@ module%test _ = struct
       Set.to_list live
       |> List.map ~f:(fun reg ->
         let vars = [: "a"; "b"; "c"; "d"; "e"; "f"; "g" :] in
-        Iarray.get vars (Mirl.Register.to_int_exn reg))
+        Iarray.get vars (Virtual_register.to_int_exn reg))
       |> String.concat ~sep:", "
       |> print_endline);
     [%expect
@@ -199,15 +200,15 @@ module%test _ = struct
   ;;
 
   let%expect_test "allocate_registers" =
-    Mirl.Register.For_testing.reset_counter ();
-    let a = Mirl.Register.create () in
-    let b = Mirl.Register.create () in
-    let c = Mirl.Register.create () in
-    let d = Mirl.Register.create () in
-    let e = Mirl.Register.create () in
-    let f = Mirl.Register.create () in
-    let g = Mirl.Register.create () in
-    let (instructions, g) : Mirl.Instruction.t iarray * Mirl.Register.t =
+    Virtual_register.For_testing.reset_counter ();
+    let a = Virtual_register.create () in
+    let b = Virtual_register.create () in
+    let c = Virtual_register.create () in
+    let d = Virtual_register.create () in
+    let e = Virtual_register.create () in
+    let f = Virtual_register.create () in
+    let g = Virtual_register.create () in
+    let (instructions, g) : Mirl.Instruction.t iarray * Virtual_register.t =
       ( [: Add { dest = e; src1 = d; src2 = a }
          ; Add { dest = f; src1 = b; src2 = c }
          ; Add { dest = f; src1 = f; src2 = b }
