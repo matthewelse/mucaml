@@ -1,2 +1,2 @@
 module Ast = Mucaml_frontend.Ast
-module Cmm = Mucaml_middle.Cmm
+module Mirl = Mucaml_middle.Mirl

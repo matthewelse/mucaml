@@ -1,3 +1,7 @@
+(** [Mirl] is "matt's intermediate representation language", a low-level representation of
+    the program that is closer to assembly than the original source code. It is used as an
+    intermediate step before generating machine code. *)
+
 open! Core
 open! Import
 

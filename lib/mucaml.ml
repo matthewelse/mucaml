@@ -3,14 +3,14 @@ open! Async
 open! Import
 module E = MenhirLib.ErrorReports
 module Ast = Ast
-module Cmm = Cmm
+module Mirl = Mirl
 module Parse = Parse
 
 module Stage = struct
   module T = struct
     type t =
       | Ast
-      | Cmm
+      | Mirl
       | Assembly
       | Compile
       | Run
@@ -53,9 +53,9 @@ let compile_toplevel
   | Ok ast ->
     if [%compare.equal: Stage.t option] dump_stage (Some Ast)
     then Ast.to_string_hum ast |> print_endline;
-    let cmm = Cmm.of_ast ast in
-    if [%compare.equal: Stage.t option] dump_stage (Some Cmm)
-    then Cmm.to_string cmm |> print_endline;
+    let cmm = Mirl.of_ast ast in
+    if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
+    then Mirl.to_string cmm |> print_endline;
     let%bind assembly = Deferred.return (Target.build_program cmm) in
     (*
        let rpi_build_info =

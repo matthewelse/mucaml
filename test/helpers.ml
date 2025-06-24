@@ -2,7 +2,7 @@ open! Core
 open! Import
 
 let parse text =
-  Cmm.Register.For_testing.reset_counter ();
+  Mirl.Register.For_testing.reset_counter ();
   let files = Grace.Files.create () in
   match Mucaml.Parse.parse_toplevel text ~filename:"<test>" ~files with
   | Ok ast -> Ok ast
@@ -25,7 +25,7 @@ let compile text =
   in
   match parse text with
   | Ok ast ->
-    let cmm = Cmm.of_ast ast in
+    let cmm = Mirl.of_ast ast in
     let assembly = Target.build_program cmm |> ok_exn in
     print_endline (Target.Assembly.to_string assembly)
   | Error () -> ()

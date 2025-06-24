@@ -1,5 +1,5 @@
 module Backend_intf = Mucaml_backend_common.Backend_intf
-module Cmm = Mucaml_middle.Cmm
+module Mirl = Mucaml_middle.Mirl
 module Env = Mucaml_backend_common.Env
 module Triple = Mucaml_backend_common.Triple
 

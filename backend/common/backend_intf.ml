@@ -11,7 +11,7 @@ module type Target_isa = sig
 
   val name : string
   val triple : Triple.t
-  val build_program : Mucaml_middle.Cmm.t -> Assembly.t Or_error.t
+  val build_program : Mucaml_middle.Mirl.t -> Assembly.t Or_error.t
 
   val compile_and_link
     :  Assembly.t

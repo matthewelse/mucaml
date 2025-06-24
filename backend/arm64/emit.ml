@@ -4,7 +4,7 @@ module Linscan = Mucaml_backend_common.Linscan.Make (Register)
 
 module Registers = struct
   type t =
-    { mapping : Register.t Cmm.Register.Table.t
+    { mapping : Register.t Mirl.Register.Table.t
     ; used : Register.Set.t
     }
 
@@ -28,7 +28,7 @@ let c_call buf ~dst ~func ~args =
   pop buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i))
 ;;
 
-let emit_block (block : Cmm.Block.t) buf ~registers =
+let emit_block (block : Mirl.Block.t) buf ~registers =
   let open Arm_dsl in
   Iarray.iter block.instructions ~f:(fun instruction ->
     match instruction with
@@ -60,7 +60,7 @@ let emit_block (block : Cmm.Block.t) buf ~registers =
     ret buf
 ;;
 
-let emit_function (func : Cmm.Function.t) buf =
+let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
   let registers : Registers.t =
     let mapping, used = Linscan.allocate_registers func.body ~inputs:[] in
@@ -78,12 +78,12 @@ let emit_function (func : Cmm.Function.t) buf =
   emit_function_epilogue buf ~name:func.name
 ;;
 
-let emit_cmm_without_prologue (program : Cmm.t) buf =
+let emit_cmm_without_prologue (program : Mirl.t) buf =
   List.iter program.functions ~f:(fun func -> emit_function func buf);
   Arm_dsl.to_string buf
 ;;
 
-let emit_cmm (program : Cmm.t) =
+let emit_cmm (program : Mirl.t) =
   let open Arm_dsl in
   let buf = Arm_dsl.create () in
   emit_program_prologue buf;

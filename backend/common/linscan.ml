@@ -1,5 +1,5 @@
 open! Core
-module Cmm = Mucaml_middle.Cmm
+module Mirl = Mucaml_middle.Mirl
 
 (* Linear scan register allocator.
 
@@ -14,8 +14,8 @@ module Make (Register : sig
     val all_available_for_allocation : t list
   end) =
 struct
-  let live_intervals (block : Cmm.Block.t) ~inputs =
-    let live_intervals = Cmm.Register.Table.create () in
+  let live_intervals (block : Mirl.Block.t) ~inputs =
+    let live_intervals = Mirl.Register.Table.create () in
     List.iter inputs ~f:(fun reg ->
       Hashtbl.set live_intervals ~key:reg ~data:(Some 0, None));
     let consumes ~idx reg =
@@ -70,7 +70,7 @@ struct
 
   (* Precondition [active] is non-empty. *)
   let spill_at_interval
-    (active : Cmm.Register.t Interval.By_end.Map.t)
+    (active : Mirl.Register.t Interval.By_end.Map.t)
     (current_start, current_end)
     current_register
     ~registers
@@ -107,9 +107,9 @@ struct
       |> List.filter_map ~f:(fun (virtual_register, (live_start, live_end)) ->
         let%bind.Option live_start and live_end in
         Some ((live_start, live_end), virtual_register))
-      |> List.sort ~compare:[%compare: Interval.t * Cmm.Register.t]
+      |> List.sort ~compare:[%compare: Interval.t * Mirl.Register.t]
     in
-    let registers = Cmm.Register.Table.create () in
+    let registers = Mirl.Register.Table.create () in
     let _active =
       List.fold
         live_intervals
@@ -143,15 +143,15 @@ module%test _ = struct
   open Allocator
 
   let%expect_test "live_intervals" =
-    Cmm.Register.For_testing.reset_counter ();
-    let a = Cmm.Register.create () in
-    let b = Cmm.Register.create () in
-    let c = Cmm.Register.create () in
-    let d = Cmm.Register.create () in
-    let e = Cmm.Register.create () in
-    let f = Cmm.Register.create () in
-    let g = Cmm.Register.create () in
-    let (instructions, g) : Cmm.Instruction.t iarray * Cmm.Register.t =
+    Mirl.Register.For_testing.reset_counter ();
+    let a = Mirl.Register.create () in
+    let b = Mirl.Register.create () in
+    let c = Mirl.Register.create () in
+    let d = Mirl.Register.create () in
+    let e = Mirl.Register.create () in
+    let f = Mirl.Register.create () in
+    let g = Mirl.Register.create () in
+    let (instructions, g) : Mirl.Instruction.t iarray * Mirl.Register.t =
       ( [: Add { dest = e; src1 = d; src2 = a }
          ; Add { dest = f; src1 = b; src2 = c }
          ; Add { dest = f; src1 = f; src2 = b }
@@ -160,20 +160,20 @@ module%test _ = struct
         :]
       , g )
     in
-    let block : Cmm.Block.t = { instructions; terminator = Return g } in
+    let block : Mirl.Block.t = { instructions; terminator = Return g } in
     let live_intervals = live_intervals block ~inputs:[ a; b; c; d ] in
     let live_vars =
       Iarray.Local.create
         ~len:(Iarray.length block.instructions + 1)
-        { global = Cmm.Register.Set.empty }
+        { global = Mirl.Register.Set.empty }
         ~mutate:(fun live_vars ->
           Hashtbl.iteri live_intervals ~f:(fun ~key:reg ~data:(start, ends) ->
             match start, ends with
             | None, None -> ()
             | Some _, None ->
-              print_s [%message "Variable never used" (reg : Cmm.Register.t)]
+              print_s [%message "Variable never used" (reg : Mirl.Register.t)]
             | None, Some _ ->
-              raise_s [%message "Variable never assigned" (reg : Cmm.Register.t)]
+              raise_s [%message "Variable never assigned" (reg : Mirl.Register.t)]
             | Some start, Some end_ ->
               for idx = start to end_ - 1 do
                 live_vars.(idx) <- { global = Set.add live_vars.(idx).global reg }
@@ -184,7 +184,7 @@ module%test _ = struct
       Set.to_list live
       |> List.map ~f:(fun reg ->
         let vars = [: "a"; "b"; "c"; "d"; "e"; "f"; "g" :] in
-        Iarray.get vars (Cmm.Register.to_int_exn reg))
+        Iarray.get vars (Mirl.Register.to_int_exn reg))
       |> String.concat ~sep:", "
       |> print_endline);
     [%expect
@@ -199,15 +199,15 @@ module%test _ = struct
   ;;
 
   let%expect_test "allocate_registers" =
-    Cmm.Register.For_testing.reset_counter ();
-    let a = Cmm.Register.create () in
-    let b = Cmm.Register.create () in
-    let c = Cmm.Register.create () in
-    let d = Cmm.Register.create () in
-    let e = Cmm.Register.create () in
-    let f = Cmm.Register.create () in
-    let g = Cmm.Register.create () in
-    let (instructions, g) : Cmm.Instruction.t iarray * Cmm.Register.t =
+    Mirl.Register.For_testing.reset_counter ();
+    let a = Mirl.Register.create () in
+    let b = Mirl.Register.create () in
+    let c = Mirl.Register.create () in
+    let d = Mirl.Register.create () in
+    let e = Mirl.Register.create () in
+    let f = Mirl.Register.create () in
+    let g = Mirl.Register.create () in
+    let (instructions, g) : Mirl.Instruction.t iarray * Mirl.Register.t =
       ( [: Add { dest = e; src1 = d; src2 = a }
          ; Add { dest = f; src1 = b; src2 = c }
          ; Add { dest = f; src1 = f; src2 = b }
@@ -216,7 +216,7 @@ module%test _ = struct
         :]
       , g )
     in
-    let block : Cmm.Block.t = { instructions; terminator = Return g } in
+    let block : Mirl.Block.t = { instructions; terminator = Return g } in
     let inputs = [ a; b; c; d ] in
     let registers, _ = allocate_registers block ~inputs in
     Iarray.iter instructions ~f:(fun instruction ->
