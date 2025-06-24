@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v4
+
+    - name: Install build dependencies via homebrew
+      run: |
+        echo Installing the OCaml toolchain
+        brew install gpatch git
+        brew install ocaml opam
+        opam init -y
+
+    - name: Build and install the library
+      run: |
+        eval $(opam env)
+        opam -y pin --with-test add .
+
+    - name: Run the TOML test suite
+      env:
+        TESTSUITE_VERSION: v1.4.0
+        PLATFORM: darwin-amd64
+      run: |
+        eval $(opam env)
+
+        # These dependencies are only required for the test suite client, not the library itself
+        opam install -y yojson zarith decimal ocamlfind
+
+        # Compile the test suite client executables
+        ocamlfind ocamlopt -package otoml,zarith,decimal,yojson -linkpkg ./examples/testsuite_client_decoder.ml -o decoder
+        ocamlfind ocamlopt -package otoml,zarith,decimal,yojson -linkpkg ./examples/testsuite_client_encoder.ml -o encoder
+
+        # Download the test suite runner
+        wget https://github.com/toml-lang/toml-test/releases/download/$TESTSUITE_VERSION/toml-test-$TESTSUITE_VERSION-$PLATFORM.gz
+        gunzip toml-test-$TESTSUITE_VERSION-$PLATFORM.gz
+        chmod +x toml-test-$TESTSUITE_VERSION-$PLATFORM
+        ./toml-test-$TESTSUITE_VERSION-$PLATFORM ./decoder
+        ./toml-test-$TESTSUITE_VERSION-$PLATFORM -skip "valid/float/zero" -encoder ./encoder
