@@ -49,7 +49,14 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
            main function. *)
         let args =
           linker_args
-          @ [ "-mcpu=" ^ Cpu.to_string cpu; "-x"; "assembler"; "-"; "-o"; output_binary ]
+          @ [ "-g"
+            ; "-mcpu=" ^ Cpu.to_string cpu
+            ; "-x"
+            ; "assembler"
+            ; "-"
+            ; "-o"
+            ; output_binary
+            ]
         in
         let assembly =
           [%string

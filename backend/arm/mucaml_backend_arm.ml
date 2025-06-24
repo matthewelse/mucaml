@@ -55,7 +55,8 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
         let args =
           linker_args
           @ [ "-L" ^ Env.runtime_lib_dir env triple; "-lmucaml_runtime" ]
-          @ [ "-mcpu=" ^ Cpu.to_string cpu
+          @ [ "-g"
+            ; "-mcpu=" ^ Cpu.to_string cpu
             ; "-nostdlib"
             ; "-x"
             ; "assembler"
