@@ -36,24 +36,25 @@ struct
     for idx = Iarray.length block.instructions - 1 downto 0 do
       let instruction = Iarray.get block.instructions idx in
       match instruction with
-      | Add { dest; src1; src2 } ->
-        assigns ~idx dest;
+      | Add { dst; src1; src2 } ->
+        assigns ~idx dst;
         consumes ~idx src1;
         consumes ~idx src2
-      | Sub { dest; src1; src2 } ->
-        assigns ~idx dest;
+      | Sub { dst; src1; src2 } ->
+        assigns ~idx dst;
         consumes ~idx src1;
         consumes ~idx src2
-      | Set { dest; value = _ } -> assigns ~idx dest
-      | C_call { dest; func = _; args } ->
-        assigns ~idx dest;
+      | Set { dst; value = _ } -> assigns ~idx dst
+      | C_call { dst; func = _; args } ->
+        assigns ~idx dst;
         List.iter args ~f:(fun reg -> consumes ~idx reg)
-      | Mov { dest; src } ->
-        assigns ~idx dest;
+      | Mov { dst; src } ->
+        assigns ~idx dst;
         consumes ~idx src
+      | Return reg -> consumes ~idx reg
+      | Jump { target = _ } -> ()
+      | Branch { condition; target = _ } -> consumes ~idx condition
     done;
-    (match block.terminator with
-     | Return reg -> consumes ~idx:(Iarray.length block.instructions) reg);
     live_intervals
   ;;
 
@@ -152,16 +153,16 @@ module%test _ = struct
     let e = Virtual_register.create () in
     let f = Virtual_register.create () in
     let g = Virtual_register.create () in
-    let (instructions, g) : Mirl.Instruction.t iarray * Virtual_register.t =
-      ( [: Add { dest = e; src1 = d; src2 = a }
-         ; Add { dest = f; src1 = b; src2 = c }
-         ; Add { dest = f; src1 = f; src2 = b }
-         ; Add { dest = d; src1 = e; src2 = f }
-         ; Mov { dest = g; src = d }
-        :]
-      , g )
+    let instructions : Mirl.Instruction.t iarray =
+      [: Add { dst = e; src1 = d; src2 = a }
+       ; Add { dst = f; src1 = b; src2 = c }
+       ; Add { dst = f; src1 = f; src2 = b }
+       ; Add { dst = d; src1 = e; src2 = f }
+       ; Mov { dst = g; src = d }
+       ; Return g
+      :]
     in
-    let block : Mirl.Block.t = { instructions; terminator = Return g } in
+    let block : Mirl.Block.t = { instructions; label = Mirl.Label.For_testing.dummy } in
     let live_intervals = live_intervals block ~inputs:[ a; b; c; d ] in
     let live_vars =
       Iarray.Local.create
@@ -208,54 +209,63 @@ module%test _ = struct
     let e = Virtual_register.create () in
     let f = Virtual_register.create () in
     let g = Virtual_register.create () in
-    let (instructions, g) : Mirl.Instruction.t iarray * Virtual_register.t =
-      ( [: Add { dest = e; src1 = d; src2 = a }
-         ; Add { dest = f; src1 = b; src2 = c }
-         ; Add { dest = f; src1 = f; src2 = b }
-         ; Add { dest = d; src1 = e; src2 = f }
-         ; Mov { dest = g; src = d }
-        :]
-      , g )
+    let instructions : Mirl.Instruction.t iarray =
+      [: Add { dst = e; src1 = d; src2 = a }
+       ; Add { dst = f; src1 = b; src2 = c }
+       ; Add { dst = f; src1 = f; src2 = b }
+       ; Add { dst = d; src1 = e; src2 = f }
+       ; Mov { dst = g; src = d }
+       ; Return g
+      :]
     in
-    let block : Mirl.Block.t = { instructions; terminator = Return g } in
+    let block : Mirl.Block.t = { instructions; label = Mirl.Label.For_testing.dummy } in
     let inputs = [ a; b; c; d ] in
     let registers, _ = allocate_registers block ~inputs in
     Iarray.iter instructions ~f:(fun instruction ->
       match instruction with
-      | Add { dest; src1; src2 } ->
-        let dest_reg = Hashtbl.find_exn registers dest in
+      | Add { dst; src1; src2 } ->
+        let dst_reg = Hashtbl.find_exn registers dst in
         let src1_reg = Hashtbl.find_exn registers src1 in
         let src2_reg = Hashtbl.find_exn registers src2 in
         print_endline
-          [%string "%{dest_reg#Register} := %{src1_reg#Register} + %{src2_reg#Register}"]
-      | Sub { dest; src1; src2 } ->
-        let dest_reg = Hashtbl.find_exn registers dest in
+          [%string "%{dst_reg#Register} := %{src1_reg#Register} + %{src2_reg#Register}"]
+      | Sub { dst; src1; src2 } ->
+        let dst_reg = Hashtbl.find_exn registers dst in
         let src1_reg = Hashtbl.find_exn registers src1 in
         let src2_reg = Hashtbl.find_exn registers src2 in
         print_endline
-          [%string "%{dest_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
-      | Set { dest; value = _ } ->
-        let dest_reg = Hashtbl.find_exn registers dest in
-        print_endline [%string "%{dest_reg#Register} := <set value>"]
-      | C_call { dest; func = _; args } ->
-        let dest_reg = Hashtbl.find_exn registers dest in
+          [%string "%{dst_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
+      | Set { dst; value = _ } ->
+        let dst_reg = Hashtbl.find_exn registers dst in
+        print_endline [%string "%{dst_reg#Register} := <set value>"]
+      | C_call { dst; func = _; args } ->
+        let dst_reg = Hashtbl.find_exn registers dst in
         let args_regs =
           List.map args ~f:(Hashtbl.find_exn registers)
           |> List.map ~f:Register.to_string
           |> String.concat ~sep:", "
         in
-        print_endline [%string "%{dest_reg#Register} := c_call(%{args_regs})"]
-      | Mov { dest; src } ->
-        let dest_reg = Hashtbl.find_exn registers dest in
+        print_endline [%string "%{dst_reg#Register} := c_call(%{args_regs})"]
+      | Mov { dst; src } ->
+        let dst_reg = Hashtbl.find_exn registers dst in
         let src_reg = Hashtbl.find_exn registers src in
-        print_endline [%string "%{dest_reg#Register} := %{src_reg#Register}"]);
+        print_endline [%string "%{dst_reg#Register} := %{src_reg#Register}"]
+      | Return reg ->
+        let reg = Hashtbl.find_exn registers reg in
+        print_endline [%string "return %{reg#Register}"]
+      | Jump { target } -> print_endline [%string "jump %{target#Mirl.Label}"]
+      | Branch { condition; target } ->
+        let condition_reg = Hashtbl.find_exn registers condition in
+        print_endline
+          [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]);
     [%expect
       {|
-    r4 := r3 + r0
-    r5 := r2 + r1
-    r5 := r5 + r2
-    r3 := r4 + r5
-    r6 := r3
-    |}]
+      r4 := r3 + r0
+      r5 := r2 + r1
+      r5 := r5 + r2
+      r3 := r4 + r5
+      r6 := r3
+      return r6
+      |}]
   ;;
 end

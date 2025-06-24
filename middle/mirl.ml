@@ -1,9 +1,23 @@
-(** [Mirl] is "matt's intermediate representation language", a low-level representation of
-    the program that is closer to assembly than the original source code. It is used as an
-    intermediate step before generating machine code. *)
-
 open! Core
 open! Import
+
+module Label = struct
+  type t = int
+
+  let to_string t = [%string "block_%{t#Int}"]
+
+  let of_string s =
+    match String.chop_prefix s ~prefix:"block_" with
+    | Some label -> Int.of_string label
+    | None -> failwithf "Invalid label format: %s" s ()
+  ;;
+
+  include functor Sexpable.Of_stringable
+
+  module For_testing = struct
+    let dummy = 0
+  end
+end
 
 module Type = struct
   type t = Int32 [@@deriving sexp_of]
@@ -19,73 +33,77 @@ module Virtual_register = struct
   let to_string t = [%string "$%{to_string t}"]
 end
 
+module R = Virtual_register
+
 module Instruction = struct
   type t =
     | Add of
-        { dest : Virtual_register.t
-        ; src1 : Virtual_register.t
-        ; src2 : Virtual_register.t
+        { dst : R.t
+        ; src1 : R.t
+        ; src2 : R.t
         }
     | Sub of
-        { dest : Virtual_register.t
-        ; src1 : Virtual_register.t
-        ; src2 : Virtual_register.t
+        { dst : R.t
+        ; src1 : R.t
+        ; src2 : R.t
         }
     | Set of
-        { dest : Virtual_register.t
+        { dst : R.t
         ; value : int
         }
     | Mov of
-        { dest : Virtual_register.t
-        ; src : Virtual_register.t
+        { dst : R.t
+        ; src : R.t
         }
     | C_call of
-        { dest : Virtual_register.t
+        { dst : R.t
         ; func : string
-        ; args : Virtual_register.t list
+        ; args : R.t list
+        }
+    | Jump of { target : Label.t }
+    | Return of R.t
+    | Branch of
+        { condition : R.t
+        ; target : Label.t
         }
   [@@deriving sexp_of]
 
   let to_string = function
-    | Add { dest; src1; src2 } ->
+    | Add { dst; src1; src2 } ->
       [%string
-        "%{dest#Virtual_register} := %{src1#Virtual_register} + %{src2#Virtual_register}"]
-    | Sub { dest; src1; src2 } ->
+        "%{dst#Virtual_register} := %{src1#Virtual_register} + %{src2#Virtual_register}"]
+    | Sub { dst; src1; src2 } ->
       [%string
-        "%{dest#Virtual_register} := %{src1#Virtual_register} - %{src2#Virtual_register}"]
-    | Set { dest; value } -> [%string "%{dest#Virtual_register} := %{value#Int}"]
-    | Mov { dest; src } -> [%string "%{dest#Virtual_register} := %{src#Virtual_register}"]
-    | C_call { dest; func; args } ->
+        "%{dst#Virtual_register} := %{src1#Virtual_register} - %{src2#Virtual_register}"]
+    | Set { dst; value } -> [%string "%{dst#Virtual_register} := %{value#Int}"]
+    | Mov { dst; src } -> [%string "%{dst#Virtual_register} := %{src#Virtual_register}"]
+    | C_call { dst; func; args } ->
       let args_str =
         String.concat ~sep:", " (List.map args ~f:(fun r -> Virtual_register.to_string r))
       in
-      [%string "%{dest#Virtual_register} := c_call %{func}(%{args_str})"]
-  ;;
-end
-
-module Terminator = struct
-  type t = Return of Virtual_register.t [@@deriving sexp_of]
-
-  let to_string = function
+      [%string "%{dst#Virtual_register} := c_call %{func}(%{args_str})"]
+    | Jump { target } -> [%string "jump %{target#Int}"]
     | Return reg -> [%string "return %{reg#Virtual_register}"]
+    | Branch { condition; target } ->
+      [%string "branch if %{condition#Virtual_register} to %{target#Int}"]
   ;;
 end
 
 module Block = struct
   type t =
-    { instructions : Instruction.t iarray
-    ; terminator : Terminator.t
+    { label : Label.t
+    ; instructions : Instruction.t iarray
     }
   [@@deriving sexp_of]
 
-  let to_string ?(indent = "") { instructions; terminator } =
-    String.concat
-      ~sep:"\n"
-      (List.map (Iarray.to_list instructions) ~f:(fun instruction ->
-         indent ^ Instruction.to_string instruction))
-    ^ "\n"
-    ^ indent
-    ^ Terminator.to_string terminator
+  let to_string ?(indent = "") { label; instructions } =
+    let indent = indent ^ "  " in
+    Label.to_string label
+    ^ ":\n"
+    ^ String.concat
+        ~sep:"\n"
+        (List.map (Iarray.to_list instructions) ~f:(fun instruction ->
+           indent ^ Instruction.to_string instruction))
   ;;
 end
 
@@ -151,7 +169,7 @@ let to_string { functions; externs } =
 let rec of_ast (ast : Ast.t) =
   let env = ref Env.empty in
   let functions, externs =
-    List.partition_map ast ~f:(fun ast ->
+    List.partition_mapi ast ~f:(fun i ast ->
       match ast with
       | Function { name; params; body } ->
         let params =
@@ -165,8 +183,11 @@ let rec of_ast (ast : Ast.t) =
         in
         let acc = Queue.create () in
         let result = walk_expr body ~env:!env ~acc in
-        let acc = Queue.to_array acc |> Iarray.unsafe_of_array__promise_no_mutation in
-        let block = { Block.instructions = acc; terminator = Return result } in
+        Queue.enqueue acc (Instruction.Return result);
+        let instructions =
+          Queue.to_array acc |> Iarray.unsafe_of_array__promise_no_mutation
+        in
+        let block : Block.t = { instructions; label = i } in
         First { Function.name = [%string "mucaml_%{name}"]; params; body = block }
       | External { name; type_; c_name } ->
         let arg_types, return_type =
@@ -190,22 +211,22 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Queue.t)
   match expr with
   | Int i ->
     let reg = Virtual_register.create () in
-    Queue.enqueue acc (Set { dest = reg; value = i });
+    Queue.enqueue acc (Set { dst = reg; value = i });
     reg
   | App (Var "+", [ e1; e2 ]) ->
     let reg1 = walk_expr e1 ~env ~acc in
     let reg2 = walk_expr e2 ~env ~acc in
-    let dest = Virtual_register.create () in
-    let add_ins : Instruction.t = Add { dest; src1 = reg1; src2 = reg2 } in
+    let dst = Virtual_register.create () in
+    let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     Queue.enqueue acc add_ins;
-    dest
+    dst
   | App (Var "-", [ e1; e2 ]) ->
     let reg1 = walk_expr e1 ~env ~acc in
     let reg2 = walk_expr e2 ~env ~acc in
-    let dest = Virtual_register.create () in
-    let sub_ins : Instruction.t = Sub { dest; src1 = reg1; src2 = reg2 } in
+    let dst = Virtual_register.create () in
+    let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     Queue.enqueue acc sub_ins;
-    dest
+    dst
   | Let ((var, _), value, body) ->
     let reg1 = walk_expr value ~env ~acc in
     let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
@@ -217,10 +238,10 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Queue.t)
     (match func with
      | Virtual_register _ -> failwith "todo: indirect function calls"
      | Global c_name ->
-       let dest = Virtual_register.create () in
-       let c_call_ins : Instruction.t = C_call { dest; func = c_name; args } in
+       let dst = Virtual_register.create () in
+       let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
        Queue.enqueue acc c_call_ins;
-       dest)
+       dst)
   | Var name ->
     let value = Map.find_exn env name in
     (match value with

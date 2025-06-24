@@ -15,3 +15,6 @@ val ret : t -> unit
 val add : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
 val sub : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
 val bl : t -> func:string -> unit
+val b : t -> target:string -> unit
+val label : t -> string -> unit
+val tbnz : t -> condition:Register.t -> target:string -> unit

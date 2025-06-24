@@ -32,32 +32,35 @@ let emit_block (block : Mirl.Block.t) buf ~registers =
   let open Arm_dsl in
   Iarray.iter block.instructions ~f:(fun instruction ->
     match instruction with
-    | Add { dest; src1; src2 } ->
-      let dest_reg = Registers.find_exn registers dest in
+    | Add { dst; src1; src2 } ->
+      let dst_reg = Registers.find_exn registers dst in
       let src1_reg = Registers.find_exn registers src1 in
       let src2_reg = Registers.find_exn registers src2 in
-      add buf ~dst:dest_reg ~src1:src1_reg ~src2:src2_reg
-    | Sub { dest; src1; src2 } ->
-      let dest_reg = Registers.find_exn registers dest in
+      add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Sub { dst; src1; src2 } ->
+      let dst_reg = Registers.find_exn registers dst in
       let src1_reg = Registers.find_exn registers src1 in
       let src2_reg = Registers.find_exn registers src2 in
-      sub buf ~dst:dest_reg ~src1:src1_reg ~src2:src2_reg
-    | Set { dest; value } ->
-      let dest_reg = Registers.find_exn registers dest in
-      mov_imm buf ~dst:dest_reg (I32.of_int value)
-    | Mov { dest; src } ->
-      let dest_reg = Registers.find_exn registers dest in
+      sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Set { dst; value } ->
+      let dst_reg = Registers.find_exn registers dst in
+      mov_imm buf ~dst:dst_reg (I32.of_int value)
+    | Mov { dst; src } ->
+      let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in
-      mov buf ~dst:dest_reg ~src:src_reg
-    | C_call { dest; func; args } ->
-      let dest_reg = Registers.find registers dest in
+      mov buf ~dst:dst_reg ~src:src_reg
+    | C_call { dst; func; args } ->
+      let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
-      c_call buf ~dst:dest_reg ~func ~args:args_regs);
-  match block.terminator with
-  | Return reg ->
-    let reg = Registers.find_exn registers reg in
-    if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg;
-    ret buf
+      c_call buf ~dst:dst_reg ~func ~args:args_regs
+    | Return reg ->
+      let reg = Registers.find_exn registers reg in
+      if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg;
+      ret buf
+    | Jump { target } -> b buf ~target:(Mirl.Label.to_string target)
+    | Branch { condition; target } ->
+      let condition_reg = Registers.find_exn registers condition in
+      tbnz buf ~condition:condition_reg ~target:(Mirl.Label.to_string target))
 ;;
 
 let emit_function (func : Mirl.Function.t) buf =
