@@ -12,33 +12,33 @@ let%expect_test _ =
   test {| let main _ : int32 = 10 + 32 |};
   [%expect
     {|
-    function mucaml_main (_: int32) {
+    function mucaml_main ($0 (_): int32) {
     block_0:
-        $0 := 10
-        $1 := 32
-        $2 := $0 + $1
-        return $2
+        $1 := 10
+        $2 := 32
+        $3 := $1 + $2
+        return $3
     }
     |}];
   test {| let main _ : int32 = 100000 |};
   [%expect
     {|
-    function mucaml_main (_: int32) {
+    function mucaml_main ($0 (_): int32) {
     block_0:
-        $0 := 100000
-        return $0
+        $1 := 100000
+        return $1
     }
     |}];
   (* Negative constants are just [0 - (abs x)] *)
   test {| let main _ : int32 = (~32) |};
   [%expect
     {|
-    function mucaml_main (_: int32) {
+    function mucaml_main ($0 (_): int32) {
     block_0:
-        $0 := 0
-        $1 := 32
-        $2 := $0 - $1
-        return $2
+        $1 := 0
+        $2 := 32
+        $3 := $1 - $2
+        return $3
     }
     |}];
   test
@@ -56,18 +56,18 @@ let%expect_test _ =
     |};
   [%expect
     {|
-    function mucaml_main (x: int32) {
-    block_3:
-        $0 := 100
-        $1 := c_call sleep_ms($0)
-        $2 := 7
-        $3 := c_call led_on($2)
-        $4 := 100
-        $5 := c_call sleep_ms($4)
-        $6 := 7
-        $7 := c_call led_off($6)
-        $8 := 0
-        return $8
+    function mucaml_main ($0 (x): int32) {
+    block_0:
+        $1 := 100
+        $2 := c_call sleep_ms($1)
+        $3 := 7
+        $4 := c_call led_on($3)
+        $5 := 100
+        $6 := c_call sleep_ms($5)
+        $7 := 7
+        $8 := c_call led_off($7)
+        $9 := 0
+        return $9
     }
 
     external sleep_ms : int32 -> int32 = "sleep_ms"
@@ -87,15 +87,40 @@ let%expect_test _ =
     |};
   [%expect
     {|
-    function mucaml_main (x: int32) {
+    function mucaml_main ($0 (x): int32) {
     block_0:
-        $0 := 1
         $1 := 1
-        $2 := $0 + $1
-        $3 := 2
+        $2 := 1
+        $3 := $1 + $2
+        $4 := 2
+        $5 := $3 + $4
+        $6 := $5 + $3
+        return $6
+    }
+    |}];
+  test {|
+    let main x : int32 =
+      if x then (3 + 4) else (5 + 6)
+    |};
+  [%expect {|
+    function mucaml_main ($0 (x): int32) {
+    block_0:
+        branch if $0 to block_2
+        jump block_3
+    block_1:
+        return $1
+    block_2:
+        $2 := 3
+        $3 := 4
         $4 := $2 + $3
-        $5 := $4 + $2
-        return $5
+        $1 := $4
+        jump block_1
+    block_3:
+        $5 := 5
+        $6 := 6
+        $7 := $5 + $6
+        $1 := $7
+        jump block_1
     }
     |}]
 ;;

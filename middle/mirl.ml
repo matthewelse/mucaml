@@ -2,20 +2,22 @@ open! Core
 open! Import
 
 module Label = struct
-  type t = int
+  include Unique_id.Int ()
 
-  let to_string t = [%string "block_%{t#Int}"]
+  let to_string t = [%string "block_%{to_string t}"]
 
   let of_string s =
     match String.chop_prefix s ~prefix:"block_" with
-    | Some label -> Int.of_string label
+    | Some label -> of_string label
     | None -> failwithf "Invalid label format: %s" s ()
   ;;
 
   include functor Sexpable.Of_stringable
 
   module For_testing = struct
-    let dummy = 0
+    include For_testing
+
+    let dummy = of_int_exn 0
   end
 end
 
@@ -82,10 +84,10 @@ module Instruction = struct
         String.concat ~sep:", " (List.map args ~f:(fun r -> Virtual_register.to_string r))
       in
       [%string "%{dst#Virtual_register} := c_call %{func}(%{args_str})"]
-    | Jump { target } -> [%string "jump %{target#Int}"]
+    | Jump { target } -> [%string "jump %{target#Label}"]
     | Return reg -> [%string "return %{reg#Virtual_register}"]
     | Branch { condition; target } ->
-      [%string "branch if %{condition#Virtual_register} to %{target#Int}"]
+      [%string "branch if %{condition#Virtual_register} to %{target#Label}"]
   ;;
 end
 
@@ -95,6 +97,27 @@ module Block = struct
     ; instructions : Instruction.t iarray
     }
   [@@deriving sexp_of]
+
+  module Builder = struct
+    type built = t
+
+    type t =
+      { label : Label.t
+      ; instructions : Instruction.t Queue.t
+      }
+
+    let push t instruction = Queue.enqueue t.instructions instruction
+    let create () = { label = Label.create (); instructions = Queue.create () }
+
+    let finalize_exn t : built =
+      if Queue.is_empty t.instructions then failwith "Cannot finalize an empty block";
+      let label = t.label in
+      let instructions =
+        Queue.to_array t.instructions |> Iarray.unsafe_of_array__promise_no_mutation
+      in
+      { label; instructions }
+    ;;
+  end
 
   let to_string ?(indent = "") { label; instructions } =
     let indent = indent ^ "  " in
@@ -110,18 +133,49 @@ end
 module Function = struct
   type t =
     { name : string
-    ; params : (string * Type.t) list
-    ; body : Block.t
+    ; params : (string * Virtual_register.t * Type.t) list
+    ; body : Block.t iarray
     }
   [@@deriving sexp_of]
+
+  module Builder = struct
+    type t = { body : Block.Builder.t Queue.t }
+
+    let create () = { body = Queue.create () }
+
+    let add_block t f =
+      let block = Block.Builder.create () in
+      Queue.enqueue t.body block;
+      f block;
+      block
+    ;;
+
+    let add_block' t f = add_block t f |> (ignore : Block.Builder.t -> unit)
+  end
+
+  let build ~name ~params f =
+    let builder = Builder.create () in
+    f builder;
+    let body =
+      Queue.to_array builder.body
+      |> Array.map ~f:Block.Builder.finalize_exn
+      |> Iarray.unsafe_of_array__promise_no_mutation
+    in
+    { name; params; body }
+  ;;
 
   let to_string { name; params; body } =
     let params_str =
       String.concat
         ~sep:", "
-        (List.map params ~f:(fun (p, t) -> [%string "%{p}: %{t#Type}"]))
+        (List.map params ~f:(fun (p, reg, t) ->
+           [%string "%{reg#Virtual_register} (%{p}): %{t#Type}"]))
     in
-    let body = Block.to_string ~indent:"  " body in
+    let body =
+      Iarray.map ~f:(Block.to_string ~indent:"  ") body
+      |> Iarray.to_list
+      |> String.concat ~sep:"\n"
+    in
     [%string "function %{name} (%{params_str}) {\n%{body}\n}"]
   ;;
 end
@@ -169,7 +223,7 @@ let to_string { functions; externs } =
 let rec of_ast (ast : Ast.t) =
   let env = ref Env.empty in
   let functions, externs =
-    List.partition_mapi ast ~f:(fun i ast ->
+    List.partition_mapi ast ~f:(fun _ ast ->
       match ast with
       | Function { name; params; body } ->
         let params =
@@ -179,16 +233,19 @@ let rec of_ast (ast : Ast.t) =
               | Int32 -> Type.Int32
               | _ -> failwith "todo: unsupported type"
             in
-            param, ty)
+            let reg = Virtual_register.create () in
+            param, reg, ty)
         in
-        let acc = Queue.create () in
-        let result = walk_expr body ~env:!env ~acc in
-        Queue.enqueue acc (Instruction.Return result);
-        let instructions =
-          Queue.to_array acc |> Iarray.unsafe_of_array__promise_no_mutation
+        let env =
+          List.fold params ~init:!env ~f:(fun env (name, reg, _) ->
+            Map.set env ~key:name ~data:(Value.Virtual_register reg))
         in
-        let block : Block.t = { instructions; label = i } in
-        First { Function.name = [%string "mucaml_%{name}"]; params; body = block }
+        let name = [%string "mucaml_%{name}"] in
+        First
+          (Function.build ~name ~params (fun builder ->
+             Function.Builder.add_block' builder (fun acc ->
+               let #(result, acc) = walk_expr body ~function_builder:builder ~env ~acc in
+               Block.Builder.push acc (Instruction.Return result))))
       | External { name; type_; c_name } ->
         let arg_types, return_type =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
@@ -205,47 +262,77 @@ let rec of_ast (ast : Ast.t) =
   in
   { functions; externs }
 
-and walk_expr (expr : Ast.expr) ~(env : Env.t) ~(acc : Instruction.t Queue.t)
-  : Virtual_register.t
+and walk_expr (expr : Ast.expr) ~(env : Env.t) ~function_builder ~(acc : Block.Builder.t)
+  : #(Virtual_register.t * Block.Builder.t)
   =
+  let open Block.Builder in
   match expr with
   | Int i ->
     let reg = Virtual_register.create () in
-    Queue.enqueue acc (Set { dst = reg; value = i });
-    reg
+    push acc (Set { dst = reg; value = i });
+    #(reg, acc)
   | App (Var "+", [ e1; e2 ]) ->
-    let reg1 = walk_expr e1 ~env ~acc in
-    let reg2 = walk_expr e2 ~env ~acc in
+    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
+    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let dst = Virtual_register.create () in
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
-    Queue.enqueue acc add_ins;
-    dst
+    push acc add_ins;
+    #(dst, acc)
   | App (Var "-", [ e1; e2 ]) ->
-    let reg1 = walk_expr e1 ~env ~acc in
-    let reg2 = walk_expr e2 ~env ~acc in
+    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
+    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let dst = Virtual_register.create () in
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
-    Queue.enqueue acc sub_ins;
-    dst
+    push acc sub_ins;
+    #(dst, acc)
   | Let ((var, _), value, body) ->
-    let reg1 = walk_expr value ~env ~acc in
+    let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
     let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
-    let reg2 = walk_expr body ~env ~acc in
-    reg2
+    let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
+    #(reg2, acc)
   | App (Var var, args) ->
-    let args = List.map args ~f:(fun arg -> walk_expr arg ~env ~acc) in
+    let acc, args =
+      List.fold_map args ~init:acc ~f:(fun acc arg ->
+        let #(reg, acc) = walk_expr arg ~env ~function_builder ~acc in
+        acc, reg)
+    in
     let func = Map.find_exn env var in
     (match func with
-     | Virtual_register _ -> failwith "todo: indirect function calls"
+     | Virtual_register _ ->
+       (match failwith "todo: indirect function calls" with
+        | (_ : Nothing.t) -> .)
      | Global c_name ->
        let dst = Virtual_register.create () in
        let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
-       Queue.enqueue acc c_call_ins;
-       dst)
+       push acc c_call_ins;
+       #(dst, acc))
   | Var name ->
     let value = Map.find_exn env name in
     (match value with
-     | Virtual_register reg -> reg
-     | Global _ -> failwith "todo: global variables in expressions")
-  | _ -> raise_s [%message "todo:" (expr : Ast.expr)]
+     | Virtual_register reg -> #(reg, acc)
+     | Global _ ->
+       (match failwith "todo: global variables in expressions" with
+        | (_ : Nothing.t) -> .))
+  | If (cond, if_true, if_false) ->
+    let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
+    let dst = Virtual_register.create () in
+    let after_block = Function.Builder.add_block function_builder ignore in
+    let then_block =
+      Function.Builder.add_block function_builder (fun acc ->
+        let #(then_reg, acc) = walk_expr if_true ~env ~function_builder ~acc in
+        push acc (Mov { dst; src = then_reg });
+        push acc (Jump { target = after_block.label }))
+    in
+    let else_block =
+      Function.Builder.add_block function_builder (fun acc ->
+        let #(else_reg, acc) = walk_expr if_false ~env ~function_builder ~acc in
+        push acc (Mov { dst; src = else_reg });
+        push acc (Jump { target = after_block.label }))
+    in
+    push acc (Branch { condition = cond_reg; target = then_block.label });
+    push acc (Jump { target = else_block.label });
+    #(dst, after_block)
+  | _ ->
+    (match raise_s [%message "todo:" (expr : Ast.expr)] with
+     | (_ : Nothing.t) -> .)
 ;;

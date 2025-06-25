@@ -66,8 +66,11 @@ let emit_block (block : Mirl.Block.t) buf ~registers =
 
 let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
+  (* TODO: support multiple blocks *)
+  assert (Iarray.length func.body = 1);
+  let func_body = Iarray.get func.body 0 in
   let registers : Registers.t =
-    let mapping, used = Linscan.allocate_registers func.body ~inputs:[] in
+    let mapping, used = Linscan.allocate_registers func_body ~inputs:[] in
     { mapping; used }
   in
   let clobbered_callee_saved_registers =
@@ -76,7 +79,7 @@ let emit_function (func : Mirl.Function.t) buf =
   emit_function_prologue buf ~name:func.name;
   if not (List.is_empty clobbered_callee_saved_registers)
   then push buf clobbered_callee_saved_registers;
-  emit_block func.body buf ~registers;
+  emit_block func_body buf ~registers;
   if not (List.is_empty clobbered_callee_saved_registers)
   then pop buf clobbered_callee_saved_registers;
   emit_function_epilogue buf ~name:func.name

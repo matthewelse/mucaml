@@ -39,5 +39,16 @@ let%expect_test "test parser" =
           let _ : None = app ($sleep_ms, [100]) in
             let _ : None = app ($led_off, [7]) in
               0
+    |}];
+  test {|
+    let main x : int32 =
+      if x then (3 + 4) else (5 + 6)
+    |};
+  [%expect {|
+    let main x : int32 =
+      if     $x then
+        app ($+, [3, 4])
+    else
+        app ($+, [5, 6])
     |}]
 ;;

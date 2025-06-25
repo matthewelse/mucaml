@@ -10,6 +10,7 @@ module Label : sig
 
   module For_testing : sig
     val dummy : t
+    val reset_counter : unit -> unit
   end
 end
 
@@ -66,8 +67,8 @@ end
 module Function : sig
   type t =
     { name : string
-    ; params : (string * Type.t) list
-    ; body : Block.t
+    ; params : (string * Virtual_register.t * Type.t) list
+    ; body : Block.t iarray
     }
   [@@deriving sexp_of, to_string]
 end

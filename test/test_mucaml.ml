@@ -5,8 +5,7 @@ let test text = Helpers.compile text
 let%expect_test _ =
   (* Use [mov] for small immediates. *)
   test {| let main _ : int32 = 10 + 32 |};
-  [%expect
-    {|
+  [%expect {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -27,8 +26,7 @@ let%expect_test _ =
     |}];
   (* Use [mov, movt] to represent large immediates. *)
   test {| let main _ : int32 = 100000 |};
-  [%expect
-    {|
+  [%expect {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -47,8 +45,7 @@ let%expect_test _ =
     |}];
   (* Negative constants are just [0 - (abs x)] *)
   test {| let main _ : int32 = (~32) |};
-  [%expect
-    {|
+  [%expect {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -80,8 +77,7 @@ let%expect_test _ =
       let _ = led_off 7 in
       0     
     |};
-  [%expect
-    {|
+  [%expect {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -92,7 +88,7 @@ let%expect_test _ =
     .fnstart
     mucaml_main:
       push {r4}
-    block_3:
+    block_0:
       mov r0, #100
       push {r0}
       bl sleep_ms
