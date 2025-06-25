@@ -2,8 +2,6 @@ open! Core
 open! Import
 
 let parse text =
-  Virtual_register.For_testing.reset_counter ();
-  Mirl.Label.For_testing.reset_counter ();
   let files = Grace.Files.create () in
   match Mucaml.Parse.parse_toplevel text ~filename:"<test>" ~files with
   | Ok ast -> Ok ast

@@ -1,4 +1,5 @@
 open! Core
+open! Import
 module Mirl = Mucaml_middle.Mirl
 module Virtual_register = Mirl.Virtual_register
 
@@ -15,9 +16,9 @@ module Make (Register : sig
     val all_available_for_allocation : t list
   end) =
 struct
-  let live_intervals (block : Mirl.Block.t) ~inputs =
+  let live_intervals (func : Mirl.Function.t) =
     let live_intervals = Virtual_register.Table.create () in
-    List.iter inputs ~f:(fun reg ->
+    List.iter func.params ~f:(fun (_, reg, _) ->
       Hashtbl.set live_intervals ~key:reg ~data:(Some 0, None));
     let consumes ~idx reg =
       let idx = idx + 1 in
@@ -33,27 +34,34 @@ struct
         | Some (Some start, ends) -> Some (Int.min start idx), ends
         | Some (None, ends) -> Some idx, ends)
     in
-    for idx = Iarray.length block.instructions - 1 downto 0 do
-      let instruction = Iarray.get block.instructions idx in
-      match instruction with
-      | Add { dst; src1; src2 } ->
-        assigns ~idx dst;
-        consumes ~idx src1;
-        consumes ~idx src2
-      | Sub { dst; src1; src2 } ->
-        assigns ~idx dst;
-        consumes ~idx src1;
-        consumes ~idx src2
-      | Set { dst; value = _ } -> assigns ~idx dst
-      | C_call { dst; func = _; args } ->
-        assigns ~idx dst;
-        List.iter args ~f:(fun reg -> consumes ~idx reg)
-      | Mov { dst; src } ->
-        assigns ~idx dst;
-        consumes ~idx src
-      | Return reg -> consumes ~idx reg
-      | Jump { target = _ } -> ()
-      | Branch { condition; target = _ } -> consumes ~idx condition
+    let global_idx = stack_ (ref 0) in
+    for block_idx = 0 to Iarray.length func.body - 1 do
+      let block = Iarray.get func.body block_idx in
+      (* Process each instruction in reverse order to build live intervals. *)
+      for insn_idx = Iarray.length block.instructions - 1 downto 0 do
+        let instruction = Iarray.get block.instructions insn_idx in
+        let idx = insn_idx + !global_idx in
+        match instruction with
+        | Add { dst; src1; src2 } ->
+          assigns ~idx dst;
+          consumes ~idx src1;
+          consumes ~idx src2
+        | Sub { dst; src1; src2 } ->
+          assigns ~idx dst;
+          consumes ~idx src1;
+          consumes ~idx src2
+        | Set { dst; value = _ } -> assigns ~idx dst
+        | C_call { dst; func = _; args } ->
+          assigns ~idx dst;
+          List.iter args ~f:(fun reg -> consumes ~idx reg)
+        | Mov { dst; src } ->
+          assigns ~idx dst;
+          consumes ~idx src
+        | Return reg -> consumes ~idx reg
+        | Jump { target = _ } -> ()
+        | Branch { condition; target = _ } -> consumes ~idx condition
+      done;
+      global_idx := !global_idx + Iarray.length block.instructions
     done;
     live_intervals
   ;;
@@ -101,10 +109,10 @@ struct
     active
   ;;
 
-  let allocate_registers block ~inputs =
+  let allocate_registers func =
     let free_registers = Queue.of_list Register.all_available_for_allocation in
     let live_intervals =
-      live_intervals block ~inputs
+      live_intervals func
       |> Hashtbl.to_alist
       |> List.filter_map ~f:(fun (virtual_register, (live_start, live_end)) ->
         let%bind.Option live_start and live_end in
@@ -145,28 +153,39 @@ module%test _ = struct
   open Allocator
 
   let%expect_test "live_intervals" =
-    Virtual_register.For_testing.reset_counter ();
-    let a = Virtual_register.create () in
-    let b = Virtual_register.create () in
-    let c = Virtual_register.create () in
-    let d = Virtual_register.create () in
-    let e = Virtual_register.create () in
-    let f = Virtual_register.create () in
-    let g = Virtual_register.create () in
-    let instructions : Mirl.Instruction.t iarray =
-      [: Add { dst = e; src1 = d; src2 = a }
-       ; Add { dst = f; src1 = b; src2 = c }
-       ; Add { dst = f; src1 = f; src2 = b }
-       ; Add { dst = d; src1 = e; src2 = f }
-       ; Mov { dst = g; src = d }
-       ; Return g
-      :]
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build
+        ~name:"test"
+        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
+        (fun function_builder params ->
+          let a, b, c, d =
+            match params with
+            | [ (_, a, _); (_, b, _); (_, c, _); (_, d, _) ] -> a, b, c, d
+            | _ -> failwith "Expected 4 parameters"
+          in
+          Function.Builder.add_block' function_builder (fun block_builder ->
+            let e = Function.Builder.fresh_register function_builder in
+            let f = Function.Builder.fresh_register function_builder in
+            let g = Function.Builder.fresh_register function_builder in
+            let instructions : Mirl.Instruction.t list =
+              [ Add { dst = e; src1 = d; src2 = a }
+              ; Add { dst = f; src1 = b; src2 = c }
+              ; Add { dst = f; src1 = f; src2 = b }
+              ; Add { dst = d; src1 = e; src2 = f }
+              ; Mov { dst = g; src = d }
+              ; Return g
+              ]
+            in
+            (* Create a block with the instructions. *)
+            Block.Builder.push_many block_builder instructions)
+          [@nontail])
     in
-    let block : Mirl.Block.t = { instructions; label = Mirl.Label.For_testing.dummy } in
-    let live_intervals = live_intervals block ~inputs:[ a; b; c; d ] in
+    let live_intervals = live_intervals func in
     let live_vars =
       Iarray.Local.create
-        ~len:(Iarray.length block.instructions + 1)
+        ~len:(Hashtbl.length live_intervals)
         { global = Virtual_register.Set.empty }
         ~mutate:(fun live_vars ->
           Hashtbl.iteri live_intervals ~f:(fun ~key:reg ~data:(start, ends) ->
@@ -201,65 +220,79 @@ module%test _ = struct
   ;;
 
   let%expect_test "allocate_registers" =
-    Virtual_register.For_testing.reset_counter ();
-    let a = Virtual_register.create () in
-    let b = Virtual_register.create () in
-    let c = Virtual_register.create () in
-    let d = Virtual_register.create () in
-    let e = Virtual_register.create () in
-    let f = Virtual_register.create () in
-    let g = Virtual_register.create () in
-    let instructions : Mirl.Instruction.t iarray =
-      [: Add { dst = e; src1 = d; src2 = a }
-       ; Add { dst = f; src1 = b; src2 = c }
-       ; Add { dst = f; src1 = f; src2 = b }
-       ; Add { dst = d; src1 = e; src2 = f }
-       ; Mov { dst = g; src = d }
-       ; Return g
-      :]
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build
+        ~name:"test"
+        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
+        (fun function_builder params ->
+          let a, b, c, d =
+            match params with
+            | [ (_, a, _); (_, b, _); (_, c, _); (_, d, _) ] -> a, b, c, d
+            | _ -> failwith "Expected 4 parameters"
+          in
+          Function.Builder.add_block' function_builder (fun block_builder ->
+            let e = Function.Builder.fresh_register function_builder in
+            let f = Function.Builder.fresh_register function_builder in
+            let g = Function.Builder.fresh_register function_builder in
+            let instructions : Mirl.Instruction.t list =
+              [ Add { dst = e; src1 = d; src2 = a }
+              ; Add { dst = f; src1 = b; src2 = c }
+              ; Add { dst = f; src1 = f; src2 = b }
+              ; Add { dst = d; src1 = e; src2 = f }
+              ; Mov { dst = g; src = d }
+              ; Return g
+              ]
+            in
+            (* Create a block with the instructions. *)
+            Block.Builder.push_many block_builder instructions)
+          [@nontail])
     in
-    let block : Mirl.Block.t = { instructions; label = Mirl.Label.For_testing.dummy } in
-    let inputs = [ a; b; c; d ] in
-    let registers, _ = allocate_registers block ~inputs in
-    Iarray.iter instructions ~f:(fun instruction ->
-      match instruction with
-      | Add { dst; src1; src2 } ->
-        let dst_reg = Hashtbl.find_exn registers dst in
-        let src1_reg = Hashtbl.find_exn registers src1 in
-        let src2_reg = Hashtbl.find_exn registers src2 in
-        print_endline
-          [%string "%{dst_reg#Register} := %{src1_reg#Register} + %{src2_reg#Register}"]
-      | Sub { dst; src1; src2 } ->
-        let dst_reg = Hashtbl.find_exn registers dst in
-        let src1_reg = Hashtbl.find_exn registers src1 in
-        let src2_reg = Hashtbl.find_exn registers src2 in
-        print_endline
-          [%string "%{dst_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
-      | Set { dst; value = _ } ->
-        let dst_reg = Hashtbl.find_exn registers dst in
-        print_endline [%string "%{dst_reg#Register} := <set value>"]
-      | C_call { dst; func = _; args } ->
-        let dst_reg = Hashtbl.find_exn registers dst in
-        let args_regs =
-          List.map args ~f:(Hashtbl.find_exn registers)
-          |> List.map ~f:Register.to_string
-          |> String.concat ~sep:", "
-        in
-        print_endline [%string "%{dst_reg#Register} := c_call(%{args_regs})"]
-      | Mov { dst; src } ->
-        let dst_reg = Hashtbl.find_exn registers dst in
-        let src_reg = Hashtbl.find_exn registers src in
-        print_endline [%string "%{dst_reg#Register} := %{src_reg#Register}"]
-      | Return reg ->
-        let reg = Hashtbl.find_exn registers reg in
-        print_endline [%string "return %{reg#Register}"]
-      | Jump { target } -> print_endline [%string "jump %{target#Mirl.Label}"]
-      | Branch { condition; target } ->
-        let condition_reg = Hashtbl.find_exn registers condition in
-        print_endline
-          [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]);
+    let registers, _ = allocate_registers func in
+    Iarray.iter func.body ~f:(fun bloxk ->
+      let instructions = bloxk.instructions in
+      print_endline [%string "%{bloxk.label#Mirl.Label}:"];
+      Iarray.iter instructions ~f:(fun instruction ->
+        match instruction with
+        | Add { dst; src1; src2 } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let src1_reg = Hashtbl.find_exn registers src1 in
+          let src2_reg = Hashtbl.find_exn registers src2 in
+          print_endline
+            [%string "%{dst_reg#Register} := %{src1_reg#Register} + %{src2_reg#Register}"]
+        | Sub { dst; src1; src2 } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let src1_reg = Hashtbl.find_exn registers src1 in
+          let src2_reg = Hashtbl.find_exn registers src2 in
+          print_endline
+            [%string "%{dst_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
+        | Set { dst; value = _ } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          print_endline [%string "%{dst_reg#Register} := <set value>"]
+        | C_call { dst; func = _; args } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let args_regs =
+            List.map args ~f:(Hashtbl.find_exn registers)
+            |> List.map ~f:Register.to_string
+            |> String.concat ~sep:", "
+          in
+          print_endline [%string "%{dst_reg#Register} := c_call(%{args_regs})"]
+        | Mov { dst; src } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let src_reg = Hashtbl.find_exn registers src in
+          print_endline [%string "%{dst_reg#Register} := %{src_reg#Register}"]
+        | Return reg ->
+          let reg = Hashtbl.find_exn registers reg in
+          print_endline [%string "return %{reg#Register}"]
+        | Jump { target } -> print_endline [%string "jump %{target#Mirl.Label}"]
+        | Branch { condition; target } ->
+          let condition_reg = Hashtbl.find_exn registers condition in
+          print_endline
+            [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]));
     [%expect
       {|
+      block_0:
       r4 := r3 + r0
       r5 := r2 + r1
       r5 := r5 + r2

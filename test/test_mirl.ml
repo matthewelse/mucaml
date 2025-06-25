@@ -102,7 +102,8 @@ let%expect_test _ =
     let main x : int32 =
       if x then (3 + 4) else (5 + 6)
     |};
-  [%expect {|
+  [%expect
+    {|
     function mucaml_main ($0 (x): int32) {
     block_0:
         branch if $0 to block_2

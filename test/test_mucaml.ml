@@ -5,7 +5,8 @@ let test text = Helpers.compile text
 let%expect_test _ =
   (* Use [mov] for small immediates. *)
   test {| let main _ : int32 = 10 + 32 |};
-  [%expect {|
+  [%expect
+    {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -15,7 +16,7 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-    block_0:
+    mucaml_main__block_0:
       mov r0, #10
       mov r1, #32
       add r2, r0, r1
@@ -26,7 +27,8 @@ let%expect_test _ =
     |}];
   (* Use [mov, movt] to represent large immediates. *)
   test {| let main _ : int32 = 100000 |};
-  [%expect {|
+  [%expect
+    {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -36,7 +38,7 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-    block_0:
+    mucaml_main__block_0:
       mov r0, #34464
       movt r0, #1
       bx lr
@@ -45,7 +47,8 @@ let%expect_test _ =
     |}];
   (* Negative constants are just [0 - (abs x)] *)
   test {| let main _ : int32 = (~32) |};
-  [%expect {|
+  [%expect
+    {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -55,7 +58,7 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-    block_0:
+    mucaml_main__block_0:
       mov r0, #0
       mov r1, #32
       sub r2, r0, r1
@@ -77,7 +80,8 @@ let%expect_test _ =
       let _ = led_off 7 in
       0     
     |};
-  [%expect {|
+  [%expect
+    {|
     .syntax unified
     .cpu cortex-m33
     .thumb
@@ -88,7 +92,7 @@ let%expect_test _ =
     .fnstart
     mucaml_main:
       push {r4}
-    block_0:
+    mucaml_main__block_0:
       mov r0, #100
       push {r0}
       bl sleep_ms
@@ -110,8 +114,46 @@ let%expect_test _ =
       pop {r0}
       mov r4, #0
       mov r0, r4
-      bx lr
       pop {r4}
+      bx lr
+    .fnend
+    .size mucaml_main, . - mucaml_main
+    |}];
+  test {|
+    let main x : int32 =
+      if x then (3 + 4) else (5 + 6)
+    |};
+  [%expect
+    {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
+    .thumb_func
+    .type mucaml_main, %function
+    .globl mucaml_main
+    .fnstart
+    mucaml_main:
+      push {r4,r5,r6,r7}
+    mucaml_main__block_0:
+      tbnz r0, #0, mucaml_main__block_2
+      b mucaml_main__block_3
+    mucaml_main__block_1:
+      mov r0, r4
+      pop {r4,r5,r6,r7}
+      bx lr
+    mucaml_main__block_2:
+      mov r1, #3
+      mov r2, #4
+      add r3, r1, r2
+      mov r4, r3
+      b mucaml_main__block_1
+    mucaml_main__block_3:
+      mov r5, #5
+      mov r6, #6
+      add r7, r5, r6
+      mov r4, r7
+      b mucaml_main__block_1
     .fnend
     .size mucaml_main, . - mucaml_main
     |}]

@@ -44,7 +44,8 @@ let%expect_test "test parser" =
     let main x : int32 =
       if x then (3 + 4) else (5 + 6)
     |};
-  [%expect {|
+  [%expect
+    {|
     let main x : int32 =
       if     $x then
         app ($+, [3, 4])

@@ -82,4 +82,3 @@ let label t label = emit_line t [%string "%{label}:"]
 let tbnz t ~condition ~target =
   emit_line t [%string "  tbnz %{condition#Register}, #0, %{target}"]
 ;;
-

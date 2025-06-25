@@ -6,11 +6,12 @@ open! Core
 open! Import
 
 module Label : sig
-  type t : immediate [@@deriving sexp_of, string]
+  type t : immediate [@@deriving sexp_of, to_string]
+
+  val to_int_exn : t -> int
 
   module For_testing : sig
     val dummy : t
-    val reset_counter : unit -> unit
   end
 end
 
@@ -18,7 +19,15 @@ module Type : sig
   type t = Int32 [@@deriving sexp_of, to_string]
 end
 
-module Virtual_register : Unique_id.Id
+module Virtual_register : sig
+  type t : immediate [@@deriving sexp_of, to_string]
+
+  include Hashable.S_plain with type t := t
+  include Intable.S with type t := t
+  include Comparable.S_plain with type t := t
+
+  (* TODO: more efficient set representation (bitsets for small numbers of registers) *)
+end
 
 module Instruction : sig
   type t =
@@ -52,25 +61,55 @@ module Instruction : sig
         ; target : Label.t
         }
   [@@deriving sexp_of, to_string]
+
+  val consumes : t -> Virtual_register.t list @ local
+  val produces : t -> Virtual_register.t option @ local
 end
 
 module Block : sig
-  type t =
+  type t = private
     { label : Label.t
-    ; instructions : Instruction.t Iarray.t
+    ; instructions : Instruction.t iarray
+    ; successors : Label.t iarray
     }
   [@@deriving sexp_of]
+
+  module Builder : sig
+    type t
+
+    val push : t @ local -> Instruction.t -> unit
+    val push_many : t @ local -> Instruction.t list -> unit
+  end
 
   val to_string : ?indent:string -> t -> string
 end
 
 module Function : sig
-  type t =
+  type t = private
     { name : string
     ; params : (string * Virtual_register.t * Type.t) list
     ; body : Block.t iarray
     }
   [@@deriving sexp_of, to_string]
+
+  module Builder : sig
+    type t
+
+    val fresh_register : t @ local -> Virtual_register.t
+
+    val add_block
+      :  t @ local
+      -> (Block.Builder.t @ local -> unit) @ local
+      -> Block.Builder.t
+
+    val add_block' : t @ local -> (Block.Builder.t @ local -> unit) @ local -> unit
+  end
+
+  val build
+    :  name:string
+    -> params:(string * Type.t) list
+    -> (Builder.t @ local -> (string * Virtual_register.t * Type.t) list -> unit) @ local
+    -> t
 end
 
 module External : sig

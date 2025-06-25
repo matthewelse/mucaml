@@ -12,6 +12,8 @@ module Registers = struct
   let find t register = Hashtbl.find t.mapping register
 end
 
+let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
+
 let c_call buf ~dst ~func ~args =
   let open Arm_dsl in
   (* TODO: only push r0/r1/r2 if they are live after the call *)
@@ -28,8 +30,15 @@ let c_call buf ~dst ~func ~args =
   pop buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i))
 ;;
 
-let emit_block (block : Mirl.Block.t) buf ~registers =
+let emit_block
+  (block : Mirl.Block.t)
+  buf
+  ~registers
+  ~function_name
+  ~clobbered_callee_saved_registers
+  =
   let open Arm_dsl in
+  label buf (label_name ~function_name ~label:block.label);
   Iarray.iter block.instructions ~f:(fun instruction ->
     match instruction with
     | Add { dst; src1; src2 } ->
@@ -56,20 +65,19 @@ let emit_block (block : Mirl.Block.t) buf ~registers =
     | Return reg ->
       let reg = Registers.find_exn registers reg in
       if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg;
+      if not (List.is_empty clobbered_callee_saved_registers)
+      then pop buf clobbered_callee_saved_registers;
       ret buf
-    | Jump { target } -> b buf ~target:(Mirl.Label.to_string target)
+    | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
     | Branch { condition; target } ->
       let condition_reg = Registers.find_exn registers condition in
-      tbnz buf ~condition:condition_reg ~target:(Mirl.Label.to_string target))
+      tbnz buf ~condition:condition_reg ~target:(label_name ~function_name ~label:target))
 ;;
 
 let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
-  (* TODO: support multiple blocks *)
-  assert (Iarray.length func.body = 1);
-  let func_body = Iarray.get func.body 0 in
   let registers : Registers.t =
-    let mapping, used = Linscan.allocate_registers func_body ~inputs:[] in
+    let mapping, used = Linscan.allocate_registers func in
     { mapping; used }
   in
   let clobbered_callee_saved_registers =
@@ -78,9 +86,13 @@ let emit_function (func : Mirl.Function.t) buf =
   emit_function_prologue buf ~name:func.name;
   if not (List.is_empty clobbered_callee_saved_registers)
   then push buf clobbered_callee_saved_registers;
-  emit_block func_body buf ~registers;
-  if not (List.is_empty clobbered_callee_saved_registers)
-  then pop buf clobbered_callee_saved_registers;
+  Iarray.iter func.body ~f:(fun block ->
+    emit_block
+      block
+      buf
+      ~registers
+      ~function_name:func.name
+      ~clobbered_callee_saved_registers);
   emit_function_epilogue buf ~name:func.name
 ;;
 

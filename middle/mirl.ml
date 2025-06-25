@@ -1,23 +1,30 @@
 open! Core
 open! Import
 
-module Label = struct
-  include Unique_id.Int ()
+module Label : sig
+  type t : immediate [@@deriving sexp_of, to_string]
 
-  let to_string t = [%string "block_%{to_string t}"]
+  module For_testing : sig
+    val dummy : t
+  end
 
-  let of_string s =
-    match String.chop_prefix s ~prefix:"block_" with
-    | Some label -> of_string label
-    | None -> failwithf "Invalid label format: %s" s ()
+  val of_int_exn : int -> t
+  val to_int_exn : t -> int
+end = struct
+  type t = int
+
+  let to_string t = [%string "block_%{t#Int}"]
+  let sexp_of_t t = Sexp.Atom (to_string t)
+
+  let of_int_exn t =
+    if t < 0 then raise_s [%message "Label cannot be negative" (t : int)];
+    t
   ;;
 
-  include functor Sexpable.Of_stringable
+  let to_int_exn t = t
 
   module For_testing = struct
-    include For_testing
-
-    let dummy = of_int_exn 0
+    let dummy = 0
   end
 end
 
@@ -29,10 +36,30 @@ module Type = struct
   ;;
 end
 
-module Virtual_register = struct
-  include Unique_id.Int ()
+module Virtual_register : sig
+  type t : immediate [@@deriving compare, hash, sexp_of, to_string]
 
-  let to_string t = [%string "$%{to_string t}"]
+  include Hashable.S_plain with type t := t
+  include Comparable.S_plain with type t := t
+  include Intable.S with type t := t
+
+  val zero : t
+  val succ : t -> t
+end = struct
+  type t = int [@@deriving compare, hash, sexp_of]
+
+  include functor Hashable.Make_plain
+  include functor Comparable.Make_plain
+
+  let to_string t = [%string "$%{t#Int}"]
+  let zero = 0
+  let succ t = t + 1
+  let to_int_exn t = t
+
+  let of_int_exn t =
+    if t < 0 then raise_s [%message "Virtual register cannot be negative" (t : int)];
+    t
+  ;;
 end
 
 module R = Virtual_register
@@ -70,6 +97,30 @@ module Instruction = struct
         }
   [@@deriving sexp_of]
 
+  let consumes t = exclave_
+    match t with
+    | Add { src1; src2; _ } -> [ src1; src2 ]
+    | Sub { src1; src2; _ } -> [ src1; src2 ]
+    | Set _ -> []
+    | Mov { src; _ } -> [ src ]
+    | C_call { args; _ } -> args
+    | Jump _ -> []
+    | Return reg -> [ reg ]
+    | Branch { condition; _ } -> [ condition ]
+  ;;
+
+  let produces t =
+    match t with
+    | Add { dst; _ }
+    | Sub { dst; _ }
+    | Set { dst; _ }
+    | Mov { dst; _ }
+    | C_call { dst; _ } -> exclave_ Some dst
+    | Jump _ -> None
+    | Return _ -> None
+    | Branch _ -> None
+  ;;
+
   let to_string = function
     | Add { dst; src1; src2 } ->
       [%string
@@ -95,6 +146,7 @@ module Block = struct
   type t =
     { label : Label.t
     ; instructions : Instruction.t iarray
+    ; successors : Label.t iarray
     }
   [@@deriving sexp_of]
 
@@ -103,11 +155,18 @@ module Block = struct
 
     type t =
       { label : Label.t
-      ; instructions : Instruction.t Queue.t
+      ; instructions : Instruction.t Queue.t @@ global
+      ; successors : Label.t Queue.t @@ global
       }
 
-    let push t instruction = Queue.enqueue t.instructions instruction
-    let create () = { label = Label.create (); instructions = Queue.create () }
+    let push (t @ local) instruction = Queue.enqueue t.instructions instruction
+    let push_many (t @ local) instructions = Queue.enqueue_all t.instructions instructions
+
+    let create label =
+      { label; instructions = Queue.create (); successors = Queue.create () }
+    ;;
+
+    let register_successor (t @ local) label = Queue.enqueue t.successors label
 
     let finalize_exn t : built =
       if Queue.is_empty t.instructions then failwith "Cannot finalize an empty block";
@@ -115,11 +174,14 @@ module Block = struct
       let instructions =
         Queue.to_array t.instructions |> Iarray.unsafe_of_array__promise_no_mutation
       in
-      { label; instructions }
+      let successors =
+        Queue.to_array t.successors |> Iarray.unsafe_of_array__promise_no_mutation
+      in
+      { label; instructions; successors }
     ;;
   end
 
-  let to_string ?(indent = "") { label; instructions } =
+  let to_string ?(indent = "") { label; instructions; successors = _ } =
     let indent = indent ^ "  " in
     Label.to_string label
     ^ ":\n"
@@ -139,12 +201,23 @@ module Function = struct
   [@@deriving sexp_of]
 
   module Builder = struct
-    type t = { body : Block.Builder.t Queue.t }
+    type t =
+      { body : Block.Builder.t Queue.t @@ global
+      ; mutable next_register : Virtual_register.t
+      }
 
-    let create () = { body = Queue.create () }
+    let create () = { body = Queue.create (); next_register = Virtual_register.zero }
+    let fresh_label t = Queue.length t.body |> Label.of_int_exn
 
-    let add_block t f =
-      let block = Block.Builder.create () in
+    let fresh_register t =
+      let reg = t.next_register in
+      t.next_register <- Virtual_register.succ t.next_register;
+      reg
+    ;;
+
+    let add_block (t @ local) (f : (_ @ local -> unit) @ local) =
+      let label = fresh_label t in
+      let block = Block.Builder.create label in
       Queue.enqueue t.body block;
       f block;
       block
@@ -153,9 +226,14 @@ module Function = struct
     let add_block' t f = add_block t f |> (ignore : Block.Builder.t -> unit)
   end
 
-  let build ~name ~params f =
+  let build ~name ~params (f : (_ @ local -> _ -> _) @ local) =
     let builder = Builder.create () in
-    f builder;
+    let params =
+      List.map params ~f:(fun (p, ty) ->
+        let reg = Builder.fresh_register builder in
+        p, reg, ty)
+    in
+    f builder params;
     let body =
       Queue.to_array builder.body
       |> Array.map ~f:Block.Builder.finalize_exn
@@ -233,19 +311,21 @@ let rec of_ast (ast : Ast.t) =
               | Int32 -> Type.Int32
               | _ -> failwith "todo: unsupported type"
             in
-            let reg = Virtual_register.create () in
-            param, reg, ty)
-        in
-        let env =
-          List.fold params ~init:!env ~f:(fun env (name, reg, _) ->
-            Map.set env ~key:name ~data:(Value.Virtual_register reg))
+            param, ty)
         in
         let name = [%string "mucaml_%{name}"] in
         First
-          (Function.build ~name ~params (fun builder ->
+          (Function.build ~name ~params (fun builder params ->
+             let env =
+               List.fold params ~init:!env ~f:(fun env (name, reg, _) ->
+                 Map.set env ~key:name ~data:(Value.Virtual_register reg))
+             in
              Function.Builder.add_block' builder (fun acc ->
-               let #(result, acc) = walk_expr body ~function_builder:builder ~env ~acc in
-               Block.Builder.push acc (Instruction.Return result))))
+               let #(result, acc) @ local =
+                 walk_expr body ~function_builder:builder ~env ~acc
+               in
+               Block.Builder.push acc (Instruction.Return result) [@nontail])
+             [@nontail]))
       | External { name; type_; c_name } ->
         let arg_types, return_type =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
@@ -262,26 +342,30 @@ let rec of_ast (ast : Ast.t) =
   in
   { functions; externs }
 
-and walk_expr (expr : Ast.expr) ~(env : Env.t) ~function_builder ~(acc : Block.Builder.t)
-  : #(Virtual_register.t * Block.Builder.t)
-  =
+and walk_expr
+  (expr : Ast.expr)
+  ~(env : Env.t)
+  ~(function_builder @ local)
+  ~(acc : Block.Builder.t @ local)
+  : #(Virtual_register.t * Block.Builder.t) @ local
+  = exclave_
   let open Block.Builder in
   match expr with
   | Int i ->
-    let reg = Virtual_register.create () in
+    let reg = Function.Builder.fresh_register function_builder in
     push acc (Set { dst = reg; value = i });
     #(reg, acc)
   | App (Var "+", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
-    let dst = Virtual_register.create () in
+    let dst = Function.Builder.fresh_register function_builder in
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
   | App (Var "-", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
-    let dst = Virtual_register.create () in
+    let dst = Function.Builder.fresh_register function_builder in
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
@@ -291,10 +375,18 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~function_builder ~(acc : Block.B
     let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
     #(reg2, acc)
   | App (Var var, args) ->
-    let acc, args =
-      List.fold_map args ~init:acc ~f:(fun acc arg ->
-        let #(reg, acc) = walk_expr arg ~env ~function_builder ~acc in
-        acc, reg)
+    let rec fold_map__local_acc ~init:(acc @ local) ~f = function
+      | [] -> exclave_ acc, { global = [] }
+      | x :: xs ->
+        exclave_
+        let #(acc, y) @ local = f acc x in
+        let acc, ys = fold_map__local_acc ~init:acc ~f xs in
+        acc, { global = y.global :: ys.global }
+    in
+    let acc, { global = args } =
+      fold_map__local_acc args ~init:acc ~f:(fun acc arg -> exclave_
+        let #(arg_reg, acc) = walk_expr arg ~env ~function_builder ~acc in
+        #(acc, { global = arg_reg }))
     in
     let func = Map.find_exn env var in
     (match func with
@@ -302,7 +394,7 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~function_builder ~(acc : Block.B
        (match failwith "todo: indirect function calls" with
         | (_ : Nothing.t) -> .)
      | Global c_name ->
-       let dst = Virtual_register.create () in
+       let dst = Function.Builder.fresh_register function_builder in
        let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
        push acc c_call_ins;
        #(dst, acc))
@@ -315,21 +407,25 @@ and walk_expr (expr : Ast.expr) ~(env : Env.t) ~function_builder ~(acc : Block.B
         | (_ : Nothing.t) -> .))
   | If (cond, if_true, if_false) ->
     let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
-    let dst = Virtual_register.create () in
+    let dst = Function.Builder.fresh_register function_builder in
     let after_block = Function.Builder.add_block function_builder ignore in
     let then_block =
       Function.Builder.add_block function_builder (fun acc ->
         let #(then_reg, acc) = walk_expr if_true ~env ~function_builder ~acc in
         push acc (Mov { dst; src = then_reg });
-        push acc (Jump { target = after_block.label }))
+        Block.Builder.register_successor acc after_block.label;
+        push acc (Jump { target = after_block.label }) [@nontail])
     in
     let else_block =
       Function.Builder.add_block function_builder (fun acc ->
         let #(else_reg, acc) = walk_expr if_false ~env ~function_builder ~acc in
         push acc (Mov { dst; src = else_reg });
-        push acc (Jump { target = after_block.label }))
+        Block.Builder.register_successor acc after_block.label;
+        push acc (Jump { target = after_block.label }) [@nontail])
     in
+    Block.Builder.register_successor acc then_block.label;
     push acc (Branch { condition = cond_reg; target = then_block.label });
+    Block.Builder.register_successor acc else_block.label;
     push acc (Jump { target = else_block.label });
     #(dst, after_block)
   | _ ->
