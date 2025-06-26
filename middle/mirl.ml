@@ -158,6 +158,7 @@ module Block = struct
       ; instructions : Instruction.t Queue.t @@ global
       ; successors : Label.t Queue.t @@ global
       }
+    [@@deriving fields ~getters]
 
     let push (t @ local) instruction = Queue.enqueue t.instructions instruction
     let push_many (t @ local) instructions = Queue.enqueue_all t.instructions instructions

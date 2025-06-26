@@ -79,6 +79,7 @@ module Block : sig
 
     val push : t @ local -> Instruction.t -> unit
     val push_many : t @ local -> Instruction.t list -> unit
+    val label : t @ local -> Label.t
   end
 
   val to_string : ?indent:string -> t -> string

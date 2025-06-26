@@ -219,37 +219,7 @@ module%test _ = struct
     |}]
   ;;
 
-  let%expect_test "allocate_registers" =
-    let module Function = Mirl.Function in
-    let module Block = Mirl.Block in
-    let func =
-      Function.build
-        ~name:"test"
-        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
-        (fun function_builder params ->
-          let a, b, c, d =
-            match params with
-            | [ (_, a, _); (_, b, _); (_, c, _); (_, d, _) ] -> a, b, c, d
-            | _ -> failwith "Expected 4 parameters"
-          in
-          Function.Builder.add_block' function_builder (fun block_builder ->
-            let e = Function.Builder.fresh_register function_builder in
-            let f = Function.Builder.fresh_register function_builder in
-            let g = Function.Builder.fresh_register function_builder in
-            let instructions : Mirl.Instruction.t list =
-              [ Add { dst = e; src1 = d; src2 = a }
-              ; Add { dst = f; src1 = b; src2 = c }
-              ; Add { dst = f; src1 = f; src2 = b }
-              ; Add { dst = d; src1 = e; src2 = f }
-              ; Mov { dst = g; src = d }
-              ; Return g
-              ]
-            in
-            (* Create a block with the instructions. *)
-            Block.Builder.push_many block_builder instructions)
-          [@nontail])
-    in
-    let registers, _ = allocate_registers func in
+  let print_program (func : Mirl.Function.t) ~registers =
     Iarray.iter func.body ~f:(fun bloxk ->
       let instructions = bloxk.instructions in
       print_endline [%string "%{bloxk.label#Mirl.Label}:"];
@@ -289,7 +259,41 @@ module%test _ = struct
         | Branch { condition; target } ->
           let condition_reg = Hashtbl.find_exn registers condition in
           print_endline
-            [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]));
+            [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]))
+  ;;
+
+  let%expect_test "allocate_registers" =
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build
+        ~name:"test"
+        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
+        (fun function_builder params ->
+          let a, b, c, d =
+            match params with
+            | [ (_, a, _); (_, b, _); (_, c, _); (_, d, _) ] -> a, b, c, d
+            | _ -> failwith "Expected 4 parameters"
+          in
+          Function.Builder.add_block' function_builder (fun block_builder ->
+            let e = Function.Builder.fresh_register function_builder in
+            let f = Function.Builder.fresh_register function_builder in
+            let g = Function.Builder.fresh_register function_builder in
+            let instructions : Mirl.Instruction.t list =
+              [ Add { dst = e; src1 = d; src2 = a }
+              ; Add { dst = f; src1 = b; src2 = c }
+              ; Add { dst = f; src1 = f; src2 = b }
+              ; Add { dst = d; src1 = e; src2 = f }
+              ; Mov { dst = g; src = d }
+              ; Return g
+              ]
+            in
+            (* Create a block with the instructions. *)
+            Block.Builder.push_many block_builder instructions)
+          [@nontail])
+    in
+    let registers, _ = allocate_registers func in
+    print_program func ~registers;
     [%expect
       {|
       block_0:
@@ -299,6 +303,46 @@ module%test _ = struct
       r3 := r4 + r5
       r6 := r3
       return r6
+      |}]
+  ;;
+
+  let%expect_test "branchy eample" =
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build ~name:"test" ~params:[] (fun function_builder _ ->
+        let x = Function.Builder.fresh_register function_builder in
+        let y = Function.Builder.fresh_register function_builder in
+        let block_1 = Function.Builder.add_block function_builder ignore in
+        let block_2 = Function.Builder.add_block function_builder ignore in
+        let block_3 = Function.Builder.add_block function_builder ignore in
+        let instructions : Mirl.Instruction.t list =
+          [ Set { dst = x; value = 2 }; Jump { target = Block.Builder.label block_3 } ]
+        in
+        Block.Builder.push_many block_1 instructions;
+        let instructions : Mirl.Instruction.t list =
+          [ Set { dst = x; value = 2 }; Jump { target = Block.Builder.label block_2 } ]
+        in
+        Block.Builder.push_many block_2 instructions;
+        let instructions : Mirl.Instruction.t list =
+          [ Add { dst = y; src1 = x; src2 = x }; Return y ]
+        in
+        Block.Builder.push_many block_3 instructions;
+        ())
+    in
+    let registers, _ = allocate_registers func in
+    print_program func ~registers;
+    [%expect
+      {|
+      block_0:
+      r0 := <set value>
+      jump block_2
+      block_1:
+      r0 := <set value>
+      jump block_1
+      block_2:
+      r1 := r0 + r0
+      return r1
       |}]
   ;;
 end
