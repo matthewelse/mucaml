@@ -59,7 +59,7 @@ let emit_block
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in
-      mov buf ~dst:dst_reg ~src:src_reg
+      if not (Register.equal dst_reg src_reg) then mov buf ~dst:dst_reg ~src:src_reg
     | C_call { dst; func; args } ->
       let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
@@ -93,12 +93,13 @@ let emit_function (func : Mirl.Function.t) buf =
   emit_function_prologue buf ~name:func.name;
   (* TODO: Properly track whether or not LR is actually clobbered (i.e. whether or not we have
      a bl somewhere in this function). *)
-  if not (List.is_empty clobbered_callee_saved_registers)
-  then push buf (LR :: clobbered_callee_saved_registers);
+  push buf (LR :: clobbered_callee_saved_registers);
   List.iteri func.params ~f:(fun i (_, reg, _) ->
-    let reg = Registers.find_exn registers reg in
-    let conv_reg = Iarray.get Register.function_args i in
-    if not (Register.equal reg conv_reg) then mov buf ~dst:reg ~src:conv_reg);
+    match Registers.find registers reg with
+    | None -> (* This arg is never used, ignore it. *) ()
+    | Some reg ->
+      let conv_reg = Iarray.get Register.function_args i in
+      if not (Register.equal reg conv_reg) then mov buf ~dst:reg ~src:conv_reg);
   Iarray.iter func.body ~f:(fun block ->
     emit_block
       block
