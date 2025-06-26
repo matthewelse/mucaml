@@ -16,7 +16,7 @@ let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.
 
 let c_call buf ~dst ~func ~args =
   let open Arm_dsl in
-  (* TODO: only push r0/r1/r2 if they are live after the call *)
+  (* TODO: push all live caller-saved registers  *)
   push buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i));
   List.iteri args ~f:(fun i arg ->
     let reg = Iarray.get Register.function_args i in
@@ -65,13 +65,11 @@ let emit_block
     | Return reg ->
       let reg = Registers.find_exn registers reg in
       if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg;
-      if not (List.is_empty clobbered_callee_saved_registers)
-      then pop buf clobbered_callee_saved_registers;
-      ret buf
+      pop buf (PC :: clobbered_callee_saved_registers)
     | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
     | Branch { condition; target } ->
       let condition_reg = Registers.find_exn registers condition in
-      tbnz buf ~condition:condition_reg ~target:(label_name ~function_name ~label:target))
+      cbnz buf ~condition:condition_reg ~target:(label_name ~function_name ~label:target))
 ;;
 
 let emit_function (func : Mirl.Function.t) buf =
@@ -84,8 +82,10 @@ let emit_function (func : Mirl.Function.t) buf =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in
   emit_function_prologue buf ~name:func.name;
+  (* Properly track whether or not LR is actually clobbered (i.e. whether or not we have
+     a bl somewhere in this function). *)
   if not (List.is_empty clobbered_callee_saved_registers)
-  then push buf clobbered_callee_saved_registers;
+  then push buf (LR :: clobbered_callee_saved_registers);
   Iarray.iter func.body ~f:(fun block ->
     emit_block
       block

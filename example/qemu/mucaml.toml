@@ -7,6 +7,10 @@ run_command = [
   "-nographic",
   "-semihosting-config", "enable=on,target=native",
   "-m", "16M",
+  # uncomment the following lines to enable debugging
+  # connect to gdb with `arm-none-eabi-gdb blinky.elf -ex "target remote localhost:1234"`
+  #  "-S", "-s",
+  # "-serial", "mon:stdio",
   "-kernel", "{elf_file}"
 ]
 

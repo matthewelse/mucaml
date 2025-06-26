@@ -32,12 +32,14 @@ pub extern "C" fn mucaml_print(n : i32) {
 }
 
 extern "C" {
-    fn mucaml_main() -> i32;
+    fn mucaml_main(i32) -> i32;
 }
 
 #[no_mangle]
 pub fn main() -> ! {
-    let _result = unsafe { mucaml_main() };
+    let result = unsafe { mucaml_main(0) };
+
+    mucaml_print(result);
 
     loop {}
 }

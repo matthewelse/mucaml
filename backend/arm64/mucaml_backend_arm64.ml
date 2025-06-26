@@ -63,6 +63,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
             {|.type main, %function
 .globl main
 main:
+mov w0, #0
 b mucaml_main
 .size main, . - main
 

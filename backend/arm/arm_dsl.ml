@@ -79,6 +79,6 @@ let b t ~target = emit_line t [%string "  b %{target}"]
 let bl t ~func = emit_line t [%string "  bl %{func}"]
 let label t label = emit_line t [%string "%{label}:"]
 
-let tbnz t ~condition ~target =
-  emit_line t [%string "  tbnz %{condition#Register}, #0, %{target}"]
+let cbnz t ~condition ~target =
+  emit_line t [%string "  cbnz %{condition#Register}, %{target}"]
 ;;
