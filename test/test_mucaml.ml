@@ -160,26 +160,57 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
+      push {lr,r4,r5,r6}
     mucaml_main__block_0:
-      mov r1, #100
-      push {r0}
-      mov r0, r1
+      mov r0, #100
       bl f1
-      mov r1, r0
-      pop {r0}
-      push {r0,r1}
+      mov r5, r0
+      mov r0, r4
       bl f1
-      mov r2, r0
-      pop {r0,r1}
-      push {r0,r1,r2}
-      mov r0, r1
+      mov r6, r0
+      mov r0, r5
       bl f1
-      mov r3, r0
-      pop {r0,r1,r2}
-      add r2, r3, r2
-      add r1, r2, r1
-      add r0, r1, r0
-      pop {pc}
+      add r0, r0, r6
+      add r0, r0, r5
+      add r0, r0, r4
+      pop {pc,r4,r5,r6}
+    .fnend
+    .size mucaml_main, . - mucaml_main
+    |}];
+  (* Prefer callee saved registers for variables that span function calls. *)
+  test
+    {|
+    external f : int32 -> int32 = "f1"
+
+    let main x : int32 =
+      let z = f x in
+      let y = f 100 in
+      let a = f y in
+      a + z + y
+    |};
+  [%expect
+    {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
+    .thumb_func
+    .type mucaml_main, %function
+    .globl mucaml_main
+    .fnstart
+    mucaml_main:
+      push {lr,r4,r5}
+    mucaml_main__block_0:
+      bl f1
+      mov r4, r0
+      mov r0, #100
+      bl f1
+      mov r5, r0
+      mov r0, r5
+      bl f1
+      add r0, r0, r4
+      add r0, r0, r5
+      pop {pc,r4,r5}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}]

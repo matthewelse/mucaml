@@ -15,6 +15,7 @@ module Make (Register : sig
 
     val all_available_for_allocation : t list
     val caller_saved : Set.t
+    val callee_saved : Set.t
   end) =
 struct
   let live_intervals (func : Mirl.Function.t) =
@@ -136,6 +137,24 @@ struct
     active
   ;;
 
+  let find_call_sites (func : Mirl.Function.t) =
+    let call_sites = ref Int.Set.empty in
+    let global_idx = ref 0 in
+    for block_idx = 0 to Iarray.length func.body - 1 do
+      let block = Iarray.get func.body block_idx in
+      assert (Mirl.Label.to_int_exn block.label = block_idx);
+      for insn_idx = 0 to Iarray.length block.instructions - 1 do
+        let instruction = Iarray.get block.instructions insn_idx in
+        (match instruction with
+         | C_call { dst = _; func = _; args = _ } ->
+           call_sites := Set.add !call_sites !global_idx
+         | _ -> ());
+        incr global_idx
+      done
+    done;
+    !call_sites
+  ;;
+
   (* Find call sites and compute which caller-saved registers need preservation *)
   let find_call_sites_with_live_registers (func : Mirl.Function.t) ~registers =
     let call_sites = ref [] in
@@ -188,6 +207,7 @@ struct
         Some ({ Interval.start = live_start; end_ = live_end }, virtual_register))
       |> List.sort ~compare:[%compare: Interval.t * Virtual_register.t]
     in
+    let call_sites = find_call_sites func in
     let registers = Virtual_register.Table.create () in
     let _active =
       List.foldi
@@ -206,7 +226,33 @@ struct
                   (active : Virtual_register.t Interval.By_end.Map.t)
                   (!free_registers : Register.Set.t)];
           let reg =
-            match Set.min_elt !free_registers with
+            (* use a callee-saved register if this register is live across a call site *)
+            let prefer_callee_saved_register =
+              Set.exists call_sites ~f:(fun call_idx ->
+                call_idx + 1 > interval.start && call_idx + 1 < interval.end_)
+            in
+            let registers_to_choose_from = !free_registers in
+            let registers_to_choose_from =
+              if prefer_callee_saved_register
+              then (
+                if debug
+                then
+                  print_s
+                    [%message
+                      "preferring callee saved registers"
+                        (virtual_register : Virtual_register.t)
+                        (call_sites : Int.Set.t)
+                        (interval : Interval.t)];
+                let available_callee_save_registers =
+                  Set.inter registers_to_choose_from Register.callee_saved
+                in
+                if Set.is_empty available_callee_save_registers
+                then registers_to_choose_from
+                else available_callee_save_registers)
+              else registers_to_choose_from
+            in
+            let available_register = Set.min_elt registers_to_choose_from in
+            match available_register with
             | Some reg ->
               free_registers := Set.remove !free_registers reg;
               reg
@@ -229,6 +275,7 @@ module%test _ = struct
 
     let all_available_for_allocation = List.init 8 ~f:Fn.id
     let caller_saved = Set.of_list [ 0; 1; 2; 3 ]
+    let callee_saved = Set.of_list [ 4; 5; 6; 7 ]
     let to_string t = [%string "r%{t#Int}"]
   end
 
@@ -541,13 +588,13 @@ module%test _ = struct
     [%expect
       {|
       block_0:
-      r1 := <set value>
-      r1 := c_call(r1)
-      r2 := c_call(r0)
-      r3 := c_call(r1)
-      r2 := r3 + r2
-      r1 := r2 + r1
-      r0 := r1 + r0
+      r0 := <set value>
+      r5 := c_call(r0)
+      r6 := c_call(r4)
+      r0 := c_call(r5)
+      r0 := r0 + r6
+      r0 := r0 + r5
+      r0 := r0 + r4
       return r0
       |}]
   ;;
