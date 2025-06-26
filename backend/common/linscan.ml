@@ -14,6 +14,7 @@ module Make (Register : sig
     include Comparable.S_plain with type t := t
 
     val all_available_for_allocation : t list
+    val caller_saved : Set.t
   end) =
 struct
   let live_intervals (func : Mirl.Function.t) =
@@ -109,6 +110,41 @@ struct
     active
   ;;
 
+  (* Find call sites and compute which caller-saved registers need preservation *)
+  let find_call_sites_with_live_registers (func : Mirl.Function.t) ~registers =
+    let call_sites = ref [] in
+    let global_idx = ref 0 in
+    for block_idx = 0 to Iarray.length func.body - 1 do
+      let block = Iarray.get func.body block_idx in
+      for insn_idx = 0 to Iarray.length block.instructions - 1 do
+        let instruction = Iarray.get block.instructions insn_idx in
+        let idx = insn_idx + !global_idx in
+        match instruction with
+        | C_call { dst = _; func = _; args = _ } ->
+          (* Find virtual registers that are live at this call site and allocated to caller-saved physical registers *)
+          let live_caller_saved_registers =
+            Hashtbl.fold
+              registers
+              ~init:Register.Set.empty
+              ~f:(fun ~key:virtual_reg ~data:physical_reg acc ->
+                if Set.mem Register.caller_saved physical_reg
+                then (
+                  (* Check if this virtual register is live at the call site *)
+                  let live_intervals = live_intervals func in
+                  match Hashtbl.find live_intervals virtual_reg with
+                  | Some (Some start, Some end_) when start <= idx && idx <= end_ ->
+                    Set.add acc physical_reg
+                  | _ -> acc)
+                else acc)
+          in
+          call_sites := (block_idx, insn_idx, live_caller_saved_registers) :: !call_sites
+        | _ -> ()
+      done;
+      global_idx := !global_idx + Iarray.length block.instructions
+    done;
+    List.rev !call_sites
+  ;;
+
   let allocate_registers func =
     let free_registers = Queue.of_list Register.all_available_for_allocation in
     let live_intervals =
@@ -135,7 +171,8 @@ struct
           Map.set active ~key:interval ~data:virtual_register)
     in
     let used_registers = Hashtbl.data registers |> Register.Set.of_list in
-    registers, used_registers
+    let call_sites = find_call_sites_with_live_registers func ~registers in
+    registers, used_registers, call_sites
   ;;
 end
 
@@ -146,6 +183,7 @@ module%test _ = struct
     include functor Comparable.Make_plain
 
     let all_available_for_allocation = List.init 8 ~f:Fn.id
+    let caller_saved = Set.of_list [ 0; 1; 2; 3 ]
     let to_string t = [%string "r%{t#Int}"]
   end
 
@@ -292,7 +330,7 @@ module%test _ = struct
             Block.Builder.push_many block_builder instructions)
           [@nontail])
     in
-    let registers, _ = allocate_registers func in
+    let registers, _, _ = allocate_registers func in
     print_program func ~registers;
     [%expect
       {|
@@ -330,7 +368,7 @@ module%test _ = struct
         Block.Builder.push_many block_3 instructions;
         ())
     in
-    let registers, _ = allocate_registers func in
+    let registers, _, _ = allocate_registers func in
     print_program func ~registers;
     [%expect
       {|

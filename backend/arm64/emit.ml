@@ -6,6 +6,7 @@ module Registers = struct
   type t =
     { mapping : Register.t Virtual_register.Table.t
     ; used : Register.Set.t
+    ; call_sites : (int * int * Register.Set.t) list
     }
 
   let find_exn t register = Hashtbl.find_exn t.mapping register
@@ -14,10 +15,10 @@ end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
 
-let c_call buf ~dst ~func ~args =
+let c_call buf ~dst ~func ~args ~live_caller_saved_registers =
   let open Arm_dsl in
-  (* TODO: only push r0/r1/r2 if they are live after the call *)
-  push buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i));
+  let live_caller_saved_list = Set.to_list live_caller_saved_registers in
+  if not (List.is_empty live_caller_saved_list) then push buf live_caller_saved_list;
   List.iteri args ~f:(fun i arg ->
     let reg = Iarray.get Register.function_args i in
     if not (Register.equal reg arg) then mov buf ~dst:reg ~src:arg);
@@ -27,7 +28,7 @@ let c_call buf ~dst ~func ~args =
    | Some dst ->
      if not (Register.equal dst Register.return_register)
      then mov buf ~dst ~src:Register.return_register);
-  pop buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i))
+  if not (List.is_empty live_caller_saved_list) then pop buf live_caller_saved_list
 ;;
 
 let emit_block
@@ -36,10 +37,11 @@ let emit_block
   ~registers
   ~function_name
   ~clobbered_callee_saved_registers
+  ~block_idx
   =
   let open Arm_dsl in
   label buf (label_name ~function_name ~label:block.label);
-  Iarray.iter block.instructions ~f:(fun instruction ->
+  Iarray.iteri block.instructions ~f:(fun insn_idx instruction ->
     match instruction with
     | Add { dst; src1; src2 } ->
       let dst_reg = Registers.find_exn registers dst in
@@ -61,12 +63,21 @@ let emit_block
     | C_call { dst; func; args } ->
       let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
-      c_call buf ~dst:dst_reg ~func ~args:args_regs
+      let live_caller_saved_registers =
+        (* FIXME: use a hashtable instead of a list. *)
+        List.find_map
+          registers.call_sites
+          ~f:(fun (call_block_idx, call_insn_idx, live_regs) ->
+            if call_block_idx = block_idx && call_insn_idx = insn_idx
+            then Some live_regs
+            else None)
+        |> Option.value ~default:Register.Set.empty
+      in
+      c_call buf ~dst:dst_reg ~func ~args:args_regs ~live_caller_saved_registers
     | Return reg ->
       let reg = Registers.find_exn registers reg in
       if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg;
-      if not (List.is_empty clobbered_callee_saved_registers)
-      then pop buf clobbered_callee_saved_registers;
+      pop buf (Register.lr :: clobbered_callee_saved_registers);
       ret buf
     | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
     | Branch { condition; target } ->
@@ -77,22 +88,22 @@ let emit_block
 let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
   let registers : Registers.t =
-    let mapping, used = Linscan.allocate_registers func in
-    { mapping; used }
+    let mapping, used, call_sites = Linscan.allocate_registers func in
+    { mapping; used; call_sites }
   in
   let clobbered_callee_saved_registers =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in
   emit_function_prologue buf ~name:func.name;
-  if not (List.is_empty clobbered_callee_saved_registers)
-  then push buf clobbered_callee_saved_registers;
-  Iarray.iter func.body ~f:(fun block ->
+  push buf (Register.lr :: clobbered_callee_saved_registers);
+  Iarray.iteri func.body ~f:(fun block_idx block ->
     emit_block
       block
       buf
       ~registers
       ~function_name:func.name
-      ~clobbered_callee_saved_registers);
+      ~clobbered_callee_saved_registers
+      ~block_idx);
   emit_function_epilogue buf ~name:func.name
 ;;
 

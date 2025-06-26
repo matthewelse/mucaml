@@ -1,0 +1,4 @@
+name = "test_call"
+
+[target]
+triple = "aarch64-unknown-linux-gnu"

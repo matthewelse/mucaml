@@ -23,13 +23,42 @@ let emit_function_prologue t ~name =
 let emit_function_epilogue t ~name = emit_line t [%string ".size %{name}, . - %{name}"]
 
 let pop t regs =
-  let regs = List.map regs ~f:Register.to_string |> String.concat ~sep:"," in
-  emit_line t [%string "  pop {%{regs}}"]
+  (* AArch64 stack pop: load from stack and increment SP, maintaining 16-byte alignment *)
+  (* Pop in reverse order of push to restore correct values *)
+  let rec pop_pairs acc = function
+    | [] -> acc
+    | [ reg ] -> (reg, None) :: acc
+    | reg1 :: reg2 :: rest -> pop_pairs ((reg1, Some reg2) :: acc) rest
+  in
+  let pairs = pop_pairs [] regs in
+  List.iter pairs ~f:(function
+    | reg, None ->
+      (* Single register - use 16-byte aligned access to maintain alignment *)
+      emit_line t [%string "  ldr %{reg#Register.Sixty_four}, [sp], #16"]
+    | reg1, Some reg2 ->
+      emit_line
+        t
+        [%string
+          "  ldp %{reg1#Register.Sixty_four}, %{reg2#Register.Sixty_four}, [sp], #16"])
 ;;
 
 let push t regs =
-  let regs = List.map regs ~f:Register.to_string |> String.concat ~sep:"," in
-  emit_line t [%string "  push {%{regs}}"]
+  (* AArch64 stack push: decrement SP and store, maintaining 16-byte alignment *)
+  let rec make_pairs acc = function
+    | [] -> List.rev acc
+    | [ reg ] -> List.rev ((reg, None) :: acc)
+    | reg1 :: reg2 :: rest -> make_pairs ((reg1, Some reg2) :: acc) rest
+  in
+  let pairs = make_pairs [] regs in
+  List.iter pairs ~f:(function
+    | reg, None ->
+      (* Single register - use 16-byte aligned access to maintain alignment *)
+      emit_line t [%string "  str %{reg#Register.Sixty_four}, [sp, #-16]!"]
+    | reg1, Some reg2 ->
+      emit_line
+        t
+        [%string
+          "  stp %{reg1#Register.Sixty_four}, %{reg2#Register.Sixty_four}, [sp, #-16]!"])
 ;;
 
 let mov t ~dst ~src = emit_line t [%string "  mov %{dst#Register}, %{src#Register}"]

@@ -67,6 +67,25 @@ mov w0, #0
 b mucaml_main
 .size main, . - main
 
+.type mucaml_print, %function
+.globl mucaml_print
+mucaml_print:
+  stp     x29, x30, [sp, #-32]!
+  str     x19, [sp, #16]
+  mov     x29, sp
+  mov     w19, w0
+  adrp    x0, mucaml_print.str
+  add     x0, x0, :lo12:mucaml_print.str
+  mov     w1, w19
+  bl      printf
+  mov     w0, w19
+  ldr     x19, [sp, #16]
+  ldp     x29, x30, [sp], #32
+  ret
+
+mucaml_print.str:
+  .asciz "%d\n"
+
 %{program#Assembly}|}]
         in
         let%bind () =

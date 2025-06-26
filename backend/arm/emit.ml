@@ -75,7 +75,7 @@ let emit_block
 let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
   let registers : Registers.t =
-    let mapping, used = Linscan.allocate_registers func in
+    let mapping, used, _call_sites = Linscan.allocate_registers func in
     { mapping; used }
   in
   let clobbered_callee_saved_registers =

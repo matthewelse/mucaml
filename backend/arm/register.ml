@@ -47,3 +47,4 @@ let all_available_for_allocation =
 let function_args = [: R0; R1; R2; R3 :]
 let return_register = R0
 let callee_saved = Set.of_list [ R4; R5; R6; R7; R8; R9; R10; R11; R12 ]
+let caller_saved = Set.of_list [ R0; R1; R2; R3 ]

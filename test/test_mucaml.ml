@@ -21,7 +21,7 @@ let%expect_test _ =
       mov r1, #32
       add r2, r0, r1
       mov r0, r2
-      bx lr
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];
@@ -41,7 +41,7 @@ let%expect_test _ =
     mucaml_main__block_0:
       mov r0, #34464
       movt r0, #1
-      bx lr
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];
@@ -63,7 +63,7 @@ let%expect_test _ =
       mov r1, #32
       sub r2, r0, r1
       mov r0, r2
-      bx lr
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];
@@ -91,7 +91,7 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-      push {r4}
+      push {lr,r4}
     mucaml_main__block_0:
       mov r0, #100
       push {r0}
@@ -114,8 +114,7 @@ let%expect_test _ =
       pop {r0}
       mov r4, #0
       mov r0, r4
-      pop {r4}
-      bx lr
+      pop {pc,r4}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];
@@ -134,14 +133,13 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-      push {r4,r5,r6,r7}
+      push {lr,r4,r5,r6,r7}
     mucaml_main__block_0:
-      tbnz r0, #0, mucaml_main__block_2
+      cbnz r0, mucaml_main__block_2
       b mucaml_main__block_3
     mucaml_main__block_1:
       mov r0, r4
-      pop {r4,r5,r6,r7}
-      bx lr
+      pop {pc,r4,r5,r6,r7}
     mucaml_main__block_2:
       mov r1, #3
       mov r2, #4
