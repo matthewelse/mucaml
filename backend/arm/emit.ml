@@ -95,6 +95,10 @@ let emit_function (func : Mirl.Function.t) buf =
      a bl somewhere in this function). *)
   if not (List.is_empty clobbered_callee_saved_registers)
   then push buf (LR :: clobbered_callee_saved_registers);
+  List.iteri func.params ~f:(fun i (_, reg, _) ->
+    let reg = Registers.find_exn registers reg in
+    let conv_reg = Iarray.get Register.function_args i in
+    if not (Register.equal reg conv_reg) then mov buf ~dst:reg ~src:conv_reg);
   Iarray.iter func.body ~f:(fun block ->
     emit_block
       block

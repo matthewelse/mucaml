@@ -95,6 +95,10 @@ let emit_function (func : Mirl.Function.t) buf =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in
   emit_function_prologue buf ~name:func.name;
+  List.iteri func.params ~f:(fun i (_, reg, _) ->
+    let reg = Registers.find_exn registers reg in
+    let conv_reg = Iarray.get Register.function_args i in
+    if not (Register.equal reg conv_reg) then mov buf ~dst:reg ~src:conv_reg);
   push buf (Register.lr :: clobbered_callee_saved_registers);
   Iarray.iter func.body ~f:(fun block ->
     emit_block
