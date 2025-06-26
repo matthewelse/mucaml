@@ -19,8 +19,7 @@ let%expect_test _ =
     mucaml_main__block_0:
       mov r0, #10
       mov r1, #32
-      add r2, r0, r1
-      mov r0, r2
+      add r0, r0, r1
       pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
@@ -61,8 +60,7 @@ let%expect_test _ =
     mucaml_main__block_0:
       mov r0, #0
       mov r1, #32
-      sub r2, r0, r1
-      mov r0, r2
+      sub r0, r0, r1
       pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
@@ -91,30 +89,17 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-      push {lr,r4}
     mucaml_main__block_0:
       mov r0, #100
-      push {r0}
       bl sleep_ms
-      pop {r0}
-      mov r1, #7
-      push {r0}
-      mov r0, r1
+      mov r0, #7
       bl led_on
-      pop {r0}
-      mov r2, #100
-      push {r0}
-      mov r0, r2
+      mov r0, #100
       bl sleep_ms
-      pop {r0}
-      mov r3, #7
-      push {r0}
-      mov r0, r3
+      mov r0, #7
       bl led_off
-      pop {r0}
-      mov r4, #0
-      mov r0, r4
-      pop {pc,r4}
+      mov r0, #0
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];
@@ -133,25 +118,68 @@ let%expect_test _ =
     .globl mucaml_main
     .fnstart
     mucaml_main:
-      push {lr,r4,r5,r6,r7}
     mucaml_main__block_0:
       cbnz r0, mucaml_main__block_2
       b mucaml_main__block_3
     mucaml_main__block_1:
-      mov r0, r4
-      pop {pc,r4,r5,r6,r7}
+      pop {pc}
     mucaml_main__block_2:
-      mov r1, #3
-      mov r2, #4
-      add r3, r1, r2
-      mov r4, r3
+      mov r0, #3
+      mov r1, #4
+      add r0, r0, r1
+      mov r0, r0
       b mucaml_main__block_1
     mucaml_main__block_3:
-      mov r5, #5
-      mov r6, #6
-      add r7, r5, r6
-      mov r4, r7
+      mov r0, #5
+      mov r1, #6
+      add r0, r0, r1
+      mov r0, r0
       b mucaml_main__block_1
+    .fnend
+    .size mucaml_main, . - mucaml_main
+    |}];
+  (* Save caller saved registers *)
+  test
+    {|
+    external f : int32 -> int32 = "f1"
+
+    let main x : int32 =
+      let y = f 100 in
+      let z = f x in
+      let a = f y in
+      a + z + y + x
+    |};
+  [%expect
+    {|
+    .syntax unified
+    .cpu cortex-m33
+    .thumb
+
+    .thumb_func
+    .type mucaml_main, %function
+    .globl mucaml_main
+    .fnstart
+    mucaml_main:
+    mucaml_main__block_0:
+      mov r1, #100
+      push {r0}
+      mov r0, r1
+      bl f1
+      mov r1, r0
+      pop {r0}
+      push {r0,r1}
+      bl f1
+      mov r2, r0
+      pop {r0,r1}
+      push {r0,r1,r2}
+      mov r0, r1
+      bl f1
+      mov r3, r0
+      pop {r0,r1,r2}
+      add r2, r3, r2
+      add r1, r2, r1
+      add r0, r1, r0
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}]

@@ -123,5 +123,30 @@ let%expect_test _ =
         $1 := $7
         jump block_1
     }
+    |}];
+  test
+    {|
+    external f : int32 -> int32 = "f1"
+
+    let main x : int32 =
+      let y = f 100 in
+      let z = f x in
+      let a = f y in
+      a + z + y + x
+    |};
+  [%expect {|
+    function mucaml_main ($0 (x): int32) {
+    block_0:
+        $1 := 100
+        $2 := c_call f1($1)
+        $3 := c_call f1($0)
+        $4 := c_call f1($2)
+        $5 := $4 + $3
+        $6 := $5 + $2
+        $7 := $6 + $0
+        return $7
+    }
+
+    external f : int32 -> int32 = "f1"
     |}]
 ;;

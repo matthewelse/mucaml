@@ -6,7 +6,7 @@ open! Core
 open! Import
 
 module Label : sig
-  type t : immediate [@@deriving sexp_of, to_string]
+  type t : immediate [@@deriving equal, sexp_of, to_string]
 
   val to_int_exn : t -> int
 

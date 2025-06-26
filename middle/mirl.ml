@@ -2,7 +2,7 @@ open! Core
 open! Import
 
 module Label : sig
-  type t : immediate [@@deriving sexp_of, to_string]
+  type t : immediate [@@deriving equal, sexp_of, to_string]
 
   module For_testing : sig
     val dummy : t
@@ -11,7 +11,7 @@ module Label : sig
   val of_int_exn : int -> t
   val to_int_exn : t -> int
 end = struct
-  type t = int
+  type t = int [@@deriving equal]
 
   let to_string t = [%string "block_%{t#Int}"]
   let sexp_of_t t = Sexp.Atom (to_string t)

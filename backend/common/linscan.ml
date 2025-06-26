@@ -68,12 +68,21 @@ struct
   ;;
 
   module Interval = struct
-    type t = int * int [@@deriving compare, sexp_of]
+    type t =
+      { start : int
+      ; end_ : int
+      }
+    [@@deriving compare, sexp_of]
 
     module By_end = struct
-      type t = int * int [@@deriving compare, sexp_of]
+      type nonrec t = t =
+        { start : int
+        ; end_ : int
+        }
+      [@@deriving compare, sexp_of]
 
-      let compare (start, end_) = compare (end_, start)
+      let flip { start; end_ } = { start = end_; end_ = start }
+      let compare t t' = compare (flip t) (flip t')
 
       include functor Comparable.Make_plain
     end
@@ -87,15 +96,20 @@ struct
     ~registers
     ~spills
     =
-    let (spill_start, spill_end), spill_virtual_register = Map.max_elt_exn active in
+    let%tydi { start = spill_start; end_ = spill_end }, spill_virtual_register =
+      Map.max_elt_exn active
+    in
     let stolen_register = Hashtbl.find_exn registers spill_virtual_register in
     if spill_end > current_end
     then (
       Hashtbl.set registers ~key:current_register ~data:stolen_register;
       Queue.enqueue spills spill_virtual_register;
-      let active = Map.remove active (spill_start, spill_end) in
+      let active = Map.remove active { start = spill_start; end_ = spill_end } in
       let active =
-        Map.set active ~key:(current_start, current_end) ~data:current_register
+        Map.set
+          active
+          ~key:{ start = current_start; end_ = current_end }
+          ~data:current_register
       in
       active)
     else (
@@ -103,10 +117,22 @@ struct
       active)
   ;;
 
+  let debug = false
+
   let expire_old_intervals active current_interval ~free_registers ~registers =
-    let expired, active = Map.split_lt_ge active current_interval in
+    let expired, active =
+      Map.partitioni_tf active ~f:(fun ~key:interval ~data:_ ->
+        if debug
+        then
+          print_s
+            [%message
+              "Checking interval" (interval : Interval.t) (current_interval : Interval.t)];
+        current_interval.start >= interval.end_)
+    in
     Map.iter expired ~f:(fun register ->
-      Queue.enqueue free_registers (Hashtbl.find_exn registers register));
+      if debug
+      then print_endline [%string "Expiring register %{register#Virtual_register}"];
+      free_registers := Set.add !free_registers (Hashtbl.find_exn registers register));
     active
   ;;
 
@@ -116,6 +142,7 @@ struct
     let global_idx = ref 0 in
     for block_idx = 0 to Iarray.length func.body - 1 do
       let block = Iarray.get func.body block_idx in
+      assert (Mirl.Label.to_int_exn block.label = block_idx);
       for insn_idx = 0 to Iarray.length block.instructions - 1 do
         let instruction = Iarray.get block.instructions insn_idx in
         let idx = insn_idx + !global_idx in
@@ -130,14 +157,18 @@ struct
                 if Set.mem Register.caller_saved physical_reg
                 then (
                   (* Check if this virtual register is live at the call site *)
+                  (* FIXME melse: It's not clear from the type of [live_intervals] how to
+                     get the thing you actually want (live_out/live_in for which instruction). *)
                   let live_intervals = live_intervals func in
                   match Hashtbl.find live_intervals virtual_reg with
-                  | Some (Some start, Some end_) when start <= idx && idx <= end_ ->
+                  | Some (Some start, Some end_) when start <= idx && idx < end_ - 1 ->
                     Set.add acc physical_reg
                   | _ -> acc)
                 else acc)
           in
-          call_sites := (block_idx, insn_idx, live_caller_saved_registers) :: !call_sites
+          call_sites
+          := (~block:block.label, ~insn_idx, ~live_regs:live_caller_saved_registers)
+             :: !call_sites
         | _ -> ()
       done;
       global_idx := !global_idx + Iarray.length block.instructions
@@ -146,25 +177,39 @@ struct
   ;;
 
   let allocate_registers func =
-    let free_registers = Queue.of_list Register.all_available_for_allocation in
+    let free_registers =
+      ref (Register.Set.of_list Register.all_available_for_allocation)
+    in
     let live_intervals =
       live_intervals func
       |> Hashtbl.to_alist
       |> List.filter_map ~f:(fun (virtual_register, (live_start, live_end)) ->
         let%bind.Option live_start and live_end in
-        Some ((live_start, live_end), virtual_register))
+        Some ({ Interval.start = live_start; end_ = live_end }, virtual_register))
       |> List.sort ~compare:[%compare: Interval.t * Virtual_register.t]
     in
     let registers = Virtual_register.Table.create () in
     let _active =
-      List.fold
+      List.foldi
         live_intervals
         ~init:Interval.By_end.Map.empty
-        ~f:(fun active (interval, virtual_register) ->
+        ~f:(fun ix active (interval, virtual_register) ->
           let active = expire_old_intervals active interval ~free_registers ~registers in
+          if debug
+          then
+            print_s
+              [%message
+                "Processing interval"
+                  (ix : int)
+                  (interval : Interval.t)
+                  (virtual_register : Virtual_register.t)
+                  (active : Virtual_register.t Interval.By_end.Map.t)
+                  (!free_registers : Register.Set.t)];
           let reg =
-            match Queue.dequeue free_registers with
-            | Some reg -> reg
+            match Set.min_elt !free_registers with
+            | Some reg ->
+              free_registers := Set.remove !free_registers reg;
+              reg
             | None -> failwith "todo: spill"
           in
           Hashtbl.set registers ~key:virtual_register ~data:reg;
@@ -190,7 +235,7 @@ module%test _ = struct
   module Allocator = Make (Register)
   open Allocator
 
-  let%expect_test "live_intervals" =
+  let%expect_test "live intervals" =
     let module Function = Mirl.Function in
     let module Block = Mirl.Block in
     let func =
@@ -257,6 +302,79 @@ module%test _ = struct
     |}]
   ;;
 
+  let%expect_test "slightly higher register pressure" =
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build
+        ~name:"test"
+        ~params:[ "x", Int32 ]
+        (fun function_builder params ->
+          let x =
+            match params with
+            | [ (_, x, _) ] -> x
+            | _ -> failwith "Expected 4 parameters"
+          in
+          let tmp1 = Function.Builder.fresh_register function_builder in
+          let tmp2 = Function.Builder.fresh_register function_builder in
+          let tmp3 = Function.Builder.fresh_register function_builder in
+          let ret = Function.Builder.fresh_register function_builder in
+          let y = Function.Builder.fresh_register function_builder in
+          let z = Function.Builder.fresh_register function_builder in
+          let a = Function.Builder.fresh_register function_builder in
+          Function.Builder.add_block' function_builder (fun block ->
+            let instructions : Mirl.Instruction.t list =
+              [ Set { dst = tmp1; value = 100 }
+              ; C_call { func = "f"; dst = y; args = [ tmp1 ] }
+              ; C_call { func = "f"; dst = z; args = [ x ] }
+              ; C_call { func = "f"; dst = a; args = [ y ] }
+              ; Add { dst = tmp2; src1 = a; src2 = z }
+              ; Add { dst = tmp3; src1 = tmp2; src2 = y }
+              ; Add { dst = ret; src1 = tmp3; src2 = x }
+              ; Return ret
+              ]
+            in
+            Block.Builder.push_many block instructions))
+    in
+    let live_intervals = live_intervals func in
+    let live_vars =
+      Iarray.Local.create
+        ~len:(Hashtbl.length live_intervals)
+        { global = Virtual_register.Set.empty }
+        ~mutate:(fun live_vars ->
+          Hashtbl.iteri live_intervals ~f:(fun ~key:reg ~data:(start, ends) ->
+            match start, ends with
+            | None, None -> ()
+            | Some _, None ->
+              print_s [%message "Variable never used" (reg : Virtual_register.t)]
+            | None, Some _ ->
+              raise_s [%message "Variable never assigned" (reg : Virtual_register.t)]
+            | Some start, Some end_ ->
+              for idx = start to end_ - 1 do
+                live_vars.(idx) <- { global = Set.add live_vars.(idx).global reg }
+              done)
+          [@nontail])
+    in
+    Iarray.Local.iter live_vars ~f:(fun { global = live } ->
+      Set.to_list live
+      |> List.map ~f:(fun reg ->
+        let vars = [: "x"; "t0"; "t1"; "t2"; "r"; "y"; "x"; "a" :] in
+        Iarray.get vars (Virtual_register.to_int_exn reg))
+      |> String.concat ~sep:", "
+      |> print_endline);
+    [%expect
+      {|
+      x
+      x, t0
+      x, y
+      x, y, x
+      x, y, x, a
+      x, t1, y
+      x, t2
+      r
+      |}]
+  ;;
+
   let print_program (func : Mirl.Function.t) ~registers =
     Iarray.iter func.body ~f:(fun bloxk ->
       let instructions = bloxk.instructions in
@@ -300,7 +418,7 @@ module%test _ = struct
             [%string "branch if %{condition_reg#Register} to %{target#Mirl.Label}"]))
   ;;
 
-  let%expect_test "allocate_registers" =
+  let%expect_test "allocate registers" =
     let module Function = Mirl.Function in
     let module Block = Mirl.Block in
     let func =
@@ -335,12 +453,12 @@ module%test _ = struct
     [%expect
       {|
       block_0:
-      r4 := r3 + r0
-      r5 := r2 + r1
-      r5 := r5 + r2
-      r3 := r4 + r5
-      r6 := r3
-      return r6
+      r0 := r3 + r0
+      r1 := r2 + r1
+      r1 := r1 + r2
+      r3 := r0 + r1
+      r0 := r3
+      return r0
       |}]
   ;;
 
@@ -379,8 +497,58 @@ module%test _ = struct
       r0 := <set value>
       jump block_1
       block_2:
-      r1 := r0 + r0
-      return r1
+      r0 := r0 + r0
+      return r0
+      |}]
+  ;;
+
+  let%expect_test "slightly higher register pressure" =
+    let module Function = Mirl.Function in
+    let module Block = Mirl.Block in
+    let func =
+      Function.build
+        ~name:"test"
+        ~params:[ "x", Int32 ]
+        (fun function_builder params ->
+          let x =
+            match params with
+            | [ (_, x, _) ] -> x
+            | _ -> failwith "Expected 4 parameters"
+          in
+          let tmp1 = Function.Builder.fresh_register function_builder in
+          let tmp2 = Function.Builder.fresh_register function_builder in
+          let tmp3 = Function.Builder.fresh_register function_builder in
+          let ret = Function.Builder.fresh_register function_builder in
+          let y = Function.Builder.fresh_register function_builder in
+          let z = Function.Builder.fresh_register function_builder in
+          let a = Function.Builder.fresh_register function_builder in
+          Function.Builder.add_block' function_builder (fun block ->
+            let instructions : Mirl.Instruction.t list =
+              [ Set { dst = tmp1; value = 100 }
+              ; C_call { func = "f"; dst = y; args = [ tmp1 ] }
+              ; C_call { func = "f"; dst = z; args = [ x ] }
+              ; C_call { func = "f"; dst = a; args = [ y ] }
+              ; Add { dst = tmp2; src1 = a; src2 = z }
+              ; Add { dst = tmp3; src1 = tmp2; src2 = y }
+              ; Add { dst = ret; src1 = tmp3; src2 = x }
+              ; Return ret
+              ]
+            in
+            Block.Builder.push_many block instructions))
+    in
+    let registers, _, _ = allocate_registers func in
+    print_program func ~registers;
+    [%expect
+      {|
+      block_0:
+      r1 := <set value>
+      r1 := c_call(r1)
+      r2 := c_call(r0)
+      r3 := c_call(r1)
+      r2 := r3 + r2
+      r1 := r2 + r1
+      r0 := r1 + r0
+      return r0
       |}]
   ;;
 end

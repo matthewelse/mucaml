@@ -14,10 +14,10 @@ end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
 
-let c_call buf ~dst ~func ~args =
+let c_call buf ~dst ~func ~args ~clobbered_caller_saved_registers =
   let open Arm_dsl in
-  (* TODO: push all live caller-saved registers  *)
-  push buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i));
+  if not (List.is_empty clobbered_caller_saved_registers)
+  then push buf clobbered_caller_saved_registers;
   List.iteri args ~f:(fun i arg ->
     let reg = Iarray.get Register.function_args i in
     if not (Register.equal reg arg) then mov buf ~dst:reg ~src:arg);
@@ -27,7 +27,8 @@ let c_call buf ~dst ~func ~args =
    | Some dst ->
      if not (Register.equal dst Register.return_register)
      then mov buf ~dst ~src:Register.return_register);
-  pop buf (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i))
+  if not (List.is_empty clobbered_caller_saved_registers)
+  then pop buf clobbered_caller_saved_registers
 ;;
 
 let emit_block
@@ -36,10 +37,11 @@ let emit_block
   ~registers
   ~function_name
   ~clobbered_callee_saved_registers
+  ~call_sites
   =
   let open Arm_dsl in
   label buf (label_name ~function_name ~label:block.label);
-  Iarray.iter block.instructions ~f:(fun instruction ->
+  Iarray.iteri block.instructions ~f:(fun insn_idx instruction ->
     match instruction with
     | Add { dst; src1; src2 } ->
       let dst_reg = Registers.find_exn registers dst in
@@ -61,7 +63,16 @@ let emit_block
     | C_call { dst; func; args } ->
       let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
-      c_call buf ~dst:dst_reg ~func ~args:args_regs
+      let clobbered_caller_saved_registers =
+        List.find_map
+          call_sites
+          ~f:(fun (~block:this_block, ~insn_idx:this_insn_idx, ~live_regs) ->
+            if Mirl.Label.equal this_block block.label && insn_idx = this_insn_idx
+            then Some live_regs
+            else None)
+        |> Option.value_map ~default:[] ~f:Set.to_list
+      in
+      c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
     | Return reg ->
       let reg = Registers.find_exn registers reg in
       if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg;
@@ -74,15 +85,13 @@ let emit_block
 
 let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
-  let registers : Registers.t =
-    let mapping, used, _call_sites = Linscan.allocate_registers func in
-    { mapping; used }
-  in
+  let mapping, used, call_sites = Linscan.allocate_registers func in
+  let registers : Registers.t = { mapping; used } in
   let clobbered_callee_saved_registers =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in
   emit_function_prologue buf ~name:func.name;
-  (* Properly track whether or not LR is actually clobbered (i.e. whether or not we have
+  (* TODO: Properly track whether or not LR is actually clobbered (i.e. whether or not we have
      a bl somewhere in this function). *)
   if not (List.is_empty clobbered_callee_saved_registers)
   then push buf (LR :: clobbered_callee_saved_registers);
@@ -92,7 +101,8 @@ let emit_function (func : Mirl.Function.t) buf =
       buf
       ~registers
       ~function_name:func.name
-      ~clobbered_callee_saved_registers);
+      ~clobbered_callee_saved_registers
+      ~call_sites);
   emit_function_epilogue buf ~name:func.name
 ;;
 
