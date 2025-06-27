@@ -8,20 +8,20 @@ let test text =
 
 let%expect_test "test parser" =
   test {|
-    let main x : int32 =
+    let main x : i32 =
       (3 + 4)
     |};
   [%expect {|
-    let main x : int32 =
+    let main x : i32 =
       app ($+, [3, 4])
     |}];
   test
     {|
-    external sleep_ms : int32 -> unit = "sleep_ms"
-    external led_on : int32 -> unit = "led_on"
-    external led_off : int32 -> unit = "led_off"
+    external sleep_ms : i32 -> unit = "sleep_ms"
+    external led_on : i32 -> unit = "led_on"
+    external led_off : i32 -> unit = "led_off"
 
-    let main x : int32 =
+    let main x : i32 =
       let _ = sleep_ms 100 in
       let _ = led_on 7 in
       let _ = sleep_ms 100 in
@@ -30,10 +30,10 @@ let%expect_test "test parser" =
     |};
   [%expect
     {|
-    external sleep_ms : int32 -> unit = "sleep_ms"
-    external led_on : int32 -> unit = "led_on"
-    external led_off : int32 -> unit = "led_off"
-    let main x : int32 =
+    external sleep_ms : i32 -> unit = "sleep_ms"
+    external led_on : i32 -> unit = "led_on"
+    external led_off : i32 -> unit = "led_off"
+    let main x : i32 =
       let _ : None = app ($sleep_ms, [100]) in
         let _ : None = app ($led_on, [7]) in
           let _ : None = app ($sleep_ms, [100]) in
@@ -41,12 +41,12 @@ let%expect_test "test parser" =
               0
     |}];
   test {|
-    let main x : int32 =
+    let main x : i32 =
       if x then (3 + 4) else (5 + 6)
     |};
   [%expect
     {|
-    let main x : int32 =
+    let main x : i32 =
       if     $x then
         app ($+, [3, 4])
     else

@@ -288,7 +288,7 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
+        ~params:[ "a", I32; "b", I32; "c", I32; "d", I32 ]
         (fun function_builder params ->
           let a, b, c, d =
             match params with
@@ -296,9 +296,9 @@ module%test _ = struct
             | _ -> failwith "Expected 4 parameters"
           in
           Function.Builder.add_block' function_builder (fun block_builder ->
-            let e = Function.Builder.fresh_register function_builder in
-            let f = Function.Builder.fresh_register function_builder in
-            let g = Function.Builder.fresh_register function_builder in
+            let e = Function.Builder.fresh_register function_builder ~ty:I32 in
+            let f = Function.Builder.fresh_register function_builder ~ty:I32 in
+            let g = Function.Builder.fresh_register function_builder ~ty:I32 in
             let instructions : Mirl.Instruction.t list =
               [ Add { dst = e; src1 = d; src2 = a }
               ; Add { dst = f; src1 = b; src2 = c }
@@ -355,20 +355,20 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "x", Int32 ]
+        ~params:[ "x", I32 ]
         (fun function_builder params ->
           let x =
             match params with
             | [ (_, x, _) ] -> x
             | _ -> failwith "Expected 4 parameters"
           in
-          let tmp1 = Function.Builder.fresh_register function_builder in
-          let tmp2 = Function.Builder.fresh_register function_builder in
-          let tmp3 = Function.Builder.fresh_register function_builder in
-          let ret = Function.Builder.fresh_register function_builder in
-          let y = Function.Builder.fresh_register function_builder in
-          let z = Function.Builder.fresh_register function_builder in
-          let a = Function.Builder.fresh_register function_builder in
+          let tmp1 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let tmp2 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let tmp3 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let ret = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let y = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let z = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let a = Function.Builder.fresh_register function_builder ~ty:I32 in
           Function.Builder.add_block' function_builder (fun block ->
             let instructions : Mirl.Instruction.t list =
               [ Set { dst = tmp1; value = 100 }
@@ -471,7 +471,7 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "a", Int32; "b", Int32; "c", Int32; "d", Int32 ]
+        ~params:[ "a", I32; "b", I32; "c", I32; "d", I32 ]
         (fun function_builder params ->
           let a, b, c, d =
             match params with
@@ -479,9 +479,9 @@ module%test _ = struct
             | _ -> failwith "Expected 4 parameters"
           in
           Function.Builder.add_block' function_builder (fun block_builder ->
-            let e = Function.Builder.fresh_register function_builder in
-            let f = Function.Builder.fresh_register function_builder in
-            let g = Function.Builder.fresh_register function_builder in
+            let e = Function.Builder.fresh_register function_builder ~ty:I32 in
+            let f = Function.Builder.fresh_register function_builder ~ty:I32 in
+            let g = Function.Builder.fresh_register function_builder ~ty:I32 in
             let instructions : Mirl.Instruction.t list =
               [ Add { dst = e; src1 = d; src2 = a }
               ; Add { dst = f; src1 = b; src2 = c }
@@ -514,8 +514,8 @@ module%test _ = struct
     let module Block = Mirl.Block in
     let func =
       Function.build ~name:"test" ~params:[] (fun function_builder _ ->
-        let x = Function.Builder.fresh_register function_builder in
-        let y = Function.Builder.fresh_register function_builder in
+        let x = Function.Builder.fresh_register function_builder ~ty:I32 in
+        let y = Function.Builder.fresh_register function_builder ~ty:I32 in
         let block_1 = Function.Builder.add_block function_builder ignore in
         let block_2 = Function.Builder.add_block function_builder ignore in
         let block_3 = Function.Builder.add_block function_builder ignore in
@@ -555,20 +555,20 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "x", Int32 ]
+        ~params:[ "x", I32 ]
         (fun function_builder params ->
           let x =
             match params with
             | [ (_, x, _) ] -> x
             | _ -> failwith "Expected 4 parameters"
           in
-          let tmp1 = Function.Builder.fresh_register function_builder in
-          let tmp2 = Function.Builder.fresh_register function_builder in
-          let tmp3 = Function.Builder.fresh_register function_builder in
-          let ret = Function.Builder.fresh_register function_builder in
-          let y = Function.Builder.fresh_register function_builder in
-          let z = Function.Builder.fresh_register function_builder in
-          let a = Function.Builder.fresh_register function_builder in
+          let tmp1 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let tmp2 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let tmp3 = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let ret = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let y = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let z = Function.Builder.fresh_register function_builder ~ty:I32 in
+          let a = Function.Builder.fresh_register function_builder ~ty:I32 in
           Function.Builder.add_block' function_builder (fun block ->
             let instructions : Mirl.Instruction.t list =
               [ Set { dst = tmp1; value = 100 }

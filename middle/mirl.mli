@@ -16,7 +16,10 @@ module Label : sig
 end
 
 module Type : sig
-  type t = Int32 [@@deriving sexp_of, to_string]
+  type t =
+    | I32
+    | I64
+  [@@deriving sexp_of, to_string]
 end
 
 module Virtual_register : sig
@@ -85,18 +88,23 @@ module Block : sig
   val to_string : ?indent:string -> t -> string
 end
 
+module Register_descriptor : sig
+  type t = private { ty : Type.t } [@@deriving sexp_of]
+end
+
 module Function : sig
   type t = private
     { name : string
     ; params : (string * Virtual_register.t * Type.t) list
     ; body : Block.t iarray
+    ; registers : Register_descriptor.t iarray
     }
   [@@deriving sexp_of, to_string]
 
   module Builder : sig
     type t
 
-    val fresh_register : t @ local -> Virtual_register.t
+    val fresh_register : t @ local -> ty:Type.t -> Virtual_register.t
 
     val add_block
       :  t @ local

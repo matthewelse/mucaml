@@ -4,7 +4,7 @@ let test text = Helpers.compile text
 
 let%expect_test _ =
   (* Use [mov] for small immediates. *)
-  test {| let main _ : int32 = 10 + 32 |};
+  test {| let main _ : i32 = 10 + 32 |};
   [%expect
     {|
     .syntax unified
@@ -26,7 +26,7 @@ let%expect_test _ =
     .size mucaml_main, . - mucaml_main
     |}];
   (* Use [mov, movt] to represent large immediates. *)
-  test {| let main _ : int32 = 100000 |};
+  test {| let main _ : i32 = 100000 |};
   [%expect
     {|
     .syntax unified
@@ -47,7 +47,7 @@ let%expect_test _ =
     .size mucaml_main, . - mucaml_main
     |}];
   (* Negative constants are just [0 - (abs x)] *)
-  test {| let main _ : int32 = (~32) |};
+  test {| let main _ : i32 = (~32) |};
   [%expect
     {|
     .syntax unified
@@ -70,11 +70,11 @@ let%expect_test _ =
     |}];
   test
     {|
-    external sleep_ms : int32 -> unit = "sleep_ms"
-    external led_on : int32 -> unit = "led_on"
-    external led_off : int32 -> unit = "led_off"
+    external sleep_ms : i32 -> unit = "sleep_ms"
+    external led_on : i32 -> unit = "led_on"
+    external led_off : i32 -> unit = "led_off"
 
-    let main x : int32 =
+    let main x : i32 =
       let _ = sleep_ms 100 in
       let _ = led_on 7 in
       let _ = sleep_ms 100 in
@@ -108,7 +108,7 @@ let%expect_test _ =
     .size mucaml_main, . - mucaml_main
     |}];
   test {|
-    let main x : int32 =
+    let main x : i32 =
       if x then (3 + 4) else (5 + 6)
     |};
   [%expect
@@ -144,9 +144,9 @@ let%expect_test _ =
   (* Save caller saved registers *)
   test
     {|
-    external f : int32 -> int32 = "f1"
+    external f : i32 -> i32 = "f1"
 
-    let main x : int32 =
+    let main x : i32 =
       let y = f 100 in
       let z = f x in
       let a = f y in
@@ -184,9 +184,9 @@ let%expect_test _ =
   (* Prefer callee saved registers for variables that span function calls. *)
   test
     {|
-    external f : int32 -> int32 = "f1"
+    external f : i32 -> i32 = "f1"
 
-    let main x : int32 =
+    let main x : i32 =
       let z = f x in
       let y = f 100 in
       let a = f y in

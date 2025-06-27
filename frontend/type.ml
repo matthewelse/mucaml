@@ -1,15 +1,19 @@
 open! Core
 
+module Base = struct
+  type t =
+    | I32
+    | Bool
+    | Unit
+  [@@deriving string ~capitalize:"snake_case", sexp_of]
+end
+
 type t =
-  | Int32
-  | Bool
-  | Unit
+  | Base of Base.t
   | Fun of t * t
 [@@deriving sexp_of]
 
 let rec to_string = function
-  | Int32 -> "int32"
-  | Bool -> "bool"
-  | Unit -> "unit"
+  | Base ty -> Base.to_string ty
   | Fun (t1, t2) -> Printf.sprintf "%s -> %s" (to_string t1) (to_string t2)
 ;;

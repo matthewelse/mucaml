@@ -29,11 +29,10 @@ end = struct
 end
 
 module Type = struct
-  type t = Int32 [@@deriving sexp_of]
-
-  let to_string = function
-    | Int32 -> "int32"
-  ;;
+  type t =
+    | I32
+    | I64
+  [@@deriving equal, sexp_of, to_string ~capitalize:"snake_case"]
 end
 
 module Virtual_register : sig
@@ -42,9 +41,6 @@ module Virtual_register : sig
   include Hashable.S_plain with type t := t
   include Comparable.S_plain with type t := t
   include Intable.S with type t := t
-
-  val zero : t
-  val succ : t -> t
 end = struct
   type t = int [@@deriving compare, hash, sexp_of]
 
@@ -52,14 +48,16 @@ end = struct
   include functor Comparable.Make_plain
 
   let to_string t = [%string "$%{t#Int}"]
-  let zero = 0
-  let succ t = t + 1
   let to_int_exn t = t
 
   let of_int_exn t =
     if t < 0 then raise_s [%message "Virtual register cannot be negative" (t : int)];
     t
   ;;
+end
+
+module Register_descriptor = struct
+  type t = { ty : Type.t } [@@deriving sexp_of]
 end
 
 module R = Virtual_register
@@ -198,21 +196,22 @@ module Function = struct
     { name : string
     ; params : (string * Virtual_register.t * Type.t) list
     ; body : Block.t iarray
+    ; registers : Register_descriptor.t iarray
     }
   [@@deriving sexp_of]
 
   module Builder = struct
     type t =
       { body : Block.Builder.t Queue.t @@ global
-      ; mutable next_register : Virtual_register.t
+      ; registers : Register_descriptor.t Queue.t @@ global
       }
 
-    let create () = { body = Queue.create (); next_register = Virtual_register.zero }
+    let create () = { body = Queue.create (); registers = Queue.create () }
     let fresh_label t = Queue.length t.body |> Label.of_int_exn
 
-    let fresh_register t =
-      let reg = t.next_register in
-      t.next_register <- Virtual_register.succ t.next_register;
+    let fresh_register t ~ty =
+      let reg = Virtual_register.of_int_exn (Queue.length t.registers) in
+      Queue.enqueue t.registers { ty };
       reg
     ;;
 
@@ -225,13 +224,21 @@ module Function = struct
     ;;
 
     let add_block' t f = add_block t f |> (ignore : Block.Builder.t -> unit)
+
+    let get_register_type (t @ local) reg =
+      let index = Virtual_register.to_int_exn reg in
+      if index < 0 || index >= Queue.length t.registers
+      then failwith "Invalid register index";
+      let%tydi { ty } = Queue.get t.registers index in
+      ty
+    ;;
   end
 
   let build ~name ~params (f : (_ @ local -> _ -> _) @ local) =
     let builder = Builder.create () in
     let params =
       List.map params ~f:(fun (p, ty) ->
-        let reg = Builder.fresh_register builder in
+        let reg = Builder.fresh_register builder ~ty in
         p, reg, ty)
     in
     f builder params;
@@ -240,10 +247,13 @@ module Function = struct
       |> Array.map ~f:Block.Builder.finalize_exn
       |> Iarray.unsafe_of_array__promise_no_mutation
     in
-    { name; params; body }
+    let registers =
+      Queue.to_array builder.registers |> Iarray.unsafe_of_array__promise_no_mutation
+    in
+    { name; params; body; registers }
   ;;
 
-  let to_string { name; params; body } =
+  let to_string { name; params; body; registers } =
     let params_str =
       String.concat
         ~sep:", "
@@ -255,7 +265,16 @@ module Function = struct
       |> Iarray.to_list
       |> String.concat ~sep:"\n"
     in
-    [%string "function %{name} (%{params_str}) {\n%{body}\n}"]
+    let registers =
+      Iarray.mapi
+        ~f:(fun i { ty } ->
+          let reg = Virtual_register.of_int_exn i in
+          [%string "%{reg#Virtual_register}: %{ty#Type}"])
+        registers
+      |> Iarray.to_list
+      |> String.concat ~sep:", "
+    in
+    [%string "function %{name} (%{params_str}) {\n%{registers}\n%{body}\n}"]
   ;;
 end
 
@@ -309,7 +328,7 @@ let rec of_ast (ast : Ast.t) =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
               match ty with
-              | Int32 -> Type.Int32
+              | Base I32 -> Type.I32
               | _ -> failwith "todo: unsupported type"
             in
             param, ty)
@@ -331,10 +350,10 @@ let rec of_ast (ast : Ast.t) =
         let arg_types, return_type =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
             match ret with
-            | Fun (Int32, ret) -> args (Type.Int32 :: acc) ret
-            | Fun ((Bool | Unit | Fun _), _) -> failwith "todo: unsupported type"
-            | Unit | Int32 -> List.rev acc, Type.Int32
-            | Bool -> failwith "todo: bools"
+            | Fun (Base I32, ret) -> args (Type.I32 :: acc) ret
+            | Fun ((Base _ | Fun _), _) -> failwith "todo: unsupported type"
+            | Base (Unit | I32) -> List.rev acc, Type.I32
+            | Base Bool -> failwith "todo: bools"
           in
           args [] type_
         in
@@ -351,22 +370,38 @@ and walk_expr
   : #(Virtual_register.t * Block.Builder.t) @ local
   = exclave_
   let open Block.Builder in
+  let require_type_equal reg1 reg2 =
+    let ty1 = Function.Builder.get_register_type function_builder reg1 in
+    let ty2 = Function.Builder.get_register_type function_builder reg2 in
+    if not (Type.equal ty1 ty2)
+    then
+      raise_s
+        [%message
+          "Expected registers to have the same type"
+            (reg1 : Virtual_register.t)
+            (ty1 : Type.t)
+            (reg2 : Virtual_register.t)
+            (ty2 : Type.t)];
+    ty1
+  in
   match expr with
   | Int i ->
-    let reg = Function.Builder.fresh_register function_builder in
+    let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = i });
     #(reg, acc)
   | App (Var "+", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
-    let dst = Function.Builder.fresh_register function_builder in
+    let ty = require_type_equal reg1 reg2 in
+    let dst = Function.Builder.fresh_register function_builder ~ty in
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
   | App (Var "-", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
-    let dst = Function.Builder.fresh_register function_builder in
+    let ty = require_type_equal reg1 reg2 in
+    let dst = Function.Builder.fresh_register function_builder ~ty in
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
@@ -395,7 +430,8 @@ and walk_expr
        (match failwith "todo: indirect function calls" with
         | (_ : Nothing.t) -> .)
      | Global c_name ->
-       let dst = Function.Builder.fresh_register function_builder in
+       (* FIXME: handle different return types *)
+       let dst = Function.Builder.fresh_register function_builder ~ty:I32 in
        let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
        push acc c_call_ins;
        #(dst, acc))
@@ -408,21 +444,30 @@ and walk_expr
         | (_ : Nothing.t) -> .))
   | If (cond, if_true, if_false) ->
     let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
-    let dst = Function.Builder.fresh_register function_builder in
     let after_block = Function.Builder.add_block function_builder ignore in
-    let then_block =
-      Function.Builder.add_block function_builder (fun acc ->
-        let #(then_reg, acc) = walk_expr if_true ~env ~function_builder ~acc in
-        push acc (Mov { dst; src = then_reg });
-        Block.Builder.register_successor acc after_block.label;
-        push acc (Jump { target = after_block.label }) [@nontail])
+    let then_block = Function.Builder.add_block function_builder ignore in
+    let else_block = Function.Builder.add_block function_builder ignore in
+    let #(then_reg, then_block) =
+      let acc = then_block in
+      walk_expr if_true ~env ~function_builder ~acc
     in
-    let else_block =
-      Function.Builder.add_block function_builder (fun acc ->
-        let #(else_reg, acc) = walk_expr if_false ~env ~function_builder ~acc in
-        push acc (Mov { dst; src = else_reg });
-        Block.Builder.register_successor acc after_block.label;
-        push acc (Jump { target = after_block.label }) [@nontail])
+    let #(else_reg, else_block) =
+      let acc = else_block in
+      walk_expr if_false ~env ~function_builder ~acc
+    in
+    let ty = require_type_equal then_reg else_reg in
+    let dst = Function.Builder.fresh_register function_builder ~ty in
+    let () =
+      let acc = then_block in
+      push acc (Mov { dst; src = then_reg });
+      Block.Builder.register_successor acc after_block.label;
+      push acc (Jump { target = after_block.label })
+    in
+    let () =
+      let acc = else_block in
+      push acc (Mov { dst; src = else_reg });
+      Block.Builder.register_successor acc after_block.label;
+      push acc (Jump { target = after_block.label })
     in
     Block.Builder.register_successor acc then_block.label;
     push acc (Branch { condition = cond_reg; target = then_block.label });

@@ -79,13 +79,7 @@ let type_annot :=
   | ~ = preceded(COLON, type_name); <>
 
 let type_name:=
-  | var = VAR;
-    { match var with
-      | "int32" -> Type.Int32
-      | "bool" -> Type.Bool
-      | "unit" -> Type.Unit
-      | name -> failwith ("Unknown type name " ^ name)
-    }
+  | var = VAR; { Type.(Base (Base.of_string var)) }
   | l = type_name; ARROW; r = type_name; { Type.Fun (l, r) }
 
 let binop == 
