@@ -11,9 +11,12 @@ val pop : t -> Register.t list -> unit
 val push : t -> Register.t list -> unit
 val mov : t -> dst:Register.t -> src:Register.t -> unit
 val mov_imm : t -> dst:Register.t -> int32# -> unit
+val mov_imm_i64 : t -> dst:Register.t -> int64# -> unit
 val ret : t -> unit
 val add : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
 val sub : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
+val add_i64 : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
+val sub_i64 : t -> dst:Register.t -> src1:Register.t -> src2:Register.t -> unit
 val bl : t -> func:string -> unit
 val b : t -> target:string -> unit
 val label : t -> string -> unit

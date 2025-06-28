@@ -7,10 +7,16 @@ module Registers = struct
     { mapping : Register.t Virtual_register.Table.t
     ; used : Register.Set.t
     ; call_sites : (block:Mirl.Label.t * insn_idx:int * live_regs:Register.Set.t) list
+    ; register_types : Mirl.Type.t Virtual_register.Table.t
     }
 
   let find_exn t register = Hashtbl.find_exn t.mapping register
   let find t register = Hashtbl.find t.mapping register
+  let get_type_exn t register = Hashtbl.find_exn t.register_types register
+  let is_i64 t register = 
+    match Hashtbl.find t.register_types register with
+    | Some Mirl.Type.I64 -> true
+    | Some Mirl.Type.I32 | None -> false
 end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
@@ -47,15 +53,21 @@ let emit_block
       let dst_reg = Registers.find_exn registers dst in
       let src1_reg = Registers.find_exn registers src1 in
       let src2_reg = Registers.find_exn registers src2 in
-      add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      if Registers.is_i64 registers dst
+      then add_i64 buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      else add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
     | Sub { dst; src1; src2 } ->
       let dst_reg = Registers.find_exn registers dst in
       let src1_reg = Registers.find_exn registers src1 in
       let src2_reg = Registers.find_exn registers src2 in
-      sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      if Registers.is_i64 registers dst
+      then sub_i64 buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      else sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
     | Set { dst; value } ->
       let dst_reg = Registers.find_exn registers dst in
-      mov_imm buf ~dst:dst_reg (I32.of_int value)
+      if Registers.is_i64 registers dst
+      then mov_imm_i64 buf ~dst:dst_reg (Stdlib_upstream_compatible.Int64_u.of_int64 (Int64.of_int value))
+      else mov_imm buf ~dst:dst_reg (I32.of_int value)
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in
@@ -89,7 +101,12 @@ let emit_function (func : Mirl.Function.t) buf =
   let open Arm_dsl in
   let registers : Registers.t =
     let mapping, used, call_sites = Linscan.allocate_registers func in
-    { mapping; used; call_sites }
+    (* Create register_types table from function register descriptors *)
+    let register_types = Virtual_register.Table.create () in
+    Iarray.iteri func.registers ~f:(fun i { ty } ->
+      let virt_reg = Virtual_register.of_int_exn i in
+      Hashtbl.set register_types ~key:virt_reg ~data:ty);
+    { mapping; used; call_sites; register_types }
   in
   let clobbered_callee_saved_registers =
     Set.inter registers.used Register.callee_saved |> Set.to_list

@@ -82,6 +82,28 @@ let mov_imm t ~dst value =
     emit_line t [%string "  movt %{dst#Register}, #%{hw#I32}"])
 ;;
 
+let mov_imm_i64 t ~dst value =
+  (* For ARM64, we can use MOV with immediate for small values, 
+     or build larger values using MOVZ/MOVK sequence *)
+  (* value is already int64#, we can work with it directly *)
+  let value_boxed = Stdlib_upstream_compatible.Int64_u.to_int64 value in
+  if Int64.O.(value_boxed >= 0L && value_boxed <= 65535L)
+  then emit_line t [%string "  mov %{dst#Register.Sixty_four}, #%{value_boxed#Int64}"]
+  else (
+    (* Use MOVZ/MOVK sequence for larger values *)
+    let w0 = Int64.O.(value_boxed land 0xFFFFL) in
+    let w1 = Int64.O.((value_boxed lsr 16) land 0xFFFFL) in
+    let w2 = Int64.O.((value_boxed lsr 32) land 0xFFFFL) in
+    let w3 = Int64.O.((value_boxed lsr 48) land 0xFFFFL) in
+    emit_line t [%string "  movz %{dst#Register.Sixty_four}, #%{w0#Int64}"];
+    if not (Int64.O.(w1 = 0L)) then
+      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w1#Int64}, lsl #16"];
+    if not (Int64.O.(w2 = 0L)) then
+      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#Int64}, lsl #32"];
+    if not (Int64.O.(w3 = 0L)) then
+      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#Int64}, lsl #48"])
+;;
+
 let ret t = emit_line t "  ret"
 
 let add t ~dst ~src1 ~src2 =
@@ -90,6 +112,14 @@ let add t ~dst ~src1 ~src2 =
 
 let sub t ~dst ~src1 ~src2 =
   emit_line t [%string "  sub %{dst#Register}, %{src1#Register}, %{src2#Register}"]
+;;
+
+let add_i64 t ~dst ~src1 ~src2 =
+  emit_line t [%string "  add %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, %{src2#Register.Sixty_four}"]
+;;
+
+let sub_i64 t ~dst ~src1 ~src2 =
+  emit_line t [%string "  sub %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, %{src2#Register.Sixty_four}"]
 ;;
 
 let bl t ~func = emit_line t [%string "  bl %{func}"]
