@@ -2,23 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Source Control
-
-This project uses **Jujutsu** (jj) as the version control system, not Git. Jujutsu is a Git-compatible DVCS that provides a different workflow model.
-
-**Common jj commands:**
-- `jj status` - Show working copy status
-- `jj log` - Show commit history
-- `jj new` - Create a new change/commit
-- `jj commit` - Finalize current changes
-- `jj edit <revision>` - Edit a specific revision
-- `jj rebase` - Rebase changes
-- `jj branch` - Manage branches
-- `jj git push` - Push to Git remote
-- `jj git fetch` - Fetch from Git remote
-
-Note: While the project has a `.gitignore` file (for compatibility), the actual VCS is Jujutsu.
-
 ## Build and Development Commands
 
 This is an OCaml project using Dune as the build system.
@@ -26,16 +9,16 @@ This is an OCaml project using Dune as the build system.
 **Building:**
 - `dune build` - Build the entire project
 - `dune build bin/main.exe` - Build the mucaml executable
-- `dune exec mucaml` - Build and run the mucaml executable
+- `dune exec bin/main.exe` - Build and run the mucaml executable
 
 **Testing:**
 - `dune runtest` - Run all tests (includes inline tests)
 - `dune test` - Alternative command for running tests
 
 **Development workflow:**
-- `dune exec mucaml -- repl` - Start the mucaml REPL
-- `dune exec mucaml -- build --project path/to/mucaml.toml` - Build a mucaml project
-- `dune exec mucaml -- run --project path/to/mucaml.toml` - Build and run a mucaml project
+- `dune exec bin/main.exe -- repl` - Start the mucaml REPL
+- `dune exec bin/main.exe -- build --project path/to/mucaml.toml` - Build a mucaml project
+- `dune exec bin/main.exe -- run --project path/to/mucaml.toml` - Build and run a mucaml project
 
 **Code Formatting:**
 - `dune fmt` - Format OCaml code according to project style
@@ -87,3 +70,44 @@ Mucaml is a compiler for a functional language that targets ARM/ARM64 architectu
 - Dune is used for build management with inline tests
 - The compiler stages can be dumped individually using `--dump-stage` flag
 - Runtime support includes Rust components in `runtime/` for target-specific functionality
+
+## Code style
+
+### Type Annotations
+
+Prefer type annotations vs. qualifying record field names e.g.
+
+```ocaml
+(* better *)
+let config : Mucaml_middle.Legalize.Config.t = { supports_native_i64 = false } in
+
+(* worse *)
+let config = { Mucaml_middle.Legalize.Config.supports_native_i64 = false } in
+```
+
+### Imports
+
+Prefer adding module aliases to "import.ml" rather than using `open` statements in the
+code. This keeps the imports explicit and avoids namespace pollution.
+
+Most modules should begin with:
+
+```ocaml
+open! Core
+open! Import
+```
+
+If you need `Async` for whatever reason, add it between `Core` and `Import`:
+
+```ocaml
+open! Core
+open! Async
+open! Import
+```
+
+### Tests
+
+Tests are written using the "expect test" style. Tests live under `test/` and are run
+with `dune runtest`. When updating tests, confirm that the output from `dune runtest` is
+correct, and then call `dune promote` to update the expected output.
+
