@@ -154,8 +154,10 @@ module Instruction = struct
       in
       [%string "%{dst#Virtual_register} := c_call %{func}(%{args_str})"]
     | Jump { target } -> [%string "jump %{target#Label}"]
-    | Return regs -> 
-      let regs_str = String.concat ~sep:", " (List.map regs ~f:Virtual_register.to_string) in
+    | Return regs ->
+      let regs_str =
+        String.concat ~sep:", " (List.map regs ~f:Virtual_register.to_string)
+      in
       [%string "return %{regs_str}"]
     | Branch { condition; target } ->
       [%string "branch if %{condition#Virtual_register} to %{target#Label}"]
@@ -367,7 +369,7 @@ let rec of_ast (ast : Ast.t) =
                let #(result, acc) @ local =
                  walk_expr body ~function_builder:builder ~env ~acc
                in
-               Block.Builder.push acc (Instruction.Return [result]) [@nontail])
+               Block.Builder.push acc (Instruction.Return [ result ]) [@nontail])
              [@nontail]))
       | External { name; type_; c_name } ->
         let arg_types, return_type =

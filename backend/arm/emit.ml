@@ -96,11 +96,11 @@ let emit_block
       c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
     | Return regs ->
       (match regs with
-       | [reg] -> 
+       | [ reg ] ->
          (* Single register return (i32) *)
          let reg = Registers.find_exn registers reg in
          if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg
-       | [low_reg; high_reg] ->
+       | [ low_reg; high_reg ] ->
          (* Two register return (i64) - ARM32 ABI: r0=low, r1=high *)
          let low_phys = Registers.find_exn registers low_reg in
          let high_phys = Registers.find_exn registers high_reg in

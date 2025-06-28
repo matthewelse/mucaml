@@ -16,7 +16,7 @@ let test_simple_i64_add () =
           let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
           let instructions =
             [ Instruction.Add { dst = result; src1 = a; src2 = b }
-            ; Instruction.Return [result]
+            ; Instruction.Return [ result ]
             ]
           in
           Block.Builder.push_many block_builder instructions)
@@ -31,8 +31,10 @@ let test_simple_i64_add () =
   to_string arm32_legalized |> print_endline
 ;;
 
-let%expect_test _ = test_simple_i64_add ();
-  [%expect {|
+let%expect_test _ =
+  test_simple_i64_add ();
+  [%expect
+    {|
     === Original MIRL ===
     function test_add ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
@@ -51,3 +53,4 @@ let%expect_test _ = test_simple_i64_add ();
         return $6, $7
     }
     |}]
+;;

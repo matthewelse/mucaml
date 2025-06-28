@@ -82,26 +82,25 @@ let mov_imm t ~dst value =
     emit_line t [%string "  movt %{dst#Register}, #%{hw#I32}"])
 ;;
 
-let mov_imm_i64 t ~dst value =
-  (* For ARM64, we can use MOV with immediate for small values, 
-     or build larger values using MOVZ/MOVK sequence *)
-  (* value is already int64#, we can work with it directly *)
-  let value_boxed = Stdlib_upstream_compatible.Int64_u.to_int64 value in
-  if Int64.O.(value_boxed >= 0L && value_boxed <= 65535L)
-  then emit_line t [%string "  mov %{dst#Register.Sixty_four}, #%{value_boxed#Int64}"]
+let mov_imm_i64 t ~dst (value : I64.t) =
+  let open I64.O in
+  (* For ARM64, we can use MOV with immediate for small values, or build larger values
+     using MOVZ/MOVK sequence *)
+  if value >= #0L && value <= #65535L
+  then emit_line t [%string "  mov %{dst#Register.Sixty_four}, #%{value#I64}"]
   else (
     (* Use MOVZ/MOVK sequence for larger values *)
-    let w0 = Int64.O.(value_boxed land 0xFFFFL) in
-    let w1 = Int64.O.((value_boxed lsr 16) land 0xFFFFL) in
-    let w2 = Int64.O.((value_boxed lsr 32) land 0xFFFFL) in
-    let w3 = Int64.O.((value_boxed lsr 48) land 0xFFFFL) in
-    emit_line t [%string "  movz %{dst#Register.Sixty_four}, #%{w0#Int64}"];
-    if not Int64.O.(w1 = 0L)
-    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w1#Int64}, lsl #16"];
-    if not Int64.O.(w2 = 0L)
-    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#Int64}, lsl #32"];
-    if not Int64.O.(w3 = 0L)
-    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#Int64}, lsl #48"])
+    let w0 = value land #0xFFFFL in
+    let w1 = (value lsr 16) land #0xFFFFL in
+    let w2 = (value lsr 32) land #0xFFFFL in
+    let w3 = (value lsr 48) land #0xFFFFL in
+    emit_line t [%string "  movz %{dst#Register.Sixty_four}, #%{w0#I64}"];
+    if not (w1 = #0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w1#I64}, lsl #16"];
+    if not (w2 = #0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#I64}, lsl #32"];
+    if not (w3 = #0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#I64}, lsl #48"])
 ;;
 
 let ret t = emit_line t "  ret"

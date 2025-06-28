@@ -17,7 +17,7 @@ let test_arm32_codegen text =
     print_endline "=== Original MIRL ===";
     Mirl.to_string mirl |> print_endline;
     (* Apply legalization for ARM32 *)
-    let config = Mucaml_middle.Legalize.Config.{ supports_native_i64 = false } in
+    let config : Mucaml_middle.Legalize.Config.t = { supports_native_i64 = false } in
     let legalized = Mucaml_middle.Legalize.legalize_program config mirl in
     print_endline "=== Legalized MIRL ===";
     Mirl.to_string legalized |> print_endline;
@@ -30,7 +30,8 @@ let test_arm32_codegen text =
 
 let%expect_test "i64 return on ARM32" =
   test_arm32_codegen {| let main _ : i64 = 1234567890L |};
-  [%expect {|
+  [%expect
+    {|
     === Original MIRL ===
     function mucaml_main ($0 (_): i64) {
     $0: i64, $1: i64

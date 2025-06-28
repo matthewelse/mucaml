@@ -108,7 +108,7 @@ let emit_block
       c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
     | Return regs ->
       (match regs with
-       | [reg] -> 
+       | [ reg ] ->
          (* Single register return (typical for ARM64) *)
          let reg = Registers.find_exn registers reg in
          if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg

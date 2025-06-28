@@ -313,7 +313,7 @@ module%test _ = struct
               ; Add { dst = f; src1 = f; src2 = b }
               ; Add { dst = d; src1 = e; src2 = f }
               ; Mov { dst = g; src = d }
-              ; Return [g]
+              ; Return [ g ]
               ]
             in
             (* Create a block with the instructions. *)
@@ -386,7 +386,7 @@ module%test _ = struct
               ; Add { dst = tmp2; src1 = a; src2 = z }
               ; Add { dst = tmp3; src1 = tmp2; src2 = y }
               ; Add { dst = ret; src1 = tmp3; src2 = x }
-              ; Return [ret]
+              ; Return [ ret ]
               ]
             in
             Block.Builder.push_many block instructions))
@@ -478,9 +478,13 @@ module%test _ = struct
           let src_reg = Hashtbl.find_exn registers src in
           print_endline [%string "%{dst_reg#Register} := %{src_reg#Register}"]
         | Return regs ->
-          let regs_str = String.concat ~sep:", " (List.map regs ~f:(fun reg ->
-            let phys_reg = Hashtbl.find_exn registers reg in
-            Register.to_string phys_reg)) in
+          let regs_str =
+            String.concat
+              ~sep:", "
+              (List.map regs ~f:(fun reg ->
+                 let phys_reg = Hashtbl.find_exn registers reg in
+                 Register.to_string phys_reg))
+          in
           print_endline [%string "return %{regs_str}"]
         | Jump { target } -> print_endline [%string "jump %{target#Mirl.Label}"]
         | Branch { condition; target } ->
@@ -512,7 +516,7 @@ module%test _ = struct
               ; Add { dst = f; src1 = f; src2 = b }
               ; Add { dst = d; src1 = e; src2 = f }
               ; Mov { dst = g; src = d }
-              ; Return [g]
+              ; Return [ g ]
               ]
             in
             (* Create a block with the instructions. *)
@@ -552,7 +556,7 @@ module%test _ = struct
         in
         Block.Builder.push_many block_2 instructions;
         let instructions : Mirl.Instruction.t list =
-          [ Add { dst = y; src1 = x; src2 = x }; Return [y] ]
+          [ Add { dst = y; src1 = x; src2 = x }; Return [ y ] ]
         in
         Block.Builder.push_many block_3 instructions;
         ())
@@ -602,7 +606,7 @@ module%test _ = struct
               ; Add { dst = tmp2; src1 = a; src2 = z }
               ; Add { dst = tmp3; src1 = tmp2; src2 = y }
               ; Add { dst = ret; src1 = tmp3; src2 = x }
-              ; Return [ret]
+              ; Return [ ret ]
               ]
             in
             Block.Builder.push_many block instructions))

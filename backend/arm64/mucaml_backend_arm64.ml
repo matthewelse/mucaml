@@ -18,6 +18,10 @@ module Settings = struct
   ;;
 end
 
+module Capabilities = struct
+  let supports_native_i64 = true
+end
+
 let name = "arm64"
 
 let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
@@ -36,10 +40,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
     (module struct
       module Settings = Settings
       module Assembly = String
-
-      module Capabilities = struct
-        let supports_native_i64 = true
-      end
+      module Capabilities = Capabilities
 
       let name = name
       let triple = triple

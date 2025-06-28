@@ -95,10 +95,10 @@ let legalize_instruction register_types pair_map func_builder instruction =
     let dst_low, dst_high = Register_pair_map.get_or_create pair_map func_builder dst in
     let src_low, src_high = Register_pair_map.get_pair pair_map src in
     [ Mov { dst = dst_low; src = src_low }; Mov { dst = dst_high; src = src_high } ]
-  | Return [reg] when Register_types.is_i64 register_types reg ->
+  | Return [ reg ] when Register_types.is_i64 register_types reg ->
     (* Transform i64 return: return both low and high parts for ARM32 ABI *)
     let src_low, src_high = Register_pair_map.get_pair pair_map reg in
-    [ Return [src_low; src_high] ]
+    [ Return [ src_low; src_high ] ]
   | _ -> [ instruction ]
 ;;
 

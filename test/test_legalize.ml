@@ -18,7 +18,7 @@ let create_i64_add_function () =
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
           [ Instruction.Add { dst = result; src1 = a; src2 = b }
-          ; Instruction.Return [result]
+          ; Instruction.Return [ result ]
           ]
         in
         Block.Builder.push_many block_builder instructions)
@@ -40,7 +40,7 @@ let create_i64_sub_function () =
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
           [ Instruction.Sub { dst = result; src1 = a; src2 = b }
-          ; Instruction.Return [result]
+          ; Instruction.Return [ result ]
           ]
         in
         Block.Builder.push_many block_builder instructions)
@@ -55,7 +55,7 @@ let create_i64_immediate_function () =
       let instructions =
         [ Instruction.Set { dst = result; value = 0x12345678 }
         ; (* Large 32-bit value *)
-          Instruction.Return [result]
+          Instruction.Return [ result ]
         ]
       in
       Block.Builder.push_many block_builder instructions)
@@ -76,7 +76,7 @@ let create_i64_move_function () =
       Function.Builder.add_block' builder (fun block_builder ->
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
-          [ Instruction.Mov { dst = result; src = x }; Instruction.Return [result] ]
+          [ Instruction.Mov { dst = result; src = x }; Instruction.Return [ result ] ]
         in
         Block.Builder.push_many block_builder instructions)
       [@nontail])
@@ -102,7 +102,7 @@ let create_mixed_i32_i64_function () =
           ; Instruction.Add { dst = temp; src1 = a; src2 = const42 }
           ; Instruction.Add { dst = result; src1 = b; src2 = temp }
           ; (* This will trigger i64+i32 handling *)
-            Instruction.Return [result]
+            Instruction.Return [ result ]
           ]
         in
         Block.Builder.push_many block_builder instructions)
