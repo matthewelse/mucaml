@@ -9,6 +9,10 @@ module type Target_isa = sig
     val to_string : t -> string
   end
 
+  module Capabilities : sig
+    val supports_native_i64 : bool
+  end
+
   val name : string
   val triple : Triple.t
   val build_program : Mucaml_middle.Mirl.t -> Assembly.t Or_error.t

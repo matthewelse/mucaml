@@ -44,6 +44,10 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
       module Settings = Settings
       module Assembly = String
 
+      module Capabilities = struct
+        let supports_native_i64 = false
+      end
+
       let name = name
       let triple = triple
       let build_program cmm = Ok (Emit.emit_cmm cmm)

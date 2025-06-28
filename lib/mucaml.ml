@@ -5,6 +5,7 @@ module E = MenhirLib.ErrorReports
 module Ast = Ast
 module Mirl = Mirl
 module Parse = Parse
+module Legalize = Mucaml_middle.Legalize
 
 module Stage = struct
   module T = struct
@@ -56,7 +57,9 @@ let compile_toplevel
     let cmm = Mirl.of_ast ast in
     if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
     then Mirl.to_string cmm |> print_endline;
-    let%bind assembly = Deferred.return (Target.build_program cmm) in
+    let legalize_config = Legalize.Config.{ supports_native_i64 = Target.Capabilities.supports_native_i64 } in
+    let legalized_cmm = Legalize.legalize_program legalize_config cmm in
+    let%bind assembly = Deferred.return (Target.build_program legalized_cmm) in
     (*
        let rpi_build_info =
       Rpi_binary_info.generate_assembly

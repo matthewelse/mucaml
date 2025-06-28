@@ -10,6 +10,7 @@
   linenoise
   menhirLib
   mucaml_frontend
+  mucaml_middle
   mucaml_backend
   otoml)
  (preprocess
