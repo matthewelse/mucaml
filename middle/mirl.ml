@@ -74,6 +74,16 @@ module Instruction = struct
         ; src1 : R.t
         ; src2 : R.t
         }
+    | Add_with_carry of
+        { dst : R.t
+        ; src1 : R.t
+        ; src2 : R.t
+        }
+    | Sub_with_carry of
+        { dst : R.t
+        ; src1 : R.t
+        ; src2 : R.t
+        }
     | Set of
         { dst : R.t
         ; value : int
@@ -99,6 +109,8 @@ module Instruction = struct
     match t with
     | Add { src1; src2; _ } -> [ src1; src2 ]
     | Sub { src1; src2; _ } -> [ src1; src2 ]
+    | Add_with_carry { src1; src2; _ } -> [ src1; src2 ]
+    | Sub_with_carry { src1; src2; _ } -> [ src1; src2 ]
     | Set _ -> []
     | Mov { src; _ } -> [ src ]
     | C_call { args; _ } -> args
@@ -111,6 +123,8 @@ module Instruction = struct
     match t with
     | Add { dst; _ }
     | Sub { dst; _ }
+    | Add_with_carry { dst; _ }
+    | Sub_with_carry { dst; _ }
     | Set { dst; _ }
     | Mov { dst; _ }
     | C_call { dst; _ } -> exclave_ Some dst
@@ -126,6 +140,12 @@ module Instruction = struct
     | Sub { dst; src1; src2 } ->
       [%string
         "%{dst#Virtual_register} := %{src1#Virtual_register} - %{src2#Virtual_register}"]
+    | Add_with_carry { dst; src1; src2 } ->
+      [%string
+        "%{dst#Virtual_register} := %{src1#Virtual_register} +c %{src2#Virtual_register}"]
+    | Sub_with_carry { dst; src1; src2 } ->
+      [%string
+        "%{dst#Virtual_register} := %{src1#Virtual_register} -c %{src2#Virtual_register}"]
     | Set { dst; value } -> [%string "%{dst#Virtual_register} := %{value#Int}"]
     | Mov { dst; src } -> [%string "%{dst#Virtual_register} := %{src#Virtual_register}"]
     | C_call { dst; func; args } ->

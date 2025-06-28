@@ -53,6 +53,16 @@ let emit_block
       let src1_reg = Registers.find_exn registers src1 in
       let src2_reg = Registers.find_exn registers src2 in
       sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Add_with_carry { dst; src1; src2 } ->
+      let dst_reg = Registers.find_exn registers dst in
+      let src1_reg = Registers.find_exn registers src1 in
+      let src2_reg = Registers.find_exn registers src2 in
+      adc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Sub_with_carry { dst; src1; src2 } ->
+      let dst_reg = Registers.find_exn registers dst in
+      let src1_reg = Registers.find_exn registers src1 in
+      let src2_reg = Registers.find_exn registers src2 in
+      sbc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
     | Set { dst; value } ->
       let dst_reg = Registers.find_exn registers dst in
       mov_imm buf ~dst:dst_reg (I32.of_int value)

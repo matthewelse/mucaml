@@ -44,6 +44,16 @@ module Instruction : sig
         ; src1 : Virtual_register.t
         ; src2 : Virtual_register.t
         }
+    | Add_with_carry of
+        { dst : Virtual_register.t
+        ; src1 : Virtual_register.t
+        ; src2 : Virtual_register.t
+        }
+    | Sub_with_carry of
+        { dst : Virtual_register.t
+        ; src1 : Virtual_register.t
+        ; src2 : Virtual_register.t
+        }
     | Set of
         { dst : Virtual_register.t
         ; value : int

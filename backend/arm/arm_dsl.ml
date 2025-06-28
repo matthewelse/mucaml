@@ -75,6 +75,14 @@ let sub t ~dst ~src1 ~src2 =
   emit_line t [%string "  sub %{dst#Register}, %{src1#Register}, %{src2#Register}"]
 ;;
 
+let adc t ~dst ~src1 ~src2 =
+  emit_line t [%string "  adc %{dst#Register}, %{src1#Register}, %{src2#Register}"]
+;;
+
+let sbc t ~dst ~src1 ~src2 =
+  emit_line t [%string "  sbc %{dst#Register}, %{src1#Register}, %{src2#Register}"]
+;;
+
 let b t ~target = emit_line t [%string "  b %{target}"]
 let bl t ~func = emit_line t [%string "  bl %{func}"]
 let label t label = emit_line t [%string "%{label}:"]

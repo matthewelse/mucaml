@@ -63,6 +63,20 @@ let emit_block
       if Registers.is_i64 registers dst
       then sub_i64 buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
       else sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Add_with_carry { dst; src1; src2 } ->
+      (* ARM64 doesn't need these since it has native i64 support,
+         but we handle them for completeness - treat as regular add *)
+      let dst_reg = Registers.find_exn registers dst in
+      let src1_reg = Registers.find_exn registers src1 in
+      let src2_reg = Registers.find_exn registers src2 in
+      add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+    | Sub_with_carry { dst; src1; src2 } ->
+      (* ARM64 doesn't need these since it has native i64 support,
+         but we handle them for completeness - treat as regular sub *)
+      let dst_reg = Registers.find_exn registers dst in
+      let src1_reg = Registers.find_exn registers src1 in
+      let src2_reg = Registers.find_exn registers src2 in
+      sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
     | Set { dst; value } ->
       let dst_reg = Registers.find_exn registers dst in
       if Registers.is_i64 registers dst

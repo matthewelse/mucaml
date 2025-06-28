@@ -52,6 +52,14 @@ struct
           assigns ~idx dst;
           consumes ~idx src1;
           consumes ~idx src2
+        | Add_with_carry { dst; src1; src2 } ->
+          assigns ~idx dst;
+          consumes ~idx src1;
+          consumes ~idx src2
+        | Sub_with_carry { dst; src1; src2 } ->
+          assigns ~idx dst;
+          consumes ~idx src1;
+          consumes ~idx src2
         | Set { dst; value = _ } -> assigns ~idx dst
         | C_call { dst; func = _; args } ->
           assigns ~idx dst;
@@ -440,6 +448,18 @@ module%test _ = struct
           let src2_reg = Hashtbl.find_exn registers src2 in
           print_endline
             [%string "%{dst_reg#Register} := %{src1_reg#Register} - %{src2_reg#Register}"]
+        | Add_with_carry { dst; src1; src2 } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let src1_reg = Hashtbl.find_exn registers src1 in
+          let src2_reg = Hashtbl.find_exn registers src2 in
+          print_endline
+            [%string "%{dst_reg#Register} := %{src1_reg#Register} +c %{src2_reg#Register}"]
+        | Sub_with_carry { dst; src1; src2 } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          let src1_reg = Hashtbl.find_exn registers src1 in
+          let src2_reg = Hashtbl.find_exn registers src2 in
+          print_endline
+            [%string "%{dst_reg#Register} := %{src1_reg#Register} -c %{src2_reg#Register}"]
         | Set { dst; value = _ } ->
           let dst_reg = Hashtbl.find_exn registers dst in
           print_endline [%string "%{dst_reg#Register} := <set value>"]
