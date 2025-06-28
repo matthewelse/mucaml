@@ -109,6 +109,101 @@ let create_mixed_i32_i64_function () =
       [@nontail])
 ;;
 
+(* Edge case: Large immediate values that span 32-bit boundaries *)
+let create_i64_large_immediate_function () =
+  let open Mirl in
+  Function.build ~name:"test_i64_large_immediate" ~params:[] (fun builder _params ->
+    Function.Builder.add_block' builder (fun block_builder ->
+      let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
+      let instructions =
+        [ Instruction.Set { dst = result; value = 0x80000000 }
+        ; (* This is Int32.min_value, edge case for sign extension *)
+          Instruction.Return [ result ]
+        ]
+      in
+      Block.Builder.push_many block_builder instructions)
+    [@nontail])
+;;
+
+(* Edge case: Multiple i64 operations in sequence (register pressure) *)
+let create_i64_chain_function () =
+  let open Mirl in
+  Function.build
+    ~name:"test_i64_chain"
+    ~params:[ "x", Type.I64; "y", Type.I64 ]
+    (fun builder params ->
+      let x, y =
+        match params with
+        | [ (_, x, _); (_, y, _) ] -> x, y
+        | _ -> failwith "Expected 2 parameters"
+      in
+      Function.Builder.add_block' builder (fun block_builder ->
+        let temp1 = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let temp2 = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let temp3 = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let instructions =
+          [ Instruction.Add { dst = temp1; src1 = x; src2 = y }
+          ; Instruction.Sub { dst = temp2; src1 = temp1; src2 = x }
+          ; Instruction.Add { dst = temp3; src1 = temp2; src2 = y }
+          ; Instruction.Sub { dst = result; src1 = temp3; src2 = temp1 }
+          ; Instruction.Return [ result ]
+          ]
+        in
+        Block.Builder.push_many block_builder instructions)
+      [@nontail])
+;;
+
+(* Edge case: i64 operations with function calls (caller-saved register pressure) *)
+let create_i64_with_calls_function () =
+  let open Mirl in
+  Function.build
+    ~name:"test_i64_with_calls"
+    ~params:[ "x", Type.I64 ]
+    (fun builder params ->
+      let x =
+        match params with
+        | [ (_, x, _) ] -> x
+        | _ -> failwith "Expected 1 parameter"
+      in
+      Function.Builder.add_block' builder (fun block_builder ->
+        let const1 = Function.Builder.fresh_register builder ~ty:Type.I32 in
+        let call_result = Function.Builder.fresh_register builder ~ty:Type.I32 in
+        let temp = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
+        let instructions =
+          [ Instruction.Set { dst = const1; value = 42 }
+          ; Instruction.C_call { dst = call_result; func = "external_func"; args = [ const1 ] }
+          ; Instruction.Add { dst = temp; src1 = x; src2 = x }
+          ; (* x should survive the call *)
+            Instruction.Add { dst = result; src1 = temp; src2 = call_result }
+          ; (* Mix i64 + i32 after call *)
+            Instruction.Return [ result ]
+          ]
+        in
+        Block.Builder.push_many block_builder instructions)
+      [@nontail])
+;;
+
+(* Edge case: Zero and negative immediate values *)
+let create_i64_edge_immediates_function () =
+  let open Mirl in
+  Function.build ~name:"test_i64_edge_immediates" ~params:[] (fun builder _params ->
+    Function.Builder.add_block' builder (fun block_builder ->
+      let zero = Function.Builder.fresh_register builder ~ty:Type.I64 in
+      let neg_one = Function.Builder.fresh_register builder ~ty:Type.I64 in
+      let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
+      let instructions =
+        [ Instruction.Set { dst = zero; value = 0 }
+        ; Instruction.Set { dst = neg_one; value = -1 }
+        ; Instruction.Add { dst = result; src1 = zero; src2 = neg_one }
+        ; Instruction.Return [ result ]
+        ]
+      in
+      Block.Builder.push_many block_builder instructions)
+    [@nontail])
+;;
+
 let test_legalization name create_func =
   let func = create_func () in
   let program = Mirl.{ functions = [ func ]; externs = [] } in
@@ -298,6 +393,172 @@ let%expect_test "mixed i32 i64 legalization" =
         $3 := $0 + $2
         $4 := $1 + $3
         return $4
+    }
+    |}]
+;;
+
+(* Test large immediate values at 32-bit boundary *)
+let%expect_test "i64 large immediate legalization" =
+  test_legalization "i64 Large Immediate" create_i64_large_immediate_function;
+  [%expect
+    {|
+    === Original i64 Large Immediate ===
+    function test_i64_large_immediate () {
+    $0: i64
+    block_0:
+        $0 := 2147483648
+        return $0
+    }
+
+
+    === ARM32 Legalized i64 Large Immediate ===
+    function test_i64_large_immediate () {
+    $0: i32, $1: i32
+    block_0:
+        $0 := 2147483648
+        $1 := 0
+        return $0, $1
+    }
+
+
+    === ARM64 Legalized i64 Large Immediate (should be unchanged) ===
+    function test_i64_large_immediate () {
+    $0: i64
+    block_0:
+        $0 := 2147483648
+        return $0
+    }
+    |}]
+;;
+
+(* Test register pressure with multiple i64 operations *)
+let%expect_test "i64 chain operations legalization" =
+  test_legalization "i64 Chain" create_i64_chain_function;
+  [%expect
+    {|
+    === Original i64 Chain ===
+    function test_i64_chain ($0 (x): i64, $1 (y): i64) {
+    $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64
+    block_0:
+        $2 := $0 + $1
+        $3 := $2 - $0
+        $4 := $3 + $1
+        $5 := $4 - $2
+        return $5
+    }
+
+
+    === ARM32 Legalized i64 Chain ===
+    function test_i64_chain ($0 (x): i64, $1 (y): i64) {
+    $0: i64, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32, $12: i32, $13: i32
+    block_0:
+        $6 := $2 + $4
+        $7 := $3 +c $5
+        $8 := $6 - $2
+        $9 := $7 -c $3
+        $10 := $8 + $4
+        $11 := $9 +c $5
+        $12 := $10 - $6
+        $13 := $11 -c $7
+        return $12, $13
+    }
+
+
+    === ARM64 Legalized i64 Chain (should be unchanged) ===
+    function test_i64_chain ($0 (x): i64, $1 (y): i64) {
+    $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64
+    block_0:
+        $2 := $0 + $1
+        $3 := $2 - $0
+        $4 := $3 + $1
+        $5 := $4 - $2
+        return $5
+    }
+    |}]
+;;
+
+(* Test i64 operations with function calls *)
+let%expect_test "i64 with function calls legalization" =
+  test_legalization "i64 with Calls" create_i64_with_calls_function;
+  [%expect
+    {|
+    === Original i64 with Calls ===
+    function test_i64_with_calls ($0 (x): i64) {
+    $0: i64, $1: i32, $2: i32, $3: i64, $4: i64
+    block_0:
+        $1 := 42
+        $2 := c_call external_func($1)
+        $3 := $0 + $0
+        $4 := $3 + $2
+        return $4
+    }
+
+
+    === ARM32 Legalized i64 with Calls ===
+    function test_i64_with_calls ($0 (x): i64) {
+    $0: i64, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32
+    block_0:
+        $1 := 42
+        $2 := c_call external_func($1)
+        $3 := $1 + $1
+        $4 := $2 +c $2
+        $5 := $3 + $7
+        $6 := $4 +c $8
+        return $5, $6
+    }
+
+
+    === ARM64 Legalized i64 with Calls (should be unchanged) ===
+    function test_i64_with_calls ($0 (x): i64) {
+    $0: i64, $1: i32, $2: i32, $3: i64, $4: i64
+    block_0:
+        $1 := 42
+        $2 := c_call external_func($1)
+        $3 := $0 + $0
+        $4 := $3 + $2
+        return $4
+    }
+    |}]
+;;
+
+(* Test edge cases with zero and negative immediates *)
+let%expect_test "i64 edge immediate values legalization" =
+  test_legalization "i64 Edge Immediates" create_i64_edge_immediates_function;
+  [%expect
+    {|
+    === Original i64 Edge Immediates ===
+    function test_i64_edge_immediates () {
+    $0: i64, $1: i64, $2: i64
+    block_0:
+        $0 := 0
+        $1 := -1
+        $2 := $0 + $1
+        return $2
+    }
+
+
+    === ARM32 Legalized i64 Edge Immediates ===
+    function test_i64_edge_immediates () {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
+    block_0:
+        $0 := 0
+        $1 := 0
+        $2 := 4294967295
+        $3 := -1
+        $4 := $0 + $2
+        $5 := $1 +c $3
+        return $4, $5
+    }
+
+
+    === ARM64 Legalized i64 Edge Immediates (should be unchanged) ===
+    function test_i64_edge_immediates () {
+    $0: i64, $1: i64, $2: i64
+    block_0:
+        $0 := 0
+        $1 := -1
+        $2 := $0 + $1
+        return $2
     }
     |}]
 ;;
