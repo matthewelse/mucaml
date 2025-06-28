@@ -3,8 +3,8 @@ open! Core
 let test text =
   match Helpers.parse text with
   | Ok ast ->
-    let cmm = Mucaml.Mirl.of_ast ast in
-    Mucaml.Mirl.to_string cmm |> print_endline
+    let mirl = Mucaml.Mirl.of_ast ast in
+    Mucaml.Mirl.to_string mirl |> print_endline
   | Error () -> ()
 ;;
 

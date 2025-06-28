@@ -24,8 +24,8 @@ let compile text =
   in
   match parse text with
   | Ok ast ->
-    let cmm = Mirl.of_ast ast in
-    let assembly = Target.build_program cmm |> ok_exn in
+    let mirl = Mirl.of_ast ast in
+    let assembly = Target.build_program mirl |> ok_exn in
     print_endline (Target.Assembly.to_string assembly)
   | Error () -> ()
 ;;

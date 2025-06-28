@@ -95,10 +95,10 @@ let legalize_instruction register_types pair_map func_builder instruction =
     let dst_low, dst_high = Register_pair_map.get_or_create pair_map func_builder dst in
     let src_low, src_high = Register_pair_map.get_pair pair_map src in
     [ Mov { dst = dst_low; src = src_low }; Mov { dst = dst_high; src = src_high } ]
-  | Return reg when Register_types.is_i64 register_types reg ->
-    (* Transform i64 return: return low part of register pair *)
-    let src_low, _src_high = Register_pair_map.get_pair pair_map reg in
-    [ Return src_low ]
+  | Return [reg] when Register_types.is_i64 register_types reg ->
+    (* Transform i64 return: return both low and high parts for ARM32 ABI *)
+    let src_low, src_high = Register_pair_map.get_pair pair_map reg in
+    [ Return [src_low; src_high] ]
   | _ -> [ instruction ]
 ;;
 
@@ -116,7 +116,7 @@ let legalize_function config func =
       (fun func_builder params ->
         let pair_map = Register_pair_map.create () in
         (* Create parameter register mappings *)
-        List.iter2_exn func.params params ~f:(fun (_, orig_reg, ty) (_, new_reg, _) ->
+        List.iter2_exn func.params params ~f:(fun (_, _, ty) (_, new_reg, _) ->
           match ty with
           | Mirl.Type.I64 ->
             (* For i64 parameters, create register pairs *)
@@ -126,10 +126,10 @@ let legalize_function config func =
             let high_reg =
               Mirl.Function.Builder.fresh_register func_builder ~ty:Mirl.Type.I32
             in
-            Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg)
+            Hashtbl.set pair_map ~key:new_reg ~data:(low_reg, high_reg)
           | Mirl.Type.I32 ->
             (* For i32 parameters, map to the new register *)
-            Hashtbl.set pair_map ~key:orig_reg ~data:(new_reg, new_reg));
+            Hashtbl.set pair_map ~key:new_reg ~data:(new_reg, new_reg));
         (* Process each block *)
         Iarray.iter func.body ~f:(fun block ->
           Mirl.Function.Builder.add_block' func_builder (fun block_builder ->

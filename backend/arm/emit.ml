@@ -44,32 +44,43 @@ let emit_block
   Iarray.iteri block.instructions ~f:(fun insn_idx instruction ->
     match instruction with
     | Add { dst; src1; src2 } ->
-      let dst_reg = Registers.find_exn registers dst in
-      let src1_reg = Registers.find_exn registers src1 in
-      let src2_reg = Registers.find_exn registers src2 in
-      add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         let src1_reg = Registers.find_exn registers src1 in
+         let src2_reg = Registers.find_exn registers src2 in
+         add buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+       | None -> (* Destination register is unused, skip instruction *) ())
     | Sub { dst; src1; src2 } ->
-      let dst_reg = Registers.find_exn registers dst in
-      let src1_reg = Registers.find_exn registers src1 in
-      let src2_reg = Registers.find_exn registers src2 in
-      sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         let src1_reg = Registers.find_exn registers src1 in
+         let src2_reg = Registers.find_exn registers src2 in
+         sub buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+       | None -> (* Destination register is unused, skip instruction *) ())
     | Add_with_carry { dst; src1; src2 } ->
-      let dst_reg = Registers.find_exn registers dst in
-      let src1_reg = Registers.find_exn registers src1 in
-      let src2_reg = Registers.find_exn registers src2 in
-      adc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         let src1_reg = Registers.find_exn registers src1 in
+         let src2_reg = Registers.find_exn registers src2 in
+         adc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+       | None -> (* Destination register is unused, skip instruction *) ())
     | Sub_with_carry { dst; src1; src2 } ->
-      let dst_reg = Registers.find_exn registers dst in
-      let src1_reg = Registers.find_exn registers src1 in
-      let src2_reg = Registers.find_exn registers src2 in
-      sbc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         let src1_reg = Registers.find_exn registers src1 in
+         let src2_reg = Registers.find_exn registers src2 in
+         sbc buf ~dst:dst_reg ~src1:src1_reg ~src2:src2_reg
+       | None -> (* Destination register is unused, skip instruction *) ())
     | Set { dst; value } ->
-      let dst_reg = Registers.find_exn registers dst in
-      mov_imm buf ~dst:dst_reg (I32.of_int value)
+      (match Registers.find registers dst with
+       | Some dst_reg -> mov_imm buf ~dst:dst_reg (I32.of_int value)
+       | None -> (* Register is unused, skip instruction *) ())
     | Mov { dst; src } ->
-      let dst_reg = Registers.find_exn registers dst in
-      let src_reg = Registers.find_exn registers src in
-      if not (Register.equal dst_reg src_reg) then mov buf ~dst:dst_reg ~src:src_reg
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         let src_reg = Registers.find_exn registers src in
+         if not (Register.equal dst_reg src_reg) then mov buf ~dst:dst_reg ~src:src_reg
+       | None -> (* Destination register is unused, skip instruction *) ())
     | C_call { dst; func; args } ->
       let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
@@ -83,9 +94,19 @@ let emit_block
         |> Option.value_map ~default:[] ~f:Set.to_list
       in
       c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
-    | Return reg ->
-      let reg = Registers.find_exn registers reg in
-      if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg;
+    | Return regs ->
+      (match regs with
+       | [reg] -> 
+         (* Single register return (i32) *)
+         let reg = Registers.find_exn registers reg in
+         if not (Register.equal reg R0) then mov buf ~dst:R0 ~src:reg
+       | [low_reg; high_reg] ->
+         (* Two register return (i64) - ARM32 ABI: r0=low, r1=high *)
+         let low_phys = Registers.find_exn registers low_reg in
+         let high_phys = Registers.find_exn registers high_reg in
+         if not (Register.equal low_phys R0) then mov buf ~dst:R0 ~src:low_phys;
+         if not (Register.equal high_phys R1) then mov buf ~dst:R1 ~src:high_phys
+       | _ -> failwith "ARM32 return supports 1 or 2 registers only");
       pop buf (PC :: clobbered_callee_saved_registers)
     | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
     | Branch { condition; target } ->
@@ -121,21 +142,21 @@ let emit_function (func : Mirl.Function.t) buf =
   emit_function_epilogue buf ~name:func.name
 ;;
 
-let emit_cmm_without_prologue (program : Mirl.t) buf =
+let emit_mirl_without_prologue (program : Mirl.t) buf =
   List.iter program.functions ~f:(fun func -> emit_function func buf);
   Arm_dsl.to_string buf
 ;;
 
-let emit_cmm (program : Mirl.t) =
+let emit_mirl (program : Mirl.t) =
   let open Arm_dsl in
   let buf = Arm_dsl.create () in
   emit_program_prologue buf;
-  emit_cmm_without_prologue program buf
+  emit_mirl_without_prologue program buf
 ;;
 
 module For_testing = struct
-  let emit_cmm_without_prologue program =
+  let emit_mirl_without_prologue program =
     let buf = Arm_dsl.create () in
-    emit_cmm_without_prologue program buf
+    emit_mirl_without_prologue program buf
   ;;
 end

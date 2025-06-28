@@ -54,12 +54,14 @@ let compile_toplevel
   | Ok ast ->
     if [%compare.equal: Stage.t option] dump_stage (Some Ast)
     then Ast.to_string_hum ast |> print_endline;
-    let cmm = Mirl.of_ast ast in
+    let mirl = Mirl.of_ast ast in
     if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
-    then Mirl.to_string cmm |> print_endline;
-    let legalize_config = Legalize.Config.{ supports_native_i64 = Target.Capabilities.supports_native_i64 } in
-    let legalized_cmm = Legalize.legalize_program legalize_config cmm in
-    let%bind assembly = Deferred.return (Target.build_program legalized_cmm) in
+    then Mirl.to_string mirl |> print_endline;
+    let legalize_config =
+      Legalize.Config.{ supports_native_i64 = Target.Capabilities.supports_native_i64 }
+    in
+    let legalized_mirl = Legalize.legalize_program legalize_config mirl in
+    let%bind assembly = Deferred.return (Target.build_program legalized_mirl) in
     (*
        let rpi_build_info =
       Rpi_binary_info.generate_assembly

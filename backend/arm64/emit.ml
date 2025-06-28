@@ -13,10 +13,12 @@ module Registers = struct
   let find_exn t register = Hashtbl.find_exn t.mapping register
   let find t register = Hashtbl.find t.mapping register
   let get_type_exn t register = Hashtbl.find_exn t.register_types register
-  let is_i64 t register = 
+
+  let is_i64 t register =
     match Hashtbl.find t.register_types register with
     | Some Mirl.Type.I64 -> true
     | Some Mirl.Type.I32 | None -> false
+  ;;
 end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
@@ -80,7 +82,11 @@ let emit_block
     | Set { dst; value } ->
       let dst_reg = Registers.find_exn registers dst in
       if Registers.is_i64 registers dst
-      then mov_imm_i64 buf ~dst:dst_reg (Stdlib_upstream_compatible.Int64_u.of_int64 (Int64.of_int value))
+      then
+        mov_imm_i64
+          buf
+          ~dst:dst_reg
+          (Stdlib_upstream_compatible.Int64_u.of_int64 (Int64.of_int value))
       else mov_imm buf ~dst:dst_reg (I32.of_int value)
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
@@ -100,9 +106,13 @@ let emit_block
         |> Option.value_map ~default:[] ~f:Set.to_list
       in
       c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
-    | Return reg ->
-      let reg = Registers.find_exn registers reg in
-      if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg;
+    | Return regs ->
+      (match regs with
+       | [reg] -> 
+         (* Single register return (typical for ARM64) *)
+         let reg = Registers.find_exn registers reg in
+         if not (Register.equal reg W0) then mov buf ~dst:W0 ~src:reg
+       | _ -> failwith "ARM64 should only have single register returns");
       pop buf (Register.lr :: clobbered_callee_saved_registers);
       ret buf
     | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
@@ -143,21 +153,21 @@ let emit_function (func : Mirl.Function.t) buf =
   emit_function_epilogue buf ~name:func.name
 ;;
 
-let emit_cmm_without_prologue (program : Mirl.t) buf =
+let emit_mirl_without_prologue (program : Mirl.t) buf =
   List.iter program.functions ~f:(fun func -> emit_function func buf);
   Arm_dsl.to_string buf
 ;;
 
-let emit_cmm (program : Mirl.t) =
+let emit_mirl (program : Mirl.t) =
   let open Arm_dsl in
   let buf = Arm_dsl.create () in
   emit_program_prologue buf;
-  emit_cmm_without_prologue program buf
+  emit_mirl_without_prologue program buf
 ;;
 
 module For_testing = struct
-  let emit_cmm_without_prologue program =
+  let emit_mirl_without_prologue program =
     let buf = Arm_dsl.create () in
-    emit_cmm_without_prologue program buf
+    emit_mirl_without_prologue program buf
   ;;
 end

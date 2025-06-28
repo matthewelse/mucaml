@@ -96,12 +96,12 @@ let mov_imm_i64 t ~dst value =
     let w2 = Int64.O.((value_boxed lsr 32) land 0xFFFFL) in
     let w3 = Int64.O.((value_boxed lsr 48) land 0xFFFFL) in
     emit_line t [%string "  movz %{dst#Register.Sixty_four}, #%{w0#Int64}"];
-    if not (Int64.O.(w1 = 0L)) then
-      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w1#Int64}, lsl #16"];
-    if not (Int64.O.(w2 = 0L)) then
-      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#Int64}, lsl #32"];
-    if not (Int64.O.(w3 = 0L)) then
-      emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#Int64}, lsl #48"])
+    if not Int64.O.(w1 = 0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w1#Int64}, lsl #16"];
+    if not Int64.O.(w2 = 0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#Int64}, lsl #32"];
+    if not Int64.O.(w3 = 0L)
+    then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#Int64}, lsl #48"])
 ;;
 
 let ret t = emit_line t "  ret"
@@ -115,11 +115,19 @@ let sub t ~dst ~src1 ~src2 =
 ;;
 
 let add_i64 t ~dst ~src1 ~src2 =
-  emit_line t [%string "  add %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, %{src2#Register.Sixty_four}"]
+  emit_line
+    t
+    [%string
+      "  add %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, \
+       %{src2#Register.Sixty_four}"]
 ;;
 
 let sub_i64 t ~dst ~src1 ~src2 =
-  emit_line t [%string "  sub %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, %{src2#Register.Sixty_four}"]
+  emit_line
+    t
+    [%string
+      "  sub %{dst#Register.Sixty_four}, %{src1#Register.Sixty_four}, \
+       %{src2#Register.Sixty_four}"]
 ;;
 
 let bl t ~func = emit_line t [%string "  bl %{func}"]

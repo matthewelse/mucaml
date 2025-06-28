@@ -50,7 +50,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
 
       let name = name
       let triple = triple
-      let build_program cmm = Ok (Emit.emit_cmm cmm)
+      let build_program mirl = Ok (Emit.emit_mirl mirl)
 
       let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in

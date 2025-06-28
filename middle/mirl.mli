@@ -68,7 +68,7 @@ module Instruction : sig
         ; args : Virtual_register.t list
         }
     | Jump of { target : Label.t }
-    | Return of Virtual_register.t
+    | Return of Virtual_register.t list
     | Branch of
         { condition : Virtual_register.t
         ; target : Label.t

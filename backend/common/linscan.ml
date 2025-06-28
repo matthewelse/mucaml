@@ -67,7 +67,7 @@ struct
         | Mov { dst; src } ->
           assigns ~idx dst;
           consumes ~idx src
-        | Return reg -> consumes ~idx reg
+        | Return regs -> List.iter regs ~f:(consumes ~idx)
         | Jump { target = _ } -> ()
         | Branch { condition; target = _ } -> consumes ~idx condition
       done;
@@ -313,7 +313,7 @@ module%test _ = struct
               ; Add { dst = f; src1 = f; src2 = b }
               ; Add { dst = d; src1 = e; src2 = f }
               ; Mov { dst = g; src = d }
-              ; Return g
+              ; Return [g]
               ]
             in
             (* Create a block with the instructions. *)
@@ -386,7 +386,7 @@ module%test _ = struct
               ; Add { dst = tmp2; src1 = a; src2 = z }
               ; Add { dst = tmp3; src1 = tmp2; src2 = y }
               ; Add { dst = ret; src1 = tmp3; src2 = x }
-              ; Return ret
+              ; Return [ret]
               ]
             in
             Block.Builder.push_many block instructions))
@@ -453,13 +453,15 @@ module%test _ = struct
           let src1_reg = Hashtbl.find_exn registers src1 in
           let src2_reg = Hashtbl.find_exn registers src2 in
           print_endline
-            [%string "%{dst_reg#Register} := %{src1_reg#Register} +c %{src2_reg#Register}"]
+            [%string
+              "%{dst_reg#Register} := %{src1_reg#Register} +c %{src2_reg#Register}"]
         | Sub_with_carry { dst; src1; src2 } ->
           let dst_reg = Hashtbl.find_exn registers dst in
           let src1_reg = Hashtbl.find_exn registers src1 in
           let src2_reg = Hashtbl.find_exn registers src2 in
           print_endline
-            [%string "%{dst_reg#Register} := %{src1_reg#Register} -c %{src2_reg#Register}"]
+            [%string
+              "%{dst_reg#Register} := %{src1_reg#Register} -c %{src2_reg#Register}"]
         | Set { dst; value = _ } ->
           let dst_reg = Hashtbl.find_exn registers dst in
           print_endline [%string "%{dst_reg#Register} := <set value>"]
@@ -475,9 +477,11 @@ module%test _ = struct
           let dst_reg = Hashtbl.find_exn registers dst in
           let src_reg = Hashtbl.find_exn registers src in
           print_endline [%string "%{dst_reg#Register} := %{src_reg#Register}"]
-        | Return reg ->
-          let reg = Hashtbl.find_exn registers reg in
-          print_endline [%string "return %{reg#Register}"]
+        | Return regs ->
+          let regs_str = String.concat ~sep:", " (List.map regs ~f:(fun reg ->
+            let phys_reg = Hashtbl.find_exn registers reg in
+            Register.to_string phys_reg)) in
+          print_endline [%string "return %{regs_str}"]
         | Jump { target } -> print_endline [%string "jump %{target#Mirl.Label}"]
         | Branch { condition; target } ->
           let condition_reg = Hashtbl.find_exn registers condition in
@@ -508,7 +512,7 @@ module%test _ = struct
               ; Add { dst = f; src1 = f; src2 = b }
               ; Add { dst = d; src1 = e; src2 = f }
               ; Mov { dst = g; src = d }
-              ; Return g
+              ; Return [g]
               ]
             in
             (* Create a block with the instructions. *)
@@ -548,7 +552,7 @@ module%test _ = struct
         in
         Block.Builder.push_many block_2 instructions;
         let instructions : Mirl.Instruction.t list =
-          [ Add { dst = y; src1 = x; src2 = x }; Return y ]
+          [ Add { dst = y; src1 = x; src2 = x }; Return [y] ]
         in
         Block.Builder.push_many block_3 instructions;
         ())
@@ -598,7 +602,7 @@ module%test _ = struct
               ; Add { dst = tmp2; src1 = a; src2 = z }
               ; Add { dst = tmp3; src1 = tmp2; src2 = y }
               ; Add { dst = ret; src1 = tmp3; src2 = x }
-              ; Return ret
+              ; Return [ret]
               ]
             in
             Block.Builder.push_many block instructions))
