@@ -3,6 +3,7 @@ open! Core
 module Base = struct
   type t =
     | I32
+    | I64
     | Bool
     | Unit
   [@@deriving string ~capitalize:"snake_case", sexp_of]

@@ -19,6 +19,8 @@ let newline = '\n'
 let alpha = ['A'-'Z' 'a'-'z']
 let digit = ['0'-'9']
 let integer = digit+
+let int32_literal = digit+ 'l'
+let int64_literal = digit+ 'L'
 let boolean = "true" | "false"
 let identifier = ('_' | alpha) ('_' | alpha | digit)*
 
@@ -52,6 +54,8 @@ rule read = parse
   | ","                { COMMA }
   | "("                { LPAREN }
   | ")"                { RPAREN }
+  | int32_literal as i { INT32 (Int32.of_string (String.sub i 0 (String.length i - 1))) }
+  | int64_literal as i { INT64 (Int64.of_string (String.sub i 0 (String.length i - 1))) }
   | integer as i       { INT (int_of_string i) }
   | boolean as b       { BOOL (bool_of_string b) }
   | identifier as n    { VAR n }

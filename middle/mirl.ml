@@ -349,6 +349,7 @@ let rec of_ast (ast : Ast.t) =
             let ty : Type.t =
               match ty with
               | Base I32 -> Type.I32
+              | Base I64 -> Type.I64
               | _ -> failwith "todo: unsupported type"
             in
             param, ty)
@@ -371,8 +372,10 @@ let rec of_ast (ast : Ast.t) =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
             match ret with
             | Fun (Base I32, ret) -> args (Type.I32 :: acc) ret
+            | Fun (Base I64, ret) -> args (Type.I64 :: acc) ret
             | Fun ((Base _ | Fun _), _) -> failwith "todo: unsupported type"
             | Base (Unit | I32) -> List.rev acc, Type.I32
+            | Base I64 -> List.rev acc, Type.I64
             | Base Bool -> failwith "todo: bools"
           in
           args [] type_
@@ -408,6 +411,14 @@ and walk_expr
   | Int i ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = i });
+    #(reg, acc)
+  | Int32 i ->
+    let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
+    push acc (Set { dst = reg; value = Int32.to_int_trunc i });
+    #(reg, acc)
+  | Int64 i ->
+    let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
+    push acc (Set { dst = reg; value = Int64.to_int_trunc i });
     #(reg, acc)
   | App (Var "+", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in

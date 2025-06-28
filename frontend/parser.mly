@@ -3,6 +3,8 @@
 %}
 
 %token <int> INT
+%token <int32> INT32
+%token <int64> INT64
 %token <bool> BOOL
 %token <string> VAR
 %token <string> STRING
@@ -29,7 +31,7 @@
 %left PLUS MINUS
 %left TIMES DIV
 %right UNARY_MINUS
-%nonassoc INT BOOL VAR LPAREN
+%nonassoc INT INT32 INT64 BOOL VAR LPAREN
 %nonassoc APP
 
 %type <Ast.t> prog
@@ -53,6 +55,8 @@ let toplevel :=
 
 let expr :=
   | ~ = INT;                                  <Int>
+  | ~ = INT32;                                <Int32>
+  | ~ = INT64;                                <Int64>
   | ~ = BOOL;                                 <Bool>
   | ~ = VAR;                                  <Var>
   | LPAREN; RPAREN;                           { Unit }
