@@ -36,12 +36,12 @@ let%expect_test "i64 literal parsing and legalization" =
 
 
     === ARM32 Legalized ===
-    function mucaml_main ($0 (_): i64) {
-    $0: i64, $1: i32, $2: i32, $3: i32, $4: i32
+    function mucaml_main ($0 (__low): i32, $1 (__high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32
     block_0:
-        $3 := 42
-        $4 := 0
-        return $3, $4
+        $2 := 42
+        $3 := 0
+        return $2, $3
     }
 
 
@@ -70,14 +70,14 @@ let%expect_test "i64 addition parsing and legalization" =
 
 
     === ARM32 Legalized ===
-    function mucaml_main ($0 (a): i64) {
-    $0: i64, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32
+    function mucaml_main ($0 (a_low): i32, $1 (a_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
-        $3 := 100
-        $4 := 0
-        $5 := $1 + $3
-        $6 := $2 +c $4
-        return $5, $6
+        $2 := 100
+        $3 := 0
+        $4 := $0 + $2
+        $5 := $1 +c $3
+        return $4, $5
     }
 
 

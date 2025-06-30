@@ -110,26 +110,36 @@ let legalize_function config func =
   then func
   else (
     let register_types = Register_types.create func in
+    (* Transform parameters: i64 becomes two i32 parameters *)
+    let legalized_params =
+      List.fold_right func.params ~init:[] ~f:(fun (name, _, ty) acc ->
+        match ty with
+        | Mirl.Type.I64 ->
+          (* Split i64 parameter into low and high i32 parameters *)
+          (name ^ "_low", Mirl.Type.I32) :: (name ^ "_high", Mirl.Type.I32) :: acc
+        | Mirl.Type.I32 ->
+          (name, Mirl.Type.I32) :: acc)
+    in
     Mirl.Function.build
       ~name:func.name
-      ~params:(List.map func.params ~f:(fun (name, _, ty) -> name, ty))
+      ~params:legalized_params
       (fun func_builder params ->
         let pair_map = Register_pair_map.create () in
-        (* Create parameter register mappings *)
-        List.iter2_exn func.params params ~f:(fun (_, _, ty) (_, new_reg, _) ->
+        (* Create parameter register mappings for the original parameters *)
+        let param_index = ref 0 in
+        List.iter func.params ~f:(fun (_, orig_reg, ty) ->
           match ty with
           | Mirl.Type.I64 ->
-            (* For i64 parameters, create register pairs *)
-            let low_reg =
-              Mirl.Function.Builder.fresh_register func_builder ~ty:Mirl.Type.I32
-            in
-            let high_reg =
-              Mirl.Function.Builder.fresh_register func_builder ~ty:Mirl.Type.I32
-            in
-            Hashtbl.set pair_map ~key:new_reg ~data:(low_reg, high_reg)
+            (* Map original i64 parameter to the two new i32 parameter registers *)
+            let (_, low_reg, _) = List.nth_exn params !param_index in
+            let (_, high_reg, _) = List.nth_exn params (!param_index + 1) in
+            Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg);
+            param_index := !param_index + 2
           | Mirl.Type.I32 ->
-            (* For i32 parameters, map to the new register *)
-            Hashtbl.set pair_map ~key:new_reg ~data:(new_reg, new_reg));
+            (* Map i32 parameter directly *)
+            let (_, i32_reg, _) = List.nth_exn params !param_index in
+            Hashtbl.set pair_map ~key:orig_reg ~data:(i32_reg, i32_reg);
+            param_index := !param_index + 1);
         (* Process each block *)
         Iarray.iter func.body ~f:(fun block ->
           Mirl.Function.Builder.add_block' func_builder (fun block_builder ->

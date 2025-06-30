@@ -283,30 +283,27 @@ let%expect_test "i64 register pressure on ARM32" =
 
 
     === ARM32 Legalized (doubled registers) ===
-    function test_i64_pressure ($0 (a): i64, $1 (b): i64, $2 (c): i64) {
-    $0: i64, $1: i64, $2: i64, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32, $12: i32, $13: i32, $14: i32, $15: i32, $16: i32, $17: i32, $18: i32, $19: i32, $20: i32
+    function test_i64_pressure ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32, $4 (c_low): i32, $5 (c_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32, $12: i32, $13: i32, $14: i32, $15: i32, $16: i32, $17: i32
     block_0:
-        $9 := $3 + $5
-        $10 := $4 +c $6
-        $11 := $9 - $7
-        $12 := $10 -c $8
-        $13 := $11 + $3
-        $14 := $12 +c $4
-        $15 := $13 - $5
-        $16 := $14 -c $6
-        $17 := $15 + $7
-        $18 := $16 +c $8
-        $19 := $17 + $9
-        $20 := $18 +c $10
-        return $19, $20
+        $6 := $0 + $2
+        $7 := $1 +c $3
+        $8 := $6 - $4
+        $9 := $7 -c $5
+        $10 := $8 + $0
+        $11 := $9 +c $1
+        $12 := $10 - $2
+        $13 := $11 -c $3
+        $14 := $12 + $4
+        $15 := $13 +c $5
+        $16 := $14 + $6
+        $17 := $15 +c $7
+        return $16, $17
     }
 
 
     === Testing I64 High Pressure (ARM32) ===
-    SUCCESS: Allocated registers without spilling
-    Used registers: r0, r1, r2, r3
-    Call sites with live registers: 0
-    UNEXPECTED: Expected this test to trigger spilling!
+    EXPECTED: Triggered spilling as expected
     |}]
 ;;
 

@@ -236,12 +236,12 @@ let%expect_test "i64 addition legalization" =
 
 
     === ARM32 Legalized i64 Add ===
-    function test_i64_add ($0 (a): i64, $1 (b): i64) {
-    $0: i64, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
+    function test_i64_add ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
-        $6 := $2 + $4
-        $7 := $3 +c $5
-        return $6, $7
+        $4 := $0 + $2
+        $5 := $1 +c $3
+        return $4, $5
     }
 
 
@@ -270,12 +270,12 @@ let%expect_test "i64 subtraction legalization" =
 
 
     === ARM32 Legalized i64 Sub ===
-    function test_i64_sub ($0 (a): i64, $1 (b): i64) {
-    $0: i64, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
+    function test_i64_sub ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
-        $6 := $2 - $4
-        $7 := $3 -c $5
-        return $6, $7
+        $4 := $0 - $2
+        $5 := $1 -c $3
+        return $4, $5
     }
 
 
@@ -338,12 +338,12 @@ let%expect_test "i64 move legalization" =
 
 
     === ARM32 Legalized i64 Move ===
-    function test_i64_move ($0 (x): i64) {
-    $0: i64, $1: i32, $2: i32, $3: i32, $4: i32
+    function test_i64_move ($0 (x_low): i32, $1 (x_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32
     block_0:
+        $2 := $0
         $3 := $1
-        $4 := $2
-        return $3, $4
+        return $2, $3
     }
 
 
@@ -374,14 +374,14 @@ let%expect_test "mixed i32 i64 legalization" =
 
 
     === ARM32 Legalized Mixed i32/i64 ===
-    function test_mixed ($0 (a): i32, $1 (b): i64) {
-    $0: i32, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
+    function test_mixed ($0 (a): i32, $1 (b_low): i32, $2 (b_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32
     block_0:
         $2 := 42
         $3 := $0 + $2
-        $4 := $2 + $6
-        $5 := $3 +c $7
-        return $4, $5
+        $3 := $1 + $5
+        $4 := $2 +c $6
+        return $3, $4
     }
 
 
@@ -449,18 +449,18 @@ let%expect_test "i64 chain operations legalization" =
 
 
     === ARM32 Legalized i64 Chain ===
-    function test_i64_chain ($0 (x): i64, $1 (y): i64) {
-    $0: i64, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32, $12: i32, $13: i32
+    function test_i64_chain ($0 (x_low): i32, $1 (x_high): i32, $2 (y_low): i32, $3 (y_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32
     block_0:
-        $6 := $2 + $4
-        $7 := $3 +c $5
-        $8 := $6 - $2
-        $9 := $7 -c $3
-        $10 := $8 + $4
-        $11 := $9 +c $5
-        $12 := $10 - $6
-        $13 := $11 -c $7
-        return $12, $13
+        $4 := $0 + $2
+        $5 := $1 +c $3
+        $6 := $4 - $0
+        $7 := $5 -c $1
+        $8 := $6 + $2
+        $9 := $7 +c $3
+        $10 := $8 - $4
+        $11 := $9 -c $5
+        return $10, $11
     }
 
 
@@ -495,16 +495,16 @@ let%expect_test "i64 with function calls legalization" =
 
 
     === ARM32 Legalized i64 with Calls ===
-    function test_i64_with_calls ($0 (x): i64) {
-    $0: i64, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32
+    function test_i64_with_calls ($0 (x_low): i32, $1 (x_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
     block_0:
         $1 := 42
         $2 := c_call external_func($1)
-        $3 := $1 + $1
-        $4 := $2 +c $2
-        $5 := $3 + $7
-        $6 := $4 +c $8
-        return $5, $6
+        $2 := $0 + $0
+        $3 := $1 +c $1
+        $4 := $2 + $6
+        $5 := $3 +c $7
+        return $4, $5
     }
 
 

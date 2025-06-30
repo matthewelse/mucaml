@@ -45,12 +45,12 @@ let%expect_test _ =
 
 
     === ARM32 Legalized MIRL ===
-    function test_add ($0 (a): i64, $1 (b): i64) {
-    $0: i64, $1: i64, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
+    function test_add ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
+    $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
-        $6 := $2 + $4
-        $7 := $3 +c $5
-        return $6, $7
+        $4 := $0 + $2
+        $5 := $1 +c $3
+        return $4, $5
     }
     |}]
 ;;
