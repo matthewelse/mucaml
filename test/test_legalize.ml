@@ -173,7 +173,8 @@ let create_i64_with_calls_function () =
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
           [ Instruction.Set { dst = const1; value = 42 }
-          ; Instruction.C_call { dst = call_result; func = "external_func"; args = [ const1 ] }
+          ; Instruction.C_call
+              { dst = call_result; func = "external_func"; args = [ const1 ] }
           ; Instruction.Add { dst = temp; src1 = x; src2 = x }
           ; (* x should survive the call *)
             Instruction.Add { dst = result; src1 = temp; src2 = call_result }

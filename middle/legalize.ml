@@ -117,41 +117,40 @@ let legalize_function config func =
         | Mirl.Type.I64 ->
           (* Split i64 parameter into low and high i32 parameters *)
           (name ^ "_low", Mirl.Type.I32) :: (name ^ "_high", Mirl.Type.I32) :: acc
-        | Mirl.Type.I32 ->
-          (name, Mirl.Type.I32) :: acc)
+        | Mirl.Type.I32 -> (name, Mirl.Type.I32) :: acc)
     in
     Mirl.Function.build
       ~name:func.name
       ~params:legalized_params
       (fun func_builder params ->
-        let pair_map = Register_pair_map.create () in
-        (* Create parameter register mappings for the original parameters *)
-        let param_index = ref 0 in
-        List.iter func.params ~f:(fun (_, orig_reg, ty) ->
-          match ty with
-          | Mirl.Type.I64 ->
-            (* Map original i64 parameter to the two new i32 parameter registers *)
-            let (_, low_reg, _) = List.nth_exn params !param_index in
-            let (_, high_reg, _) = List.nth_exn params (!param_index + 1) in
-            Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg);
-            param_index := !param_index + 2
-          | Mirl.Type.I32 ->
-            (* Map i32 parameter directly *)
-            let (_, i32_reg, _) = List.nth_exn params !param_index in
-            Hashtbl.set pair_map ~key:orig_reg ~data:(i32_reg, i32_reg);
-            param_index := !param_index + 1);
-        (* Process each block *)
-        Iarray.iter func.body ~f:(fun block ->
-          Mirl.Function.Builder.add_block' func_builder (fun block_builder ->
-            (* Process each instruction in the block *)
-            Iarray.iter block.instructions ~f:(fun instruction ->
-              let legalized_instructions =
-                legalize_instruction register_types pair_map func_builder instruction
-              in
-              Mirl.Block.Builder.push_many block_builder legalized_instructions)
-            [@nontail])
-          [@nontail])
-        [@nontail]))
+         let pair_map = Register_pair_map.create () in
+         (* Create parameter register mappings for the original parameters *)
+         let param_index = ref 0 in
+         List.iter func.params ~f:(fun (_, orig_reg, ty) ->
+           match ty with
+           | Mirl.Type.I64 ->
+             (* Map original i64 parameter to the two new i32 parameter registers *)
+             let _, low_reg, _ = List.nth_exn params !param_index in
+             let _, high_reg, _ = List.nth_exn params (!param_index + 1) in
+             Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg);
+             param_index := !param_index + 2
+           | Mirl.Type.I32 ->
+             (* Map i32 parameter directly *)
+             let _, i32_reg, _ = List.nth_exn params !param_index in
+             Hashtbl.set pair_map ~key:orig_reg ~data:(i32_reg, i32_reg);
+             param_index := !param_index + 1);
+         (* Process each block *)
+         Iarray.iter func.body ~f:(fun block ->
+           Mirl.Function.Builder.add_block' func_builder (fun block_builder ->
+             (* Process each instruction in the block *)
+             Iarray.iter block.instructions ~f:(fun instruction ->
+               let legalized_instructions =
+                 legalize_instruction register_types pair_map func_builder instruction
+               in
+               Mirl.Block.Builder.push_many block_builder legalized_instructions)
+             [@nontail])
+           [@nontail])
+         [@nontail]))
 ;;
 
 let legalize_program config program =

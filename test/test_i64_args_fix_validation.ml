@@ -7,31 +7,30 @@ open! Import
 
 let%expect_test "validate i64 parameter legalization fix" =
   (* Create a simple i64 function *)
-  let func = 
+  let func =
     let open Mirl in
-    Function.build ~name:"validate_fix" ~params:[ "param", Type.I64 ] (fun builder params ->
-      let param =
-        match params with
-        | [ (_, param, _) ] -> param
-        | _ -> failwith "Expected 1 parameter"
-      in
-      Function.Builder.add_block' builder (fun block_builder ->
-        let instructions = [ Instruction.Return [ param ] ] in
-        Block.Builder.push_many block_builder instructions)
-      [@nontail])
+    Function.build
+      ~name:"validate_fix"
+      ~params:[ "param", Type.I64 ]
+      (fun builder params ->
+        let param =
+          match params with
+          | [ (_, param, _) ] -> param
+          | _ -> failwith "Expected 1 parameter"
+        in
+        Function.Builder.add_block' builder (fun block_builder ->
+          let instructions = [ Instruction.Return [ param ] ] in
+          Block.Builder.push_many block_builder instructions)
+        [@nontail])
   in
   let program = Mirl.{ functions = [ func ]; externs = [] } in
-  
   printf "=== Original Function ===\n";
   Mirl.to_string program |> print_endline;
-  
   (* Apply ARM32 legalization *)
   let config : Mucaml_middle.Legalize.Config.t = { supports_native_i64 = false } in
   let legalized = Mucaml_middle.Legalize.legalize_program config program in
-  
   printf "=== After Legalization ===\n";
   Mirl.to_string legalized |> print_endline;
-  
   (* Verify that code generation works (this would fail before the fix) *)
   let target = "thumbv8m.main-none-eabi" in
   let (module Target) =
@@ -40,17 +39,16 @@ let%expect_test "validate i64 parameter legalization fix" =
       { cpu = Some "cortex-m33" }
     |> ok_exn
   in
-  
   printf "=== Code Generation Test ===\n";
   (match Target.build_program legalized with
    | Ok assembly ->
      printf "SUCCESS: Code generation completed\n";
-     printf "Generated %d lines of assembly\n" 
+     printf
+       "Generated %d lines of assembly\n"
        (String.count (Target.Assembly.to_string assembly) ~f:(fun c -> Char.equal c '\n'))
-   | Error err ->
-     printf "FAILED: %s\n" (Error.to_string_hum err));
-  
-  [%expect {|
+   | Error err -> printf "FAILED: %s\n" (Error.to_string_hum err));
+  [%expect
+    {|
     === Original Function ===
     function validate_fix ($0 (param): i64) {
     $0: i64
@@ -81,7 +79,8 @@ let%expect_test "validate ARM32 calling convention" =
   printf "3. Return values follow ARM32 ABI (r0=low, r1=high)\n";
   printf "4. Register allocation can find all parameter registers\n";
   printf "5. No orphaned virtual registers are created\n";
-  [%expect {|
+  [%expect
+    {|
     === ARM32 i64 Calling Convention Validation ===
     The fix ensures that:
     1. i64 parameters are split into consecutive i32 register pairs

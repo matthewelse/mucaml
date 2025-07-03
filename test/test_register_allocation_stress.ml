@@ -109,7 +109,6 @@ let create_branchy_high_pressure_function () =
       let then_block = Function.Builder.add_block builder ignore in
       let else_block = Function.Builder.add_block builder ignore in
       let merge_block = Function.Builder.add_block builder ignore in
-      
       (* Entry block with many live registers *)
       Function.Builder.add_block' builder (fun block_builder ->
         let temp1 = Function.Builder.fresh_register builder ~ty:Type.I32 in
@@ -122,12 +121,12 @@ let create_branchy_high_pressure_function () =
           ; Instruction.Add { dst = temp3; src1 = b; src2 = temp2 }
           ; Instruction.Add { dst = temp4; src1 = temp1; src2 = temp3 }
           ; (* temp1-4 should be live across the branch *)
-            Instruction.Branch { condition = cond; target = Block.Builder.label then_block }
+            Instruction.Branch
+              { condition = cond; target = Block.Builder.label then_block }
           ; Instruction.Jump { target = Block.Builder.label else_block }
           ]
         in
         Block.Builder.push_many block_builder instructions);
-      
       (* Then block - more register usage *)
       let then_result = Function.Builder.fresh_register builder ~ty:Type.I32 in
       let then_temp1 = Function.Builder.fresh_register builder ~ty:Type.I32 in
@@ -140,7 +139,6 @@ let create_branchy_high_pressure_function () =
         ]
       in
       Block.Builder.push_many then_block instructions;
-      
       (* Else block - different register usage *)
       let else_result = Function.Builder.fresh_register builder ~ty:Type.I32 in
       let else_temp1 = Function.Builder.fresh_register builder ~ty:Type.I32 in
@@ -153,7 +151,6 @@ let create_branchy_high_pressure_function () =
         ]
       in
       Block.Builder.push_many else_block instructions;
-      
       (* Merge block - combine results *)
       let final_result = Function.Builder.fresh_register builder ~ty:Type.I32 in
       let instructions =
@@ -203,43 +200,51 @@ let create_i64_high_pressure_function () =
 let test_register_allocation_stress name create_func expected_to_fail =
   printf "=== Testing %s ===\n" name;
   let func = create_func () in
-  
   (* Test on a mock register allocator with limited registers *)
   try
     let module TestRegister = struct
       type t = int [@@deriving compare, sexp_of]
+
       include functor Comparable.Make_plain
-      
+
       (* Very limited register set to force spilling *)
-      let all_available_for_allocation = List.init 4 ~f:Fn.id  (* Only 4 registers! *)
+      let all_available_for_allocation = List.init 4 ~f:Fn.id (* Only 4 registers! *)
       let caller_saved = Set.of_list [ 0; 1 ]
       let callee_saved = Set.of_list [ 2; 3 ]
       let to_string t = [%string "r%{t#Int}"]
-    end in
+    end
+    in
     let module TestAllocator = Mucaml_backend_common.Linscan.Make (TestRegister) in
     let _registers, used_registers, call_sites = TestAllocator.allocate_registers func in
     printf "SUCCESS: Allocated registers without spilling\n";
-    printf "Used registers: %s\n" 
-      (Set.to_list used_registers 
-       |> List.map ~f:TestRegister.to_string 
+    printf
+      "Used registers: %s\n"
+      (Set.to_list used_registers
+       |> List.map ~f:TestRegister.to_string
        |> String.concat ~sep:", ");
     printf "Call sites with live registers: %d\n" (List.length call_sites);
-    if expected_to_fail then
-      printf "UNEXPECTED: Expected this test to trigger spilling!\n"
+    if expected_to_fail
+    then printf "UNEXPECTED: Expected this test to trigger spilling!\n"
   with
-  | Failure msg when String.is_substring msg ~substring:"spill" -> 
+  | Failure msg when String.is_substring msg ~substring:"spill" ->
     printf "EXPECTED: Triggered spilling as expected\n";
-    if not expected_to_fail then
-      printf "UNEXPECTED: This test was expected to succeed without spilling!\n"
-  | exn ->
-    printf "ERROR: Unexpected exception: %s\n" (Exn.to_string exn)
+    if not expected_to_fail
+    then printf "UNEXPECTED: This test was expected to succeed without spilling!\n"
+  | exn -> printf "ERROR: Unexpected exception: %s\n" (Exn.to_string exn)
 ;;
 
 let%expect_test "register allocation stress tests" =
-  test_register_allocation_stress "High Register Pressure" create_high_register_pressure_function true;
+  test_register_allocation_stress
+    "High Register Pressure"
+    create_high_register_pressure_function
+    true;
   test_register_allocation_stress "Call Heavy Function" create_call_heavy_function false;
-  test_register_allocation_stress "Branchy High Pressure" create_branchy_high_pressure_function true;
-  [%expect {|
+  test_register_allocation_stress
+    "Branchy High Pressure"
+    create_branchy_high_pressure_function
+    true;
+  [%expect
+    {|
     === Testing High Register Pressure ===
     EXPECTED: Triggered spilling as expected
     === Testing Call Heavy Function ===
@@ -254,20 +259,20 @@ let%expect_test "i64 register pressure on ARM32" =
   (* Test i64 legalization followed by register allocation *)
   let func = create_i64_high_pressure_function () in
   let program = Mirl.{ functions = [ func ]; externs = [] } in
-  
   printf "=== Original i64 High Pressure ===\n";
   Mirl.to_string program |> print_endline;
-  
   (* ARM32 legalization will double the register pressure *)
   let arm32_config = Mucaml_middle.Legalize.Config.{ supports_native_i64 = false } in
   let legalized = Mucaml_middle.Legalize.legalize_program arm32_config program in
-  
   printf "=== ARM32 Legalized (doubled registers) ===\n";
   Mirl.to_string legalized |> print_endline;
-  
   (* Test register allocation on the legalized version *)
-  test_register_allocation_stress "I64 High Pressure (ARM32)" (fun () -> List.hd_exn legalized.functions) true;
-  [%expect {|
+  test_register_allocation_stress
+    "I64 High Pressure (ARM32)"
+    (fun () -> List.hd_exn legalized.functions)
+    true;
+  [%expect
+    {|
     === Original i64 High Pressure ===
     function test_i64_pressure ($0 (a): i64, $1 (b): i64, $2 (c): i64) {
     $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64, $6: i64, $7: i64, $8: i64
@@ -311,48 +316,52 @@ let%expect_test "i64 register pressure on ARM32" =
 let%expect_test "caller callee saved register preference" =
   let func = create_call_heavy_function () in
   printf "=== Analyzing Caller/Callee-Saved Preference ===\n";
-  
   (* Use realistic register counts *)
   let module RealisticRegister = struct
     type t = int [@@deriving compare, sexp_of]
+
     include functor Comparable.Make_plain
-    
+
     let all_available_for_allocation = List.init 8 ~f:Fn.id
-    let caller_saved = Set.of_list [ 0; 1; 2; 3 ]     (* r0-r3 caller-saved *)
-    let callee_saved = Set.of_list [ 4; 5; 6; 7 ]     (* r4-r7 callee-saved *)
+    let caller_saved = Set.of_list [ 0; 1; 2; 3 ] (* r0-r3 caller-saved *)
+    let callee_saved = Set.of_list [ 4; 5; 6; 7 ] (* r4-r7 callee-saved *)
     let to_string t = [%string "r%{t#Int}"]
-  end in
-  let module RealisticAllocator = Mucaml_backend_common.Linscan.Make (RealisticRegister) in
-  let _registers, used_registers, call_sites = RealisticAllocator.allocate_registers func in
-  
-  printf "Used registers: %s\n" 
-    (Set.to_list used_registers 
-     |> List.map ~f:RealisticRegister.to_string 
+  end
+  in
+  let module RealisticAllocator = Mucaml_backend_common.Linscan.Make (RealisticRegister)
+  in
+  let _registers, used_registers, call_sites =
+    RealisticAllocator.allocate_registers func
+  in
+  printf
+    "Used registers: %s\n"
+    (Set.to_list used_registers
+     |> List.map ~f:RealisticRegister.to_string
      |> String.concat ~sep:", ");
-  
   let caller_saved_used = Set.inter used_registers RealisticRegister.caller_saved in
   let callee_saved_used = Set.inter used_registers RealisticRegister.callee_saved in
-  
-  printf "Caller-saved used: %s\n"
-    (Set.to_list caller_saved_used 
-     |> List.map ~f:RealisticRegister.to_string 
+  printf
+    "Caller-saved used: %s\n"
+    (Set.to_list caller_saved_used
+     |> List.map ~f:RealisticRegister.to_string
      |> String.concat ~sep:", ");
-  printf "Callee-saved used: %s\n"
-    (Set.to_list callee_saved_used 
-     |> List.map ~f:RealisticRegister.to_string 
+  printf
+    "Callee-saved used: %s\n"
+    (Set.to_list callee_saved_used
+     |> List.map ~f:RealisticRegister.to_string
      |> String.concat ~sep:", ");
-  
   printf "Call sites: %d\n" (List.length call_sites);
   List.iteri call_sites ~f:(fun i (~block, ~insn_idx, ~live_regs) ->
-    printf "Call site %d: block %s, insn %d, live caller-saved regs: %s\n"
+    printf
+      "Call site %d: block %s, insn %d, live caller-saved regs: %s\n"
       i
       (Mirl.Label.to_string block)
       insn_idx
-      (Set.to_list live_regs 
-       |> List.map ~f:RealisticRegister.to_string 
+      (Set.to_list live_regs
+       |> List.map ~f:RealisticRegister.to_string
        |> String.concat ~sep:", "));
-  
-  [%expect {|
+  [%expect
+    {|
     === Analyzing Caller/Callee-Saved Preference ===
     Used registers: r0, r1, r2, r4, r5, r6
     Caller-saved used: r0, r1, r2

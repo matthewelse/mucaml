@@ -32,16 +32,19 @@ let test_i64_args_codegen text =
 
 let create_i64_identity_function () =
   let open Mirl in
-  Function.build ~name:"test_i64_identity" ~params:[ "x", Type.I64 ] (fun builder params ->
-    let x =
-      match params with
-      | [ (_, x, _) ] -> x
-      | _ -> failwith "Expected 1 parameter"
-    in
-    Function.Builder.add_block' builder (fun block_builder ->
-      let instructions = [ Instruction.Return [ x ] ] in
-      Block.Builder.push_many block_builder instructions)
-    [@nontail])
+  Function.build
+    ~name:"test_i64_identity"
+    ~params:[ "x", Type.I64 ]
+    (fun builder params ->
+      let x =
+        match params with
+        | [ (_, x, _) ] -> x
+        | _ -> failwith "Expected 1 parameter"
+      in
+      Function.Builder.add_block' builder (fun block_builder ->
+        let instructions = [ Instruction.Return [ x ] ] in
+        Block.Builder.push_many block_builder instructions)
+      [@nontail])
 ;;
 
 let create_i64_add_function () =
@@ -58,7 +61,9 @@ let create_i64_add_function () =
       Function.Builder.add_block' builder (fun block_builder ->
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
-          [ Instruction.Add { dst = result; src1 = a; src2 = b }; Instruction.Return [ result ] ]
+          [ Instruction.Add { dst = result; src1 = a; src2 = b }
+          ; Instruction.Return [ result ]
+          ]
         in
         Block.Builder.push_many block_builder instructions)
       [@nontail])
@@ -78,7 +83,9 @@ let create_mixed_i32_i64_add_function () =
       Function.Builder.add_block' builder (fun block_builder ->
         let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
         let instructions =
-          [ Instruction.Add { dst = result; src1 = a; src2 = b }; Instruction.Return [ result ] ]
+          [ Instruction.Add { dst = result; src1 = a; src2 = b }
+          ; Instruction.Return [ result ]
+          ]
         in
         Block.Builder.push_many block_builder instructions)
       [@nontail])
@@ -88,17 +95,13 @@ let test_i64_args_mirl_codegen name create_func =
   printf "=== Testing %s ===\n" name;
   let func = create_func () in
   let program = Mirl.{ functions = [ func ]; externs = [] } in
-  
   printf "=== Original MIRL ===\n";
   Mirl.to_string program |> print_endline;
-  
   (* Apply ARM32 legalization *)
   let config : Mucaml_middle.Legalize.Config.t = { supports_native_i64 = false } in
   let legalized = Mucaml_middle.Legalize.legalize_program config program in
-  
   printf "=== Legalized MIRL ===\n";
   Mirl.to_string legalized |> print_endline;
-  
   (* Test code generation *)
   let target = "thumbv8m.main-none-eabi" in
   let (module Target) =
@@ -107,7 +110,6 @@ let test_i64_args_mirl_codegen name create_func =
       { cpu = Some "cortex-m33" }
     |> ok_exn
   in
-  
   try
     let assembly = Target.build_program legalized |> ok_exn in
     printf "=== ARM32 Assembly ===\n";
@@ -121,7 +123,8 @@ let test_i64_args_mirl_codegen name create_func =
 (* Test simple i64 parameter function *)
 let%expect_test "i64 identity parameter on ARM32" =
   test_i64_args_mirl_codegen "I64 Identity" create_i64_identity_function;
-  [%expect {|
+  [%expect
+    {|
     === Testing I64 Identity ===
     === Original MIRL ===
     function test_i64_identity ($0 (x): i64) {
@@ -160,7 +163,8 @@ let%expect_test "i64 identity parameter on ARM32" =
 (* Test i64 addition with parameters *)
 let%expect_test "i64 add parameters on ARM32" =
   test_i64_args_mirl_codegen "I64 Add" create_i64_add_function;
-  [%expect {|
+  [%expect
+    {|
     === Testing I64 Add ===
     === Original MIRL ===
     function test_i64_add ($0 (a): i64, $1 (b): i64) {
@@ -208,7 +212,8 @@ let%expect_test "i64 add parameters on ARM32" =
 (* Test mixed i32/i64 parameters *)
 let%expect_test "mixed i32 i64 parameters on ARM32" =
   test_i64_args_mirl_codegen "Mixed I32/I64" create_mixed_i32_i64_add_function;
-  [%expect {|
+  [%expect
+    {|
     === Testing Mixed I32/I64 ===
     === Original MIRL ===
     function test_mixed_add ($0 (a): i32, $1 (b): i64) {
