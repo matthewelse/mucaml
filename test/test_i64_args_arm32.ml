@@ -196,8 +196,9 @@ let%expect_test "i64 add parameters on ARM32" =
     .fnstart
     test_i64_add:
       push {lr}
-      mov r2, r1
+      mov r12, r1
       mov r1, r2
+      mov r2, r12
     test_i64_add__block_0:
       add r1, r0, r1
       adc r3, r2, r3
@@ -245,8 +246,9 @@ let%expect_test "mixed i32 i64 parameters on ARM32" =
     .fnstart
     test_mixed_add:
       push {lr}
-      mov r1, r0
+      mov r12, r0
       mov r0, r1
+      mov r1, r12
     test_mixed_add__block_0:
       add r0, r1, r0
       adc r2, r1, r2

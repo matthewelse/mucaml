@@ -23,13 +23,33 @@ end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
 
+let rec iteri__local (l @ local) ~f =
+  match l with
+  | [] -> ()
+  | x :: xs ->
+    f x;
+    iteri__local xs ~f
+;;
+
 let c_call buf ~dst ~func ~args ~clobbered_caller_saved_registers =
   let open Arm_dsl in
   if not (List.is_empty clobbered_caller_saved_registers)
   then push buf clobbered_caller_saved_registers;
-  List.iteri args ~f:(fun i arg ->
-    let reg = Iarray.get Register.function_args i in
-    if not (Register.equal reg arg) then mov buf ~dst:reg ~src:arg);
+  let rec iteri__local (l @ local) ~f =
+    match l with
+    | [] -> ()
+    | x :: xs ->
+      f x;
+      iteri__local xs ~f
+  in
+  iteri__local
+    (Mucaml_backend_common.Parallel_move.parallel_move
+       ~src:(Array.of_list args)
+       ~dst:
+         (List.mapi args ~f:(fun i _ -> Iarray.get Register.function_args i)
+          |> Iarray.of_list)
+       ~tmp:(fun _ -> W12))
+    ~f:(fun (dst, src) -> mov buf ~dst ~src);
   bl buf ~func;
   (match dst with
    | None -> ()
@@ -136,13 +156,20 @@ let emit_function (func : Mirl.Function.t) buf =
     Set.inter registers.used Register.callee_saved |> Set.to_list
   in
   emit_function_prologue buf ~name:func.name;
-  List.iteri func.params ~f:(fun i (_, reg, _) ->
-    match Registers.find registers reg with
-    | None -> (* This arg is never used, ignore it. *) ()
-    | Some reg ->
-      let conv_reg = Iarray.get Register.function_args i in
-      if not (Register.equal reg conv_reg) then mov buf ~dst:reg ~src:conv_reg);
   push buf (Register.lr :: clobbered_callee_saved_registers);
+  let src, dst =
+    List.filter_mapi func.params ~f:(fun i (_, src, _) ->
+      let%bind.Option dst = Registers.find registers src in
+      let src = Iarray.get Register.function_args i in
+      Some (src, dst))
+    |> List.unzip
+  in
+  iteri__local
+    (Mucaml_backend_common.Parallel_move.parallel_move
+       ~src:(Array.of_list src)
+       ~dst:(Iarray.of_list dst)
+       ~tmp:(fun _ -> W12))
+    ~f:(fun (dst, src) -> mov buf ~dst ~src);
   Iarray.iter func.body ~f:(fun block ->
     emit_block
       block
