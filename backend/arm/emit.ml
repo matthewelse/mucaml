@@ -97,6 +97,7 @@ let emit_block
             then Some live_regs
             else None)
         |> Option.value_map ~default:[] ~f:Set.to_list
+        |> List.sort ~compare:Register.compare
       in
       c_call buf ~dst:dst_reg ~func ~args:args_regs ~clobbered_caller_saved_registers
     | Return regs ->
@@ -112,7 +113,7 @@ let emit_block
          if not (Register.equal low_phys R0) then mov buf ~dst:R0 ~src:low_phys;
          if not (Register.equal high_phys R1) then mov buf ~dst:R1 ~src:high_phys
        | _ -> failwith "ARM32 return supports 1 or 2 registers only");
-      pop buf (PC :: clobbered_callee_saved_registers)
+      pop buf (clobbered_callee_saved_registers @ [ Register.PC ])
     | Jump { target } -> b buf ~target:(label_name ~function_name ~label:target)
     | Branch { condition; target } ->
       let condition_reg = Registers.find_exn registers condition in
@@ -124,12 +125,14 @@ let emit_function (func : Mirl.Function.t) buf =
   let mapping, used, call_sites = Linscan.allocate_registers func in
   let registers : Registers.t = { mapping; used } in
   let clobbered_callee_saved_registers =
-    Set.inter registers.used Register.callee_saved |> Set.to_list
+    Set.inter registers.used Register.callee_saved
+    |> Set.to_list
+    |> List.sort ~compare:Register.compare
   in
   emit_function_prologue buf ~name:func.name;
   (* TODO: Properly track whether or not LR is actually clobbered (i.e. whether or not we have
      a bl somewhere in this function). *)
-  push buf (LR :: clobbered_callee_saved_registers);
+  push buf (clobbered_callee_saved_registers @ [ LR ]);
   let src, dst =
     List.filter_mapi func.params ~f:(fun i (_, src, _) ->
       let%bind.Option dst = Registers.find registers src in
