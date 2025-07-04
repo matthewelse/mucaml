@@ -111,7 +111,7 @@ let emit_block
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in
-      mov buf ~dst:dst_reg ~src:src_reg
+      if not (Register.equal dst_reg src_reg) then mov buf ~dst:dst_reg ~src:src_reg
     | C_call { dst; func; args } ->
       let dst_reg = Registers.find registers dst in
       let args_regs = List.map args ~f:(Registers.find_exn registers) in
