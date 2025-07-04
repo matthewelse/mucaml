@@ -12,6 +12,7 @@ module Stage = struct
     type t =
       | Ast
       | Mirl
+      | Legalized
       | Assembly
       | Compile
       | Run
@@ -42,6 +43,7 @@ let run (project : Project.t) elf_file =
 ;;
 
 let compile_toplevel
+  ?(stop_after : Stage.t option)
   (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
   input
   ~output_binary
@@ -55,16 +57,28 @@ let compile_toplevel
   | Ok ast ->
     if [%compare.equal: Stage.t option] dump_stage (Some Ast)
     then Ast.to_string_hum ast |> print_endline;
-    let mirl = Mirl.of_ast ast in
-    if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
-    then Mirl.to_string mirl |> print_endline;
-    let legalize_config =
-      Legalize.Config.{ supports_native_i64 = Target.Capabilities.supports_native_i64 }
-    in
-    let legalized_mirl = Legalize.legalize_program legalize_config mirl in
-    let%bind assembly = Deferred.return (Target.build_program legalized_mirl) in
-    (*
-       let rpi_build_info =
+    (match stop_after with
+     | Some Ast -> return ()
+     | _ ->
+       let mirl = Mirl.of_ast ast in
+       if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
+       then Mirl.to_string mirl |> print_endline;
+       (match stop_after with
+        | Some Mirl -> return ()
+        | _ ->
+          let legalize_config =
+            Legalize.Config.
+              { supports_native_i64 = Target.Capabilities.supports_native_i64 }
+          in
+          let legalized_mirl = Legalize.legalize_program legalize_config mirl in
+          if [%compare.equal: Stage.t option] dump_stage (Some Legalized)
+          then Mirl.to_string legalized_mirl |> print_endline;
+          (match stop_after with
+           | Some Legalized -> return ()
+           | _ ->
+             let%bind assembly = Deferred.return (Target.build_program legalized_mirl) in
+             (*
+                let rpi_build_info =
       Rpi_binary_info.generate_assembly
         [ T
             { type_ = IdAndString
@@ -83,13 +97,18 @@ let compile_toplevel
             }
         ]
     in
-    *)
-    if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
-    then (
-      let assembly = Target.Assembly.to_string assembly in
-      print_endline assembly);
-    let%bind () = Target.compile_and_link assembly ~env ~linker_args ~output_binary in
-    return ()
+             *)
+             if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
+             then (
+               let assembly = Target.Assembly.to_string assembly in
+               print_endline assembly);
+             (match stop_after with
+              | Some Assembly -> return ()
+              | _ ->
+                let%bind () =
+                  Target.compile_and_link assembly ~env ~linker_args ~output_binary
+                in
+                return ()))))
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
     Fmt_doc.render
@@ -105,10 +124,7 @@ let repl =
     [%map_open.Command
       let dump_stage =
         flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
-      and (module Backend) = Mucaml_backend.target_param
-      and should_run =
-        flag "run" no_arg ~doc:"RUN whether to run the compiled program after compilation"
-      in
+      and (module Backend) = Mucaml_backend.target_param in
       fun () ->
         let open Deferred.Or_error.Let_syntax in
         let env = Env.create () in
@@ -131,7 +147,7 @@ let repl =
                   ~linker_args:[]
                   ~env
               in
-              let%bind () = if should_run then run project output_binary else return () in
+              let%bind () = run project output_binary in
               return (`Repeat ()))
         in
         return ()]
@@ -167,6 +183,11 @@ let build ~should_run =
           ~doc:"FILE path to project file (default: mucaml.toml)"
       and dump_stage =
         flag "dump-stage" (optional Stage.arg_type) ~doc:"STAGE the stage to print out"
+      and stop_after =
+        flag
+          "stop-after"
+          (optional Stage.arg_type)
+          ~doc:"STAGE stop compiling after this stage"
       in
       fun ~files () ->
         let open Deferred.Result.Let_syntax in
@@ -194,6 +215,7 @@ let build ~should_run =
         let%bind () =
           Deferred.map ~f:wrap
           @@ compile_toplevel
+               ?stop_after
                (module Target)
                code
                ~dump_stage
