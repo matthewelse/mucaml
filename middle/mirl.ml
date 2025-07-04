@@ -475,9 +475,9 @@ and walk_expr
         | (_ : Nothing.t) -> .))
   | If (cond, if_true, if_false) ->
     let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
-    let after_block = Function.Builder.add_block function_builder ignore in
     let then_block = Function.Builder.add_block function_builder ignore in
     let else_block = Function.Builder.add_block function_builder ignore in
+    let after_block = Function.Builder.add_block function_builder ignore in
     let #(then_reg, then_block) =
       let acc = then_block in
       walk_expr if_true ~env ~function_builder ~acc

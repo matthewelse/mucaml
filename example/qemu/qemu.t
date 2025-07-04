@@ -10,19 +10,20 @@
   mucaml_main:
     push {lr}
   mucaml_main__block_0:
-    cbnz r0, mucaml_main__block_2
-    b mucaml_main__block_3
+    cbnz r0, mucaml_main__block_1
+    b mucaml_main__block_2
   mucaml_main__block_1:
-    bl mucaml_exit
-    pop {pc}
-  mucaml_main__block_2:
     mov r0, #10
     bl mucaml_print
     mov r0, #100
-    b mucaml_main__block_1
+    b mucaml_main__block_3
+  mucaml_main__block_2:
+    mov r1, #99
+    mov r0, r1
+    b mucaml_main__block_3
   mucaml_main__block_3:
-    mov r0, #99
-    b mucaml_main__block_1
+    bl mucaml_exit
+    pop {pc}
   .fnend
   .size mucaml_main, . - mucaml_main
   

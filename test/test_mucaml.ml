@@ -124,20 +124,21 @@ let%expect_test _ =
     mucaml_main:
       push {lr}
     mucaml_main__block_0:
-      cbnz r0, mucaml_main__block_2
-      b mucaml_main__block_3
+      cbnz r0, mucaml_main__block_1
+      b mucaml_main__block_2
     mucaml_main__block_1:
-      pop {pc}
-    mucaml_main__block_2:
       mov r0, #3
       mov r1, #4
       add r0, r0, r1
-      b mucaml_main__block_1
+      b mucaml_main__block_3
+    mucaml_main__block_2:
+      mov r1, #5
+      mov r2, #6
+      add r1, r1, r2
+      mov r0, r1
+      b mucaml_main__block_3
     mucaml_main__block_3:
-      mov r0, #5
-      mov r1, #6
-      add r0, r0, r1
-      b mucaml_main__block_1
+      pop {pc}
     .fnend
     .size mucaml_main, . - mucaml_main
     |}];

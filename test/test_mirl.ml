@@ -112,22 +112,22 @@ let%expect_test _ =
     function mucaml_main ($0 (x): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
     block_0:
-        branch if $0 to block_2
-        jump block_3
+        branch if $0 to block_1
+        jump block_2
     block_1:
-        return $7
-    block_2:
         $1 := 3
         $2 := 4
         $3 := $1 + $2
         $7 := $3
-        jump block_1
-    block_3:
+        jump block_3
+    block_2:
         $4 := 5
         $5 := 6
         $6 := $4 + $5
         $7 := $6
-        jump block_1
+        jump block_3
+    block_3:
+        return $7
     }
     |}];
   test
