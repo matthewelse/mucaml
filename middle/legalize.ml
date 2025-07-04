@@ -125,16 +125,16 @@ let legalize_function config func =
       (fun func_builder params ->
          let pair_map = Register_pair_map.create () in
          (* Create parameter register mappings for the original parameters *)
-         let param_index = ref 0 in
+         let param_index = stack_ (ref 0) in
          List.iter func.params ~f:(fun (_, orig_reg, ty) ->
            match ty with
-           | Mirl.Type.I64 ->
+           | I64 ->
              (* Map original i64 parameter to the two new i32 parameter registers *)
              let _, low_reg, _ = List.nth_exn params !param_index in
              let _, high_reg, _ = List.nth_exn params (!param_index + 1) in
              Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg);
              param_index := !param_index + 2
-           | Mirl.Type.I32 ->
+           | I32 ->
              (* Map i32 parameter directly *)
              let _, i32_reg, _ = List.nth_exn params !param_index in
              Hashtbl.set pair_map ~key:orig_reg ~data:(i32_reg, i32_reg);
