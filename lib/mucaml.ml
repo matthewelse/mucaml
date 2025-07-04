@@ -25,6 +25,7 @@ end
 
 let run (project : Project.t) elf_file =
   let open Deferred.Or_error.Let_syntax in
+  let elf_file = "./" ^ elf_file in
   let command, args =
     match project.run_command with
     | None | Some [] -> elf_file, []
