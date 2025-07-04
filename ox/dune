@@ -1,0 +1,6 @@
+(library
+ (name ox)
+ (libraries core stdlib_upstream_compatible)
+(preprocess
+  (pps ppx_jane))
+ )

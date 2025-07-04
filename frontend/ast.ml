@@ -1,8 +1,8 @@
-open! Core
+open! Ox
 
 type expr =
-  | Int32 of int32
-  | Int64 of int64
+  | Int32 of i32
+  | Int64 of i64
   | Bool of bool
   | Unit
   | Var of string
@@ -30,8 +30,8 @@ type t = toplevel list [@@deriving sexp_of]
 
 let expr_to_string_hum ?indent (expr : expr) =
   let rec aux ?(indent = "") = function
-    | Int32 i -> Printf.sprintf "%s%ld" indent i
-    | Int64 i -> Printf.sprintf "%s%Ld" indent i
+    | Int32 i -> [%string "%{indent}%{i#I32}"]
+    | Int64 i -> [%string "%{indent}%{i#I64}"]
     | Bool b -> Printf.sprintf "%s%b" indent b
     | Unit -> Printf.sprintf "%s()" indent
     | Var v -> Printf.sprintf "%s$%s" indent v

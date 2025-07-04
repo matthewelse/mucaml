@@ -1,4 +1,5 @@
 {
+  open Ox
   open Parser
 
   exception Error of string
@@ -54,8 +55,8 @@ rule read = parse
   | ","                { COMMA }
   | "("                { LPAREN }
   | ")"                { RPAREN }
-  | int32_literal as i { INT32 (Int32.of_string i) }
-  | int64_literal as i { INT64 (Int64.of_string (String.sub i 0 (String.length i - 1))) }
+  | int32_literal as i { INT32 (Int.of_string i) }
+  | int64_literal as i { INT64 (Int.of_string (String.sub i ~pos:0 ~len:(String.length i - 1))) }
   | boolean as b       { BOOL (bool_of_string b) }
   | identifier as n    { VAR n }
   | eof                { EOF }

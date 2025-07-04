@@ -1,4 +1,4 @@
-open! Core
+open! Ox
 open! Import
 
 module Label : sig
@@ -414,11 +414,11 @@ and walk_expr
   match expr with
   | Int32 i ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
-    push acc (Set { dst = reg; value = Int32.to_int_trunc i });
+    push acc (Set { dst = reg; value = I32.to_int_trunc i });
     #(reg, acc)
   | Int64 i ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
-    push acc (Set { dst = reg; value = Int64.to_int_trunc i });
+    push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
   | App (Var "+", [ e1; e2 ]) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in

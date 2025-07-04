@@ -1,9 +1,10 @@
 %{
+  open! Ox 
   open Ast
 %}
 
-%token <int32> INT32
-%token <int64> INT64
+%token <int> INT32
+%token <int> INT64
 %token <bool> BOOL
 %token <string> VAR
 %token <string> STRING
@@ -53,12 +54,12 @@ let toplevel :=
     { External { name; type_; c_name } }
 
 let expr :=
-  | ~ = INT32;                                <Int32>
-  | ~ = INT64;                                <Int64>
+  | n = INT32;                                { Int32 (I32.of_int_exn n) }
+  | n = INT64;                                { Int64 (I64.of_int n) }
   | ~ = BOOL;                                 <Bool>
   | ~ = VAR;                                  <Var>
   | LPAREN; RPAREN;                           { Unit }
-  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int32 0l; expr ]) }
+  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int32 #0l; expr ]) }
   | l = expr; ~ = binop; r = expr;            { App (Var binop, [l; r]) }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
     { Let ((var, type_), value, body) }

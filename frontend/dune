@@ -1,6 +1,6 @@
 (library
  (name mucaml_frontend)
- (libraries core grace linenoise menhirLib)
+ (libraries ox grace linenoise menhirLib)
  (preprocess
   (pps ppx_jane)))
 
