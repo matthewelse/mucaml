@@ -1,6 +1,6 @@
-external print : int32 -> unit = "mucaml_print"
+external print : i32 -> unit = "mucaml_print"
 
-let main x : int32 =
+let main x : i32 =
   if x
   then (
     let _ = print 10 in

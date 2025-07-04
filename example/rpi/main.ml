@@ -1,8 +1,8 @@
-external sleep_ms : int32 -> unit = "mucaml_sleep_ms"
-external led_on : int32 -> unit = "mucaml_led_on"
-external led_off : int32 -> unit = "mucaml_led_off"
+external sleep_ms : i32 -> unit = "mucaml_sleep_ms"
+external led_on : i32 -> unit = "mucaml_led_on"
+external led_off : i32 -> unit = "mucaml_led_off"
 
-let main x : int32 =
+let main x : i32 =
   let _ = sleep_ms 100 in
   let _ = led_on 7 in
   let _ = sleep_ms 100 in
