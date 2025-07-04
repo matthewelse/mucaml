@@ -2,8 +2,8 @@
  (name mucaml_backend_arm64)
  (libraries
   async
-  core
   grace
+  ox
   mucaml_backend_common
   mucaml_middle
   stdlib_upstream_compatible)

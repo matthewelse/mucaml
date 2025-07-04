@@ -1,4 +1,4 @@
-open! Core
+open! Ox
 open! Import
 module Linscan = Mucaml_backend_common.Linscan.Make (Register)
 
@@ -14,19 +14,11 @@ end
 
 let label_name ~function_name ~label = [%string "%{function_name}__%{label#Mirl.Label}"]
 
-let rec iteri__local (l @ local) ~f =
-  match l with
-  | [] -> ()
-  | x :: xs ->
-    f x;
-    iteri__local xs ~f
-;;
-
 let c_call buf ~dst ~func ~args ~clobbered_caller_saved_registers =
   let open Arm_dsl in
   if not (List.is_empty clobbered_caller_saved_registers)
   then push buf clobbered_caller_saved_registers;
-  iteri__local
+  (List.iter [@mode local])
     (Mucaml_backend_common.Parallel_move.parallel_move
        ~src:(Array.of_list args)
        ~dst:
@@ -145,7 +137,7 @@ let emit_function (func : Mirl.Function.t) buf =
       Some (src, dst))
     |> List.unzip
   in
-  iteri__local
+  (List.iter [@mode local])
     (Mucaml_backend_common.Parallel_move.parallel_move
        ~src:(Array.of_list src)
        ~dst:(Iarray.of_list dst)
