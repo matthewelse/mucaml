@@ -1,5 +1,7 @@
 name = "blinky"
 
+linker_args = [ "-Tlink.x" ]
+
 [target]
 triple = "thumbv8m.main-none-eabihf"
 cpu = "cortex-m33"
