@@ -93,7 +93,7 @@ let%expect_test "i64 addition parsing and legalization" =
 ;;
 
 let%expect_test "i32 literal test" =
-  test_i64_parsing {| let main _ : i32 = 42l |};
+  test_i64_parsing {| let main _ : i32 = 42 |};
   [%expect
     {|
     === Original MIRL ===

@@ -2,7 +2,6 @@
   open Ast
 %}
 
-%token <int> INT
 %token <int32> INT32
 %token <int64> INT64
 %token <bool> BOOL
@@ -31,7 +30,7 @@
 %left PLUS MINUS
 %left TIMES DIV
 %right UNARY_MINUS
-%nonassoc INT INT32 INT64 BOOL VAR LPAREN
+%nonassoc INT32 INT64 BOOL VAR LPAREN
 %nonassoc APP
 
 %type <Ast.t> prog
@@ -54,13 +53,12 @@ let toplevel :=
     { External { name; type_; c_name } }
 
 let expr :=
-  | ~ = INT;                                  <Int>
   | ~ = INT32;                                <Int32>
   | ~ = INT64;                                <Int64>
   | ~ = BOOL;                                 <Bool>
   | ~ = VAR;                                  <Var>
   | LPAREN; RPAREN;                           { Unit }
-  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int 0; expr ]) }
+  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int32 0l; expr ]) }
   | l = expr; ~ = binop; r = expr;            { App (Var binop, [l; r]) }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
     { Let ((var, type_), value, body) }

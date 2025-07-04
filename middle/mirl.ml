@@ -412,10 +412,6 @@ and walk_expr
     ty1
   in
   match expr with
-  | Int i ->
-    let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
-    push acc (Set { dst = reg; value = i });
-    #(reg, acc)
   | Int32 i ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = Int32.to_int_trunc i });
