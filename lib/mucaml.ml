@@ -15,13 +15,62 @@ module Stage = struct
       | Legalized
       | Assembly
       | Compile
-      | Run
     [@@deriving sexp_of, compare, enumerate, equal]
   end
 
   include T
 
   let arg_type = Command.Arg_type.enumerated_sexpable ~case_sensitive:false (module T)
+
+  module type S = sig
+    module Input : T
+
+    module Output : sig
+      type t
+
+      val to_string_hum : t -> string
+    end
+
+    val name : t
+    val run : Input.t -> Output.t Deferred.Or_error.t
+  end
+
+  module Pipeline = struct
+    type stage = t [@@deriving equal]
+
+    type ('input, 'output) t =
+      | [] : ('input, 'input) t
+      | ( :: ) :
+          (module S with type Input.t = 'input and type Output.t = 'inter)
+          * ('inter, 'output) t
+          -> ('input, 'output) t
+
+    let rec run
+      : type input output.
+        (input, output) t
+        -> input
+        -> stop_after:stage option
+        -> dump_stage:stage option
+        -> output option Deferred.Or_error.t
+      =
+      fun t input ~stop_after ~dump_stage ->
+      match t with
+      | [] -> Deferred.Or_error.return (Some input)
+      | (module Stage) :: tl ->
+        let%bind.Deferred.Or_error output = Stage.run input in
+        if [%equal: stage option] (Some Stage.name) dump_stage
+        then print_endline (Stage.Output.to_string_hum output);
+        if [%equal: stage option] (Some Stage.name) stop_after
+        then Deferred.Or_error.return None
+        else run tl output ~stop_after ~dump_stage
+    ;;
+
+    let run' t i ~stop_after ~dump_stage =
+      let open Deferred.Or_error.Let_syntax in
+      let%bind (None | Some ()) = run t i ~stop_after ~dump_stage in
+      return ()
+    ;;
+  end
 end
 
 let run (project : Project.t) elf_file =
@@ -42,6 +91,59 @@ let run (project : Project.t) elf_file =
   return ()
 ;;
 
+let stages
+  (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
+  ~env
+  ~linker_args
+  ~output_binary
+  : (Ast.t, _) Stage.Pipeline.t
+  =
+  let stage (type i o) ~(output_to_string_hum : o -> string) ~run name
+    : (module Stage.S with type Input.t = i and type Output.t = o)
+    =
+    (module struct
+      module Input = struct
+        type t = i
+      end
+
+      module Output = struct
+        type t = o
+
+        let to_string_hum = output_to_string_hum
+      end
+
+      let name = name
+      let run = run
+    end)
+  in
+  [ stage
+      ~output_to_string_hum:Ast.to_string_hum
+      ~run:(fun x -> Deferred.Or_error.return x)
+      Ast
+  ; stage
+      ~output_to_string_hum:Mirl.to_string
+      ~run:(fun x -> Deferred.Or_error.return (Mirl.of_ast x))
+      Mirl
+  ; stage
+      ~output_to_string_hum:Mirl.to_string
+      ~run:(fun x ->
+        Deferred.Or_error.return
+          (Legalize.legalize_program
+             { supports_native_i64 = Target.Capabilities.supports_native_i64 }
+             x))
+      Legalized
+  ; stage
+      ~output_to_string_hum:Target.Assembly.to_string
+      ~run:(fun mirl -> Deferred.return @@ Target.build_program mirl)
+      Assembly
+  ; stage
+      ~output_to_string_hum:Unit.to_string
+      ~run:(fun assembly ->
+        Target.compile_and_link assembly ~env ~linker_args ~output_binary)
+      Compile
+  ]
+;;
+
 let compile_toplevel
   ?(stop_after : Stage.t option)
   (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
@@ -55,60 +157,11 @@ let compile_toplevel
   let files = Grace.Files.create () in
   match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
   | Ok ast ->
-    if [%compare.equal: Stage.t option] dump_stage (Some Ast)
-    then Ast.to_string_hum ast |> print_endline;
-    (match stop_after with
-     | Some Ast -> return ()
-     | _ ->
-       let mirl = Mirl.of_ast ast in
-       if [%compare.equal: Stage.t option] dump_stage (Some Mirl)
-       then Mirl.to_string mirl |> print_endline;
-       (match stop_after with
-        | Some Mirl -> return ()
-        | _ ->
-          let legalize_config =
-            Legalize.Config.
-              { supports_native_i64 = Target.Capabilities.supports_native_i64 }
-          in
-          let legalized_mirl = Legalize.legalize_program legalize_config mirl in
-          if [%compare.equal: Stage.t option] dump_stage (Some Legalized)
-          then Mirl.to_string legalized_mirl |> print_endline;
-          (match stop_after with
-           | Some Legalized -> return ()
-           | _ ->
-             let%bind assembly = Deferred.return (Target.build_program legalized_mirl) in
-             (*
-                let rpi_build_info =
-      Rpi_binary_info.generate_assembly
-        [ T
-            { type_ = IdAndString
-            ; namespace = 'R', 'P'
-            ; value = Rpi_binary_info.Entry.Id.rp_program_name, program_name
-            }
-        ; T
-            { type_ = IdAndString
-            ; namespace = 'R', 'P'
-            ; value = Rpi_binary_info.Entry.Id.rp_pico_board, "adafruit_feather_rp2350"
-            }
-        ; T
-            { type_ = IdAndIntLabel
-            ; namespace = 'R', 'P'
-            ; value = Rpi_binary_info.Entry.Id.rp_binary_end, "__flash_binary_end"
-            }
-        ]
-    in
-             *)
-             if [%compare.equal: Stage.t option] dump_stage (Some Assembly)
-             then (
-               let assembly = Target.Assembly.to_string assembly in
-               print_endline assembly);
-             (match stop_after with
-              | Some Assembly -> return ()
-              | _ ->
-                let%bind () =
-                  Target.compile_and_link assembly ~env ~linker_args ~output_binary
-                in
-                return ()))))
+    Stage.Pipeline.run'
+      (stages (module Target) ~env ~linker_args ~output_binary)
+      ast
+      ~stop_after
+      ~dump_stage
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
     Fmt_doc.render
