@@ -59,7 +59,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
         let link_command = "arm-none-eabi-gcc" in
         let args =
           linker_args
-          @ [ "-L" ^ Env.runtime_lib_dir env triple; "-lmucaml_runtime" ]
+          @ [ "-L" ^ Env.runtime_lib_dir env; "-lmucaml_runtime" ]
           @ [ "-g"
             ; "-mcpu=" ^ Cpu.to_string cpu
             ; "-nostdlib"

@@ -13,9 +13,4 @@ let create ?(runtime_lib_dir = ".") () =
   { runtime_lib_dir }
 ;;
 
-let runtime_lib_dir t triple =
-  let mode = "release" in
-  if Triple.is_host triple
-  then t.runtime_lib_dir ^/ mode
-  else t.runtime_lib_dir ^/ Triple.to_string triple ^/ mode
-;;
+let runtime_lib_dir t = t.runtime_lib_dir

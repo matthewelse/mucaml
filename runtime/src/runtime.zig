@@ -12,11 +12,13 @@ const pin_config = rp2xxx.pins.GlobalConfiguration{
 
 const pins = pin_config.pins();
 
+extern fn mucaml_main(i32) u32;
+
 pub fn main() !void {
     pin_config.apply();
 
     while (true) {
         pins.led.toggle();
-        time.sleep_ms(1000);
+        time.sleep_ms(mucaml_main(0));
     }
 }

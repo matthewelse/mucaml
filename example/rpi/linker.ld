@@ -13,6 +13,28 @@ MEMORY
   ram1 (rwx) : ORIGIN = 0x20080000, LENGTH = 0x00001000
   ram2 (rwx) : ORIGIN = 0x20081000, LENGTH = 0x00001000
 }
+
+/*
+ * End of auto-generated section.
+ */
+SECTIONS {
+  .bootmeta :
+  {
+    __bootmeta_start__ = .;
+    KEEP(*(.bootmeta))
+    __bootmeta_end__ = .;
+  } > flash0
+}
+INSERT AFTER .flash_start;
+
+SECTIONS {
+  .ram_vectors (NOLOAD) :
+  {
+    KEEP(*(ram_vectors))
+  } > ram0
+}
+INSERT AFTER .bss;
+
 SECTIONS
 {
   .flash_start :
@@ -59,24 +81,3 @@ SECTIONS
 
   microzig_data_load_start = LOADADDR(.data);
 }
-/*
- * End of auto-generated section.
- */
-SECTIONS {
-  .bootmeta :
-  {
-    __bootmeta_start__ = .;
-    KEEP(*(.bootmeta))
-    __bootmeta_end__ = .;
-  } > flash0
-}
-INSERT AFTER .flash_start;
-
-SECTIONS {
-  .ram_vectors (NOLOAD) :
-  {
-    KEEP(*(ram_vectors))
-  } > ram0
-}
-INSERT AFTER .bss;
-
