@@ -1,6 +1,6 @@
 name = "blinky"
 
-linker_args = [ "-Tlink.x" ]
+linker_args = [ "-Tlinker.ld" ]
 
 [target]
 triple = "thumbv8m.main-none-eabihf"

@@ -1,0 +1,15 @@
+<extend template="base.shtml">
+<title id="title" var="$page.title"></title>
+<div id="main">
+  <div id="page" :loop="$page.contentSections()">
+    <ctx :if="$loop.first" :html="$loop.it.html()"></ctx>
+    <ctx
+      :if="$loop.first.not()"
+    >
+      <div id="$loop.it.id">
+        <h4 :text="$loop.it.id.parseDate().format('January 02, 2006')"></h4>
+        <ctx :html="$loop.it.html()"></ctx>
+      </div>
+    </ctx>
+  </div>
+</div>

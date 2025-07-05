@@ -1,0 +1,20 @@
+.{
+    .name = .mz_port_nordic_nrf5x,
+    .fingerprint = 0x7f29ecb8386dbbfa,
+    .version = "0.0.0",
+    .dependencies = .{
+        .@"microzig/build-internals" = .{ .path = "../../../build-internals" },
+        .nrfx = .{
+            .url = "https://github.com/NordicSemiconductor/nrfx/archive/refs/tags/v3.11.0.tar.gz",
+            .hash = "N-V-__8AABC-kgxbmC3Prd8fgisfbLs1giU34ofX1vz9bwaA",
+        },
+    },
+    .paths = .{
+        "README.md",
+        "build.zig",
+        "build.zig.zon",
+        "patches",
+        "src",
+        "test",
+    },
+}
