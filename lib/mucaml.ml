@@ -87,9 +87,8 @@ let run (type r) (project : Project.t) elf_file ~(how : r How_to_run.t) : r =
     | None | Some [] -> elf_file, []
     | Some (cmd :: args) ->
       let subst s =
-        match s with
-        | "{elf_file}" -> elf_file
-        | _ -> s
+        let pat = String.Search_pattern.create "{elf_file}" in
+        String.Search_pattern.replace_all pat ~in_:s ~with_:elf_file
       in
       subst cmd, List.map args ~f:subst
   in

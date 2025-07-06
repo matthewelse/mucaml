@@ -1,6 +1,14 @@
 name = "blinky"
 linker_args = [ "-Tlinker.ld" ]
 
+run_command = [ 
+  "openocd",
+  "-f", "interface/cmsis-dap.cfg",
+  "-f", "target/rp2350.cfg",
+  "-c", "adapter speed 5000",
+  "-c", "program {elf_file} verify reset"
+]
+
 [target]
 triple = "thumbv8m.main-none-eabihf"
 board = "rp2350"
