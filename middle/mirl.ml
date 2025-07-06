@@ -390,7 +390,7 @@ let rec of_ast (ast : Ast.t) =
   { functions; externs }
 
 and walk_expr
-  (expr : Ast.expr)
+  (expr : Ast.Expr.t)
   ~(env : Env.t)
   ~(function_builder @ local)
   ~(acc : Block.Builder.t @ local)

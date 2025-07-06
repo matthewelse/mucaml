@@ -1,6 +1,7 @@
 %{
   open! Ox 
-  open Ast
+  module Expr = Ast.Expr
+  module Toplevel = Ast.Toplevel
 %}
 
 %token <int> INT32
@@ -35,7 +36,7 @@
 %nonassoc APP
 
 %type <Ast.t> prog
-%type <Ast.expr> expr
+%type <Ast.Expr.t> expr
 %type <string * Type.t> param
 %type <(string * Type.t) list> param_list
 %type <Type.t> type_annot type_name
@@ -49,9 +50,9 @@ let prog :=
 
 let toplevel :=
   | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
-    { Function { name; params = param_list; body } }
+    { Toplevel.Function { name; params = param_list; body } }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
-    { External { name; type_; c_name } }
+    { Toplevel.External { name; type_; c_name } }
 
 let expr :=
   | n = INT32;                                { Literal (Int32 (I32.of_int_exn n)) }
