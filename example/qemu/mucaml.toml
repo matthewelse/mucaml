@@ -1,9 +1,10 @@
 name = "blinky"
+runtime_target = "stm32f100rb"
 
 run_command = [ 
   "qemu-system-arm",
-  "-machine", "mps2-an505",
-  "-cpu", "cortex-m33",
+  "-machine", "stm32vldiscovery",
+  "-cpu", "cortex-m3",
   "-nographic",
   "-semihosting-config", "enable=on,target=native",
   "-m", "16M",
@@ -14,9 +15,9 @@ run_command = [
   "-kernel", "{elf_file}"
 ]
 
-linker_args = [ "-Tlink.x" ]
+linker_args = [ "-Tlinker.ld" ]
 
 [target]
-triple = "thumbv8m.main-none-eabihf"
-cpu = "cortex-m33"
+triple = "thumbv7m-none-eabi"
+cpu = "cortex-m3"
 

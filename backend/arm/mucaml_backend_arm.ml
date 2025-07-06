@@ -28,7 +28,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
   let open Or_error.Let_syntax in
   let%bind _use_hard_float =
     match triple with
-    | { architecture = Arm V8m_main
+    | { architecture = Arm (V7m | V8m_main)
       ; vendor = Unknown
       ; operating_system = None
       ; environment
@@ -56,19 +56,39 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
       let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in
         let open Deferred.Or_error.Let_syntax in
+        let asm_command = "arm-none-eabi-gcc" in
+        let object_name = Filename.basename output_binary ^ ".o" in
+        let args =
+          [ "-c"
+          ; "-g"
+          ; "-mcpu=" ^ Cpu.to_string cpu
+          ; "-nostdlib"
+          ; "-x"
+          ; "assembler"
+          ; "-"
+          ; "-o"
+          ; object_name
+          ]
+        in
+        let%bind () =
+          Process.run_expect_no_output
+            ~prog:asm_command
+            ~args
+            ~stdin:(Assembly.to_string program)
+            ()
+        in
         let link_command = "arm-none-eabi-gcc" in
         let args =
           linker_args
-          @ [ "-L" ^ Env.runtime_lib_dir env; "-lmucaml_runtime" ]
-          @ [ "-g"
-            ; "-mcpu=" ^ Cpu.to_string cpu
-            ; "-nostdlib"
-            ; "-x"
-            ; "assembler"
-            ; "-"
-            ; "-o"
-            ; output_binary
+          @ [ "-Wl,--gc-sections" ]
+          @ [ (* It's important that [object_name] precedes the library, since it depends
+                 on [libmucaml_runtime]. *)
+              object_name
+            ; "-L"
+            ; Env.runtime_lib_dir env
+            ; "-lmucaml_runtime"
             ]
+          @ [ "-g"; "-mcpu=" ^ Cpu.to_string cpu; "-nostdlib"; "-o"; output_binary ]
         in
         let%bind () =
           Process.run_expect_no_output

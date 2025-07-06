@@ -2,9 +2,13 @@ open! Core
 
 module Architecture = struct
   module Arm = struct
-    type t = V8m_main [@@deriving equal, sexp_of]
+    type t =
+      | V7m
+      | V8m_main
+    [@@deriving equal, sexp_of]
 
     let to_string = function
+      | V7m -> "thumbv7m"
       | V8m_main -> "thumbv8m.main"
     ;;
 
@@ -87,6 +91,13 @@ let of_string
   function
   | "thumbv8m.main-none-eabi" ->
     { architecture = Arm V8m_main
+    ; vendor = Unknown
+    ; operating_system = None
+    ; environment = Eabi
+    ; binary_format = Elf
+    }
+  | "thumbv7m-none-eabi" ->
+    { architecture = Arm V7m
     ; vendor = Unknown
     ; operating_system = None
     ; environment = Eabi

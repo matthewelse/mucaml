@@ -4,6 +4,8 @@ const std = @import("std");
 const device =
     if (std.mem.eql(u8, config.mu_target, "rp2350"))
         @import("./rpi.zig")
+    else if (std.mem.eql(u8, config.mu_target, "stm32f100rb"))
+        @import("./stm32.zig")
     else
         struct {
             pub fn init() void {}

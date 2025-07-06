@@ -8,6 +8,7 @@ type t =
   ; backend_params : Mucaml_backend.Settings.t
   ; linker_args : string list
   ; run_command : string list option
+  ; runtime_target : string
   }
 
 let parse_file filename ~files =
@@ -67,7 +68,11 @@ let parse_file filename ~files =
   let run_command =
     Otoml.find_opt toml (Otoml.get_array Otoml.get_string) [ "run_command" ]
   in
-  Ok { name; top_level; target; backend_params; linker_args; run_command }
+  let runtime_target =
+    Otoml.find_opt toml Otoml.get_string [ "runtime_target" ]
+    |> Option.value ~default:"native"
+  in
+  Ok { name; top_level; target; backend_params; linker_args; run_command; runtime_target }
 ;;
 
 let native_repl =
@@ -77,5 +82,6 @@ let native_repl =
   ; backend_params = Mucaml_backend.Settings.default
   ; linker_args = []
   ; run_command = None
+  ; runtime_target = "native"
   }
 ;;

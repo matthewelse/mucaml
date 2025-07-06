@@ -1,7 +1,9 @@
 open! Core
 
 module T = struct
-  type t = Cortex_m33
+  type t =
+    | Cortex_m3
+    | Cortex_m33
   [@@deriving sexp_of, compare, enumerate, equal, string ~capitalize:"kebab-case"]
 end
 
