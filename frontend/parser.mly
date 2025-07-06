@@ -2,6 +2,9 @@
   open! Ox 
   module Expr = Ast.Expr
   module Toplevel = Ast.Toplevel
+  module Location = Ast.Location
+
+  let mkloc start_pos end_pos = Location.of_lex start_pos end_pos
 %}
 
 %token <int> INT32
@@ -50,28 +53,40 @@ let prog :=
 
 let toplevel :=
   | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
-    { Toplevel.Function { name; params = param_list; body } }
+    { let location = mkloc $startpos $endpos in
+      Toplevel.Function { name; params = param_list; body; location } }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
-    { Toplevel.External { name; type_; c_name } }
+    { let location = mkloc $startpos $endpos in
+      Toplevel.External { name; type_; c_name; location } }
 
 let expr :=
-  | n = INT32;                                { Literal (Int32 (I32.of_int_exn n)) }
-  | n = INT64;                                { Literal (Int64 (I64.of_int n)) }
-  | b = BOOL;                                 { Literal (Bool b) }
-  | ~ = VAR;                                  <Var>
-  | LPAREN; RPAREN;                           { Literal Unit }
-  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Literal (Int32 #0l); expr ]) }
-  | l = expr; ~ = binop; r = expr;            { App (Var binop, [l; r]) }
+  | n = INT32;                                
+    { Expr.Literal (Int32 (I32.of_int_exn n), mkloc $startpos $endpos) }
+  | n = INT64;                                
+    { Expr.Literal (Int64 (I64.of_int n), mkloc $startpos $endpos) }
+  | b = BOOL;                                 
+    { Expr.Literal (Bool b, mkloc $startpos $endpos) }
+  | v = VAR;                                  
+    { Expr.Var (v, mkloc $startpos $endpos) }
+  | LPAREN; RPAREN;                           
+    { Expr.Literal (Unit, mkloc $startpos $endpos) }
+  | UNARY_MINUS; ~ = expr;                    
+    { let zero_lit = Expr.Literal (Int32 #0l, mkloc $startpos $startpos) in
+      Expr.App (Expr.Var ("-", mkloc $startpos $startpos), [ zero_lit; expr ], mkloc $startpos $endpos) }
+  | l = expr; op = binop; r = expr;            
+    { Expr.App (Expr.Var (op, mkloc $startpos $endpos), [l; r], mkloc $startpos $endpos) }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-    { Let ((var, type_), value, body) }
+    { Expr.Let ((var, type_), value, body, mkloc $startpos $endpos) }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-    { Letrec ((var, type_), value, body) }
+    { Expr.Letrec ((var, type_), value, body, mkloc $startpos $endpos) }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
-    { If (cond, if_true, if_false) }
+    { Expr.If (cond, if_true, if_false, mkloc $startpos $endpos) }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
-    { Fun (param_list, expr)  }
-  | f = expr; arg = expr; %prec APP           { App (f, [ arg ]) }
-  | LPAREN; ~ = expr; RPAREN;                     <> 
+    { Expr.Fun (param_list, expr, mkloc $startpos $endpos) }
+  | f = expr; arg = expr; %prec APP           
+    { Expr.App (f, [ arg ], mkloc $startpos $endpos) }
+  | LPAREN; ~ = expr; RPAREN;                     
+    <> 
 
 let param_list :=
   | ~ = separated_list(COMMA, param); <>

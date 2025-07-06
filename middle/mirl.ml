@@ -347,7 +347,7 @@ let rec of_ast (ast : Ast.t) =
   let functions, externs =
     List.partition_mapi ast ~f:(fun _ ast ->
       match ast with
-      | Function { name; params; body } ->
+      | Function { name; params; body; location = _ } ->
         let params =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
@@ -371,7 +371,7 @@ let rec of_ast (ast : Ast.t) =
                in
                Block.Builder.push acc (Instruction.Return [ result ]) [@nontail])
              [@nontail]))
-      | External { name; type_; c_name } ->
+      | External { name; type_; c_name; location = _ } ->
         let arg_types, return_type =
           let rec args acc (ret : Mucaml_frontend.Type.t) =
             match ret with
@@ -412,15 +412,15 @@ and walk_expr
     ty1
   in
   match expr with
-  | Literal (Int32 i) ->
+  | Literal (Int32 i, _) ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = I32.to_int_trunc i });
     #(reg, acc)
-  | Literal (Int64 i) ->
+  | Literal (Int64 i, _) ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
-  | App (Var "+", [ e1; e2 ]) ->
+  | App (Var ("+", _), [ e1; e2 ], _) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -428,7 +428,7 @@ and walk_expr
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
-  | App (Var "-", [ e1; e2 ]) ->
+  | App (Var ("-", _), [ e1; e2 ], _) ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -436,12 +436,12 @@ and walk_expr
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
-  | Let ((var, _), value, body) ->
+  | Let ((var, _), value, body, _) ->
     let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
     let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
     let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
     #(reg2, acc)
-  | App (Var var, args) ->
+  | App (Var (var, _), args, _) ->
     let rec fold_map__local_acc ~init:(acc @ local) ~f = function
       | [] -> exclave_ acc, { global = [] }
       | x :: xs ->
@@ -466,14 +466,14 @@ and walk_expr
        let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
        push acc c_call_ins;
        #(dst, acc))
-  | Var name ->
+  | Var (name, _) ->
     let value = Map.find_exn env name in
     (match value with
      | Virtual_register reg -> #(reg, acc)
      | Global _ ->
        (match failwith "todo: global variables in expressions" with
         | (_ : Nothing.t) -> .))
-  | If (cond, if_true, if_false) ->
+  | If (cond, if_true, if_false, _) ->
     let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
     let then_block = Function.Builder.add_block function_builder ignore in
     let else_block = Function.Builder.add_block function_builder ignore in
@@ -506,6 +506,6 @@ and walk_expr
     push acc (Jump { target = else_block.label });
     #(dst, after_block)
   | _ ->
-    (match raise_s [%message "todo:" (expr : Ast.expr)] with
+    (match raise_s [%message "todo:" (expr : Ast.Expr.t)] with
      | (_ : Nothing.t) -> .)
 ;;
