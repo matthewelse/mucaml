@@ -1,9 +1,7 @@
 const std = @import("std");
 const microzig = @import("microzig");
 
-const MicroBuild = microzig.MicroBuild(.{
-    .rp2xxx = true,
-});
+const MicroBuild = microzig.MicroBuild(.{ .rp2xxx = true, .stm32 = true });
 
 pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
@@ -11,19 +9,30 @@ pub fn build(b: *std.Build) void {
     const mz_dep = b.dependency("microzig", .{});
     const mb = MicroBuild.init(b, mz_dep) orelse return;
 
-    const raspberrypi = mb.ports.rp2xxx.boards.raspberrypi;
-    const target = raspberrypi.pico2_arm;
+    const targets = [_]Target{
+        .{ .target = mb.ports.rp2xxx.boards.raspberrypi.pico2_arm, .name = "rp2350" },
+        .{ .target = mb.ports.stm32.chips.STM32F100RB, .name = "STM32F100RB" },
+    };
 
-    const options = b.addOptions();
-    options.addOption(bool, "rpi", true);
+    for (targets) |target| {
+        const mz_target = target.target;
 
-    const firmware = mb.add_library(.{
-        .name = "mucaml_runtime",
-        .target = target,
-        .optimize = optimize,
-        .root_source_file = b.path("src/runtime.zig"),
-    });
-    firmware.add_options("config", options);
+        const options = b.addOptions();
+        options.addOption([]const u8, "mu_target", target.name);
 
-    mb.install_static_lib(firmware);
+        const firmware = mb.add_library(.{
+            .name = "mucaml_runtime",
+            .target = mz_target,
+            .optimize = optimize,
+            .root_source_file = b.path("src/runtime.zig"),
+        });
+        firmware.add_options("config", options);
+
+        mb.install_static_lib(firmware);
+    }
 }
+
+const Target = struct {
+    target: *const microzig.Target,
+    name: []const u8,
+};

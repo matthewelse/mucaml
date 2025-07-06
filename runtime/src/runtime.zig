@@ -1,11 +1,9 @@
 const config = @import("config");
 const std = @import("std");
 const microzig = @import("microzig");
-const hal = microzig.hal;
-const time = hal.time;
 
 const device =
-    if (@hasDecl(config, "rpi"))
+    if (std.mem.eql(u8, config.mu_target, "rp2350"))
         @import("./rpi.zig")
     else
         struct {
@@ -13,10 +11,6 @@ const device =
 
             pub fn loop() void {}
         };
-
-export fn mucaml_sleep(ms: u32) void {
-    time.sleep_ms(ms);
-}
 
 extern fn mucaml_main(i32) u32;
 

@@ -22,6 +22,10 @@ export fn mucaml_pin_toggle(pin: *const microzig.hal.gpio.Pin) void {
     pin.toggle();
 }
 
+export fn mucaml_sleep(ms: u32) void {
+    time.sleep_ms(ms);
+}
+
 pub fn init() void {
     pin_config.apply();
 }
