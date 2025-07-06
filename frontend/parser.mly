@@ -61,30 +61,30 @@ let toplevel :=
 
 let expr :=
   | n = INT32;                                
-    { Expr.Literal (Int32 (I32.of_int_exn n), mkloc $startpos $endpos) }
+    { { Expr.desc = Literal (Int32 (I32.of_int_exn n)); location = mkloc $startpos $endpos } }
   | n = INT64;                                
-    { Expr.Literal (Int64 (I64.of_int n), mkloc $startpos $endpos) }
+    { { Expr.desc = Literal (Int64 (I64.of_int n)); location = mkloc $startpos $endpos } }
   | b = BOOL;                                 
-    { Expr.Literal (Bool b, mkloc $startpos $endpos) }
+    { { Expr.desc = Literal (Bool b); location = mkloc $startpos $endpos } }
   | v = VAR;                                  
-    { Expr.Var (v, mkloc $startpos $endpos) }
+    { { Expr.desc = Var v; location = mkloc $startpos $endpos } }
   | LPAREN; RPAREN;                           
-    { Expr.Literal (Unit, mkloc $startpos $endpos) }
+    { { Expr.desc = Literal Unit; location = mkloc $startpos $endpos } }
   | UNARY_MINUS; ~ = expr;                    
-    { let zero_lit = Expr.Literal (Int32 #0l, mkloc $startpos $startpos) in
-      Expr.App (Expr.Var ("-", mkloc $startpos $startpos), [ zero_lit; expr ], mkloc $startpos $endpos) }
+    { let zero_lit = { Expr.desc = Literal (Int32 #0l); location = mkloc $startpos $startpos } in
+      { Expr.desc = App ({ Expr.desc = Var "-"; location = mkloc $startpos $startpos }, [ zero_lit; expr ]); location = mkloc $startpos $endpos } }
   | l = expr; op = binop; r = expr;            
-    { Expr.App (Expr.Var (op, mkloc $startpos $endpos), [l; r], mkloc $startpos $endpos) }
+    { { Expr.desc = App ({ Expr.desc = Var op; location = mkloc $startpos $endpos }, [l; r]); location = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-    { Expr.Let ((var, type_), value, body, mkloc $startpos $endpos) }
+    { { Expr.desc = Let ((var, type_), value, body); location = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-    { Expr.Letrec ((var, type_), value, body, mkloc $startpos $endpos) }
+    { { Expr.desc = Letrec ((var, type_), value, body); location = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
-    { Expr.If (cond, if_true, if_false, mkloc $startpos $endpos) }
+    { { Expr.desc = If (cond, if_true, if_false); location = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
-    { Expr.Fun (param_list, expr, mkloc $startpos $endpos) }
+    { { Expr.desc = Fun (param_list, expr); location = mkloc $startpos $endpos } }
   | f = expr; arg = expr; %prec APP           
-    { Expr.App (f, [ arg ], mkloc $startpos $endpos) }
+    { { Expr.desc = App (f, [ arg ]); location = mkloc $startpos $endpos } }
   | LPAREN; ~ = expr; RPAREN;                     
     <> 
 

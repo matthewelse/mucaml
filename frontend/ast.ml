@@ -19,30 +19,30 @@ end
 
 module Expr = struct
   type t =
-    | Literal of Literal.t * Location.t
-    | Var of string * Location.t
-    | Let of (string * Type.t option) * t * t * Location.t
-    | Letrec of (string * Type.t) * t * t * Location.t
-    | If of t * t * t * Location.t
-    | Fun of (string * Type.t) list * t * Location.t
-    | App of t * t list * Location.t
+    { desc : desc
+    ; location : Location.t
+    }
+
+  and desc =
+    | Literal of Literal.t
+    | Var of string
+    | Let of (string * Type.t option) * t * t
+    | Letrec of (string * Type.t) * t * t
+    | If of t * t * t
+    | Fun of (string * Type.t) list * t
+    | App of t * t list
   [@@deriving sexp_of]
 
-  let location = function
-    | Literal (_, loc)
-    | Var (_, loc)
-    | Let (_, _, _, loc)
-    | Letrec (_, _, _, loc)
-    | If (_, _, _, loc)
-    | Fun (_, _, loc)
-    | App (_, _, loc) -> loc
-  ;;
+  module Desc = struct
+    type t = desc [@@deriving sexp_of]
+  end
 
   let to_string_hum ?indent (expr : t) =
-    let rec aux ?(indent = "") = function
-      | Literal (lit, _) -> Literal.to_string_hum ~indent lit
-      | Var (v, _) -> Printf.sprintf "%s$%s" indent v
-      | Let ((v, t), value, body, _) ->
+    let rec aux ?(indent = "") { desc; _ } =
+      match desc with
+      | Literal lit -> Literal.to_string_hum ~indent lit
+      | Var v -> Printf.sprintf "%s$%s" indent v
+      | Let ((v, t), value, body) ->
         Printf.sprintf
           "%slet %s : %s = %s in\n%s"
           indent
@@ -50,7 +50,7 @@ module Expr = struct
           (Option.value_map t ~default:"None" ~f:Type.to_string)
           (aux value)
           (aux ~indent:(indent ^ "  ") body)
-      | Letrec ((v, t), value, body, _) ->
+      | Letrec ((v, t), value, body) ->
         Printf.sprintf
           "%sletrec %s : %s = %s in\n%s"
           indent
@@ -58,14 +58,14 @@ module Expr = struct
           (Type.to_string t)
           (aux value)
           (aux ~indent:(indent ^ "  ") body)
-      | If (cond, then_branch, else_branch, _) ->
+      | If (cond, then_branch, else_branch) ->
         Printf.sprintf
           "%sif %s then\n%s\nelse\n%s"
           indent
           (aux ~indent:(indent ^ "  ") cond)
           (aux ~indent:(indent ^ "  ") then_branch)
           (aux ~indent:(indent ^ "  ") else_branch)
-      | Fun (params, body, _) ->
+      | Fun (params, body) ->
         let params_str =
           String.concat
             ~sep:", "
@@ -77,7 +77,7 @@ module Expr = struct
           indent
           params_str
           (aux ~indent:(indent ^ "  ") body)
-      | App (func, args, _) ->
+      | App (func, args) ->
         let args_str = String.concat ~sep:", " (List.map args ~f:aux) in
         Printf.sprintf "%sapp (%s, [%s])" indent (aux func) args_str
     in

@@ -412,15 +412,15 @@ and walk_expr
     ty1
   in
   match expr with
-  | Literal (Int32 i, _) ->
+  | { desc = Literal (Int32 i); _ } ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = I32.to_int_trunc i });
     #(reg, acc)
-  | Literal (Int64 i, _) ->
+  | { desc = Literal (Int64 i); _ } ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
-  | App (Var ("+", _), [ e1; e2 ], _) ->
+  | { desc = App ({ desc = Var "+"; _ }, [ e1; e2 ]); _ } ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -428,7 +428,7 @@ and walk_expr
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
-  | App (Var ("-", _), [ e1; e2 ], _) ->
+  | { desc = App ({ desc = Var "-"; _ }, [ e1; e2 ]); _ } ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -436,12 +436,12 @@ and walk_expr
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
-  | Let ((var, _), value, body, _) ->
+  | { desc = Let ((var, _), value, body); _ } ->
     let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
     let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
     let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
     #(reg2, acc)
-  | App (Var (var, _), args, _) ->
+  | { desc = App ({ desc = Var var; _ }, args); _ } ->
     let rec fold_map__local_acc ~init:(acc @ local) ~f = function
       | [] -> exclave_ acc, { global = [] }
       | x :: xs ->
@@ -466,14 +466,14 @@ and walk_expr
        let c_call_ins : Instruction.t = C_call { dst; func = c_name; args } in
        push acc c_call_ins;
        #(dst, acc))
-  | Var (name, _) ->
+  | { desc = Var name; _ } ->
     let value = Map.find_exn env name in
     (match value with
      | Virtual_register reg -> #(reg, acc)
      | Global _ ->
        (match failwith "todo: global variables in expressions" with
         | (_ : Nothing.t) -> .))
-  | If (cond, if_true, if_false, _) ->
+  | { desc = If (cond, if_true, if_false); _ } ->
     let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
     let then_block = Function.Builder.add_block function_builder ignore in
     let else_block = Function.Builder.add_block function_builder ignore in
