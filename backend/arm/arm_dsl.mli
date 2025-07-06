@@ -4,7 +4,7 @@ type t
 
 val create : unit -> t
 val to_string : t -> string
-val emit_program_prologue : t -> unit
+val emit_program_prologue : t -> cpu:Cpu.t -> unit
 val emit_function_prologue : t -> name:string -> unit
 val emit_function_epilogue : t -> name:string -> unit
 val pop : t -> Register.t list -> unit

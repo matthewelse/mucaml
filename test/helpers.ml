@@ -19,7 +19,7 @@ let compile text =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { cpu = Some "cortex-m33" }
+      { board = Some "rp2350" }
     |> ok_exn
   in
   match parse text with

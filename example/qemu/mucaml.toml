@@ -1,5 +1,4 @@
 name = "blinky"
-runtime_target = "stm32f100rb"
 
 run_command = [ 
   "qemu-system-arm",
@@ -19,5 +18,5 @@ linker_args = [ "-Tlinker.ld" ]
 
 [target]
 triple = "thumbv7m-none-eabi"
-cpu = "cortex-m3"
+board = "stm32f100rb"
 

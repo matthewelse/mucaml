@@ -2,19 +2,36 @@ open! Core
 open! Import
 module Cpu = Cpu
 
+module Runtime_target = struct
+  module T = struct
+    type t =
+      | RP2350
+      | STM32F100RB
+    [@@deriving enumerate, sexp_of, string ~capitalize:"kebab-case"]
+  end
+
+  include T
+
+  let cpu : t -> Cpu.t = function
+    | RP2350 -> Cortex_m33
+    | STM32F100RB -> Cortex_m3
+  ;;
+
+  let arg_type = Command.Arg_type.enumerated ~case_sensitive:false (module T)
+end
+
 module Settings = struct
-  type t = { cpu : Cpu.t } [@@deriving sexp_of]
+  type t = { board : Runtime_target.t } [@@deriving sexp_of]
 
   let param =
     [%map_open.Command
-      let cpu =
+      let board =
         flag
-          "cpu"
-          ~aliases:[ "mcpu" ]
-          (optional_with_default Cpu.Cortex_m33 Cpu.arg_type)
-          ~doc:"CPU the target CPU architecture (default: Cortex_m33)"
+          "board"
+          (optional_with_default Runtime_target.RP2350 Runtime_target.arg_type)
+          ~doc:"BOARD the target board (default: RP2350)"
       in
-      { cpu }]
+      { board }]
   ;;
 end
 
@@ -24,8 +41,9 @@ end
 
 let name = "arm"
 
-let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
+let build_target_isa (triple : Triple.t) ({ board } : Settings.t) =
   let open Or_error.Let_syntax in
+  let cpu = Runtime_target.cpu board in
   let%bind _use_hard_float =
     match triple with
     | { architecture = Arm (V7m | V8m_main)
@@ -51,7 +69,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
 
       let name = name
       let triple = triple
-      let build_program mirl = Ok (Emit.emit_mirl mirl)
+      let build_program mirl = Ok (Emit.emit_mirl mirl ~cpu)
 
       let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in
@@ -60,6 +78,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
         let object_name = Filename.basename output_binary ^ ".o" in
         let args =
           [ "-c"
+          ; "-ffunction-sections"
           ; "-g"
           ; "-mcpu=" ^ Cpu.to_string cpu
           ; "-nostdlib"
@@ -79,16 +98,18 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
         in
         let link_command = "arm-none-eabi-gcc" in
         let args =
-          linker_args
-          @ [ "-Wl,--gc-sections" ]
+          [ "-Wl,--gc-sections" ]
+          @ linker_args
+          @ [ "-nostdlib" ]
           @ [ (* It's important that [object_name] precedes the library, since it depends
                  on [libmucaml_runtime]. *)
               object_name
-            ; "-L"
-            ; Env.runtime_lib_dir env
-            ; "-lmucaml_runtime"
+            ; Env.runtime_lib_dir
+                env
+                ~board:(Runtime_target.to_string board)
+              ^/ "libmucaml_runtime.a"
             ]
-          @ [ "-g"; "-mcpu=" ^ Cpu.to_string cpu; "-nostdlib"; "-o"; output_binary ]
+          @ [ "-o"; output_binary ]
         in
         let%bind () =
           Process.run_expect_no_output

@@ -15,6 +15,4 @@
   
   $ mu run
   5
-  error: Error: ("Process.run failed" (prog ./test_call.elf) (args ()) (working_dir ())
-   (env (Extend ())) (exit_status (Exit_non_zero 5)))
-  [1]
+  [5]

@@ -1,7 +1,6 @@
 name = "blinky"
 linker_args = [ "-Tlinker.ld" ]
-runtime_target = "rp2350"
 
 [target]
 triple = "thumbv8m.main-none-eabihf"
-cpu = "cortex-m33"
+board = "rp2350"

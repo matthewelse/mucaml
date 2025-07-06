@@ -1,6 +1,6 @@
   $ mu build -d assembly
   .syntax unified
-  .cpu cortex-m33
+  .cpu cortex-m3
   .thumb
   
   .thumb_func
@@ -29,9 +29,4 @@
   
   $ mu run
   mucaml_exit  99
-  error: Error: ("Process.run failed" (prog qemu-system-arm)
-   (args
-    (-machine stm32vldiscovery -cpu cortex-m3 -nographic -semihosting-config
-     enable=on,target=native -m 16M -kernel ./blinky.elf))
-   (working_dir ()) (env (Extend ())) (exit_status (Exit_non_zero 99)))
-  [1]
+  [99]

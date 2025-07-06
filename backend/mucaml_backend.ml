@@ -13,25 +13,24 @@ module Arm64 = Mucaml_backend_arm64
    a generic representation of all possible settings, which we parse out as necessary. *)
 
 module Settings = struct
-  type t = { cpu : string option } [@@deriving fields ~getters]
+  type t = { board : string option } [@@deriving fields ~getters]
 
-  let default = { cpu = None }
+  let default = { board = None }
 
   let param =
     [%map_open.Command
-      let cpu =
+      let board =
         flag
-          "cpu"
-          ~aliases:[ "mcpu" ]
+          "board"
           (optional string)
-          ~doc:"CPU the target CPU architecture"
+          ~doc:"BOARD board to target (e.g. rp2350, stmf100rb, native)"
       in
-      { cpu }]
+      { board }]
   ;;
 
   let of_toml (toml : Otoml.t) =
-    let cpu = Otoml.find_opt toml Otoml.get_string [ "target"; "cpu" ] in
-    { cpu }
+    let board = Otoml.find_opt toml Otoml.get_string [ "target"; "board" ] in
+    { board }
   ;;
 end
 
@@ -54,24 +53,29 @@ let create (triple : Triple.t) (settings : Settings.t) =
      messages about specifying the CPU in the TOML file, vs. via the command line. *)
   match triple.architecture with
   | Arm _ ->
-    let%tydi { cpu } = settings in
-    let%bind cpu =
+    let%tydi { board } = settings in
+    let%bind board =
       parse_req
-        Arm.Cpu.of_string
-        cpu
+        Arm.Runtime_target.of_string
+        board
         ~error_if_missing:
-          "No CPU specified for 32-bit ARM target. You should set the 'target.cpu' field \
-           in the project file."
+          "No board specified for 32-bit ARM target. You should set the 'target.board' \
+           field in the project file."
         ~error_if_invalid:(fun cpu -> [%string "Unknown CPU '%{cpu}'"])
     in
-    Arm.build_target_isa triple { cpu }
+    Arm.build_target_isa triple { board }
   | Arm64 ->
-    let%tydi { cpu } = settings in
+    let%tydi { board } = settings in
     let%bind cpu =
-      parse_opt Arm64.Cpu.of_string cpu ~error:(fun cpu ->
-        [%string "Unknown CPU '%{cpu}'"])
+      match board with
+      | None | Some "native" -> Ok Arm64.Cpu.default
+      | Some board ->
+        Or_error.error_string
+          [%string
+            "Unknown target %{board}. To build for aarch64 linux, you can just omit the \
+             'target.board' field."]
     in
-    Arm64.build_target_isa triple { cpu = Option.value cpu ~default:Arm64.Cpu.default }
+    Arm64.build_target_isa triple { cpu }
 ;;
 
 let target_param =

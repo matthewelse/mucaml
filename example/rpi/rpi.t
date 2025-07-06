@@ -11,106 +11,37 @@ dependencies for assembling and linking.
   .globl mucaml_main
   .fnstart
   mucaml_main:
-    push {lr}
+    push {r4,lr}
   mucaml_main__block_0:
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
+    mov r0, #0
+    bl mucaml_pin
+    mov r4, r0
+    mov r0, r4
+    bl mucaml_pin_toggle
     mov r0, #1000
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_on
-    mov r0, #100
-    bl mucaml_sleep_ms
-    mov r0, #7
-    bl mucaml_led_off
+    bl mucaml_sleep
+    mov r0, r4
+    bl mucaml_pin_toggle
     mov r0, #1000
-    pop {pc}
+    bl mucaml_sleep
+    mov r0, r4
+    bl mucaml_pin_toggle
+    mov r0, #1000
+    bl mucaml_sleep
+    mov r0, r4
+    bl mucaml_pin_toggle
+    mov r0, #1000
+    bl mucaml_sleep
+    mov r0, r4
+    bl mucaml_pin_toggle
+    mov r0, #1000
+    bl mucaml_sleep
+    mov r0, r4
+    bl mucaml_pin_toggle
+    mov r0, #1000
+    bl mucaml_sleep
+    mov r0, #0
+    pop {r4,pc}
   .fnend
   .size mucaml_main, . - mucaml_main
   

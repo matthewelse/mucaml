@@ -14,9 +14,9 @@ let emit_line t line =
 
 let emit_newline t = add_char t '\n'
 
-let emit_program_prologue t =
+let emit_program_prologue t ~cpu =
   emit_line t ".syntax unified";
-  emit_line t [%string ".cpu cortex-m33"];
+  emit_line t [%string ".cpu %{cpu#Cpu}"];
   emit_line t ".thumb";
   emit_newline t
 ;;

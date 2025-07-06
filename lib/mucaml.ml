@@ -73,7 +73,13 @@ module Stage = struct
   end
 end
 
-let run (project : Project.t) elf_file =
+module How_to_run = struct
+  type _ t =
+    | Subprocess : unit Or_error.t Deferred.t t
+    | Replace_current_process : never_returns t
+end
+
+let run (type r) (project : Project.t) elf_file ~(how : r How_to_run.t) : r =
   let open Deferred.Or_error.Let_syntax in
   let elf_file = "./" ^ elf_file in
   let command, args =
@@ -87,8 +93,12 @@ let run (project : Project.t) elf_file =
       in
       subst cmd, List.map args ~f:subst
   in
-  let%bind () = Process.run_forwarding ~prog:command ~args () in
-  return ()
+  match how with
+  | Subprocess ->
+    let%bind () = Process.run_forwarding ~prog:command ~args () in
+    return ()
+  | Replace_current_process ->
+    Nothing.unreachable_code @@ Core_unix.exec ~prog:command ~argv:(command :: args) ()
 ;;
 
 let stages
@@ -200,7 +210,7 @@ let repl =
                   ~linker_args:[]
                   ~env
               in
-              let%bind () = run project output_binary in
+              let%bind () = run project output_binary ~how:Subprocess in
               return (`Repeat ()))
         in
         return ()]
@@ -278,7 +288,12 @@ let build ~should_run =
         in
         let%bind () =
           Deferred.map ~f:wrap
-          @@ if should_run then run project output_binary else return ()
+          @@
+          if should_run
+          then
+            Nothing.unreachable_code
+            @@ run project output_binary ~how:Replace_current_process
+          else return ()
         in
         return ()]
 ;;

@@ -8,7 +8,7 @@ let test_arm32_codegen text =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { cpu = Some "cortex-m33" }
+      { board = Some "rp2350" }
     |> ok_exn
   in
   match Helpers.parse text with

@@ -10,6 +10,4 @@
   .size mucaml_main, . - mucaml_main
   
   $ mu run
-  error: Error: ("Process.run failed" (prog ./hello_world.elf) (args ()) (working_dir ())
-   (env (Extend ())) (exit_status (Exit_non_zero 232)))
-  [1]
+  [232]

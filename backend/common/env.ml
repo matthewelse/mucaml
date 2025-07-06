@@ -13,4 +13,4 @@ let create ?(runtime_lib_dir = ".") () =
   { runtime_lib_dir }
 ;;
 
-let runtime_lib_dir t = t.runtime_lib_dir
+let runtime_lib_dir t ~board = t.runtime_lib_dir ^/ board

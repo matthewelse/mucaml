@@ -162,10 +162,10 @@ let emit_mirl_without_prologue (program : Mirl.t) buf =
   Arm_dsl.to_string buf
 ;;
 
-let emit_mirl (program : Mirl.t) =
+let emit_mirl (program : Mirl.t) ~cpu =
   let open Arm_dsl in
   let buf = Arm_dsl.create () in
-  emit_program_prologue buf;
+  emit_program_prologue buf ~cpu;
   emit_mirl_without_prologue program buf
 ;;
 

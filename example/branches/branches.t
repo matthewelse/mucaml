@@ -23,6 +23,4 @@
   .size mucaml_main, . - mucaml_main
   
   $ mu run
-  error: Error: ("Process.run failed" (prog ./branches.elf) (args ()) (working_dir ())
-   (env (Extend ())) (exit_status (Exit_non_zero 11)))
-  [1]
+  [11]
