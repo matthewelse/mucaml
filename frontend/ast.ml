@@ -1,10 +1,22 @@
 open! Ox
 
+module Literal = struct
+  type t =
+    | Int32 of i32
+    | Int64 of i64
+    | Bool of bool
+    | Unit
+  [@@deriving sexp_of]
+
+  let to_string_hum ?(indent = "") = function
+    | Int32 i -> [%string "%{indent}%{i#I32}"]
+    | Int64 i -> [%string "%{indent}%{i#I64}"]
+    | Bool b -> Printf.sprintf "%s%b" indent b
+    | Unit -> Printf.sprintf "%s()" indent
+end
+
 type expr =
-  | Int32 of i32
-  | Int64 of i64
-  | Bool of bool
-  | Unit
+  | Literal of Literal.t
   | Var of string
   | Let of (string * Type.t option) * expr * expr
   | Letrec of (string * Type.t) * expr * expr
@@ -30,10 +42,7 @@ type t = toplevel list [@@deriving sexp_of]
 
 let expr_to_string_hum ?indent (expr : expr) =
   let rec aux ?(indent = "") = function
-    | Int32 i -> [%string "%{indent}%{i#I32}"]
-    | Int64 i -> [%string "%{indent}%{i#I64}"]
-    | Bool b -> Printf.sprintf "%s%b" indent b
-    | Unit -> Printf.sprintf "%s()" indent
+    | Literal lit -> Literal.to_string_hum ~indent lit
     | Var v -> Printf.sprintf "%s$%s" indent v
     | Let ((v, t), value, body) ->
       Printf.sprintf

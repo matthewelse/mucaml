@@ -412,11 +412,11 @@ and walk_expr
     ty1
   in
   match expr with
-  | Int32 i ->
+  | Literal (Int32 i) ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I32 in
     push acc (Set { dst = reg; value = I32.to_int_trunc i });
     #(reg, acc)
-  | Int64 i ->
+  | Literal (Int64 i) ->
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)

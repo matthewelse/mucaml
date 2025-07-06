@@ -54,12 +54,12 @@ let toplevel :=
     { External { name; type_; c_name } }
 
 let expr :=
-  | n = INT32;                                { Int32 (I32.of_int_exn n) }
-  | n = INT64;                                { Int64 (I64.of_int n) }
-  | ~ = BOOL;                                 <Bool>
+  | n = INT32;                                { Literal (Int32 (I32.of_int_exn n)) }
+  | n = INT64;                                { Literal (Int64 (I64.of_int n)) }
+  | b = BOOL;                                 { Literal (Bool b) }
   | ~ = VAR;                                  <Var>
-  | LPAREN; RPAREN;                           { Unit }
-  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Int32 #0l; expr ]) }
+  | LPAREN; RPAREN;                           { Literal Unit }
+  | UNARY_MINUS; ~ = expr;                    { App (Var "-", [ Literal (Int32 #0l); expr ]) }
   | l = expr; ~ = binop; r = expr;            { App (Var binop, [l; r]) }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
     { Let ((var, type_), value, body) }
