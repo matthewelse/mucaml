@@ -840,10 +840,11 @@ pub fn MicroBuild(port_select: PortSelect) type {
             }
         };
 
-        pub fn install_static_lib(mb: *Self, lib: *StaticLibrary) void {
+        pub fn install_static_lib(mb: *Self, lib: *StaticLibrary, build_dir: []const u8) void {
             std.debug.assert(mb == lib.mb);
 
-            mb.builder.installArtifact(lib.artifact);
+            const artifact = mb.builder.addInstallArtifact(lib.artifact, .{ .dest_dir = .{ .override = .{ .custom = build_dir } } });
+            mb.builder.getInstallStep().dependOn(&artifact.step);
         }
 
         /// Configuration options for firmware installation.

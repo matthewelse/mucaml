@@ -1,6 +1,5 @@
 const config = @import("config");
 const std = @import("std");
-const microzig = @import("microzig");
 
 const device =
     if (std.mem.eql(u8, config.mu_target, "rp2350"))
