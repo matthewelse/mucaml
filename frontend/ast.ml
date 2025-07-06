@@ -26,11 +26,11 @@ module Expr = struct
   and desc =
     | Literal of Literal.t
     | Var of string
-    | Let of (string * Type.t option) * t * t
-    | Letrec of (string * Type.t) * t * t
-    | If of t * t * t
-    | Fun of (string * Type.t) list * t
-    | App of t * t list
+    | Let of { var : string; type_ : Type.t option; value : t; body : t }
+    | Letrec of { var : string; type_ : Type.t; value : t; body : t }
+    | If of { condition : t; if_true : t; if_false : t }
+    | Fun of { params : (string * Type.t) list; body : t }
+    | App of { func : t; args : t list }
   [@@deriving sexp_of]
 
   module Desc = struct
@@ -42,30 +42,30 @@ module Expr = struct
       match desc with
       | Literal lit -> Literal.to_string_hum ~indent lit
       | Var v -> Printf.sprintf "%s$%s" indent v
-      | Let ((v, t), value, body) ->
+      | Let { var; type_; value; body } ->
         Printf.sprintf
           "%slet %s : %s = %s in\n%s"
           indent
-          v
-          (Option.value_map t ~default:"None" ~f:Type.to_string)
+          var
+          (Option.value_map type_ ~default:"None" ~f:Type.to_string)
           (aux value)
           (aux ~indent:(indent ^ "  ") body)
-      | Letrec ((v, t), value, body) ->
+      | Letrec { var; type_; value; body } ->
         Printf.sprintf
           "%sletrec %s : %s = %s in\n%s"
           indent
-          v
-          (Type.to_string t)
+          var
+          (Type.to_string type_)
           (aux value)
           (aux ~indent:(indent ^ "  ") body)
-      | If (cond, then_branch, else_branch) ->
+      | If { condition; if_true; if_false } ->
         Printf.sprintf
           "%sif %s then\n%s\nelse\n%s"
           indent
-          (aux ~indent:(indent ^ "  ") cond)
-          (aux ~indent:(indent ^ "  ") then_branch)
-          (aux ~indent:(indent ^ "  ") else_branch)
-      | Fun (params, body) ->
+          (aux ~indent:(indent ^ "  ") condition)
+          (aux ~indent:(indent ^ "  ") if_true)
+          (aux ~indent:(indent ^ "  ") if_false)
+      | Fun { params; body } ->
         let params_str =
           String.concat
             ~sep:", "
@@ -77,7 +77,7 @@ module Expr = struct
           indent
           params_str
           (aux ~indent:(indent ^ "  ") body)
-      | App (func, args) ->
+      | App { func; args } ->
         let args_str = String.concat ~sep:", " (List.map args ~f:aux) in
         Printf.sprintf "%sapp (%s, [%s])" indent (aux func) args_str
     in

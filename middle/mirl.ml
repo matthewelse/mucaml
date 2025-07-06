@@ -420,7 +420,7 @@ and walk_expr
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
-  | { desc = App ({ desc = Var "+"; _ }, [ e1; e2 ]); _ } ->
+  | { desc = App { func = { desc = Var "+"; _ }; args = [ e1; e2 ] }; _ } ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -428,7 +428,7 @@ and walk_expr
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
-  | { desc = App ({ desc = Var "-"; _ }, [ e1; e2 ]); _ } ->
+  | { desc = App { func = { desc = Var "-"; _ }; args = [ e1; e2 ] }; _ } ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -436,12 +436,12 @@ and walk_expr
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
-  | { desc = Let ((var, _), value, body); _ } ->
+  | { desc = Let { var; type_ = _; value; body }; _ } ->
     let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
     let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
     let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
     #(reg2, acc)
-  | { desc = App ({ desc = Var var; _ }, args); _ } ->
+  | { desc = App { func = { desc = Var var; _ }; args }; _ } ->
     let rec fold_map__local_acc ~init:(acc @ local) ~f = function
       | [] -> exclave_ acc, { global = [] }
       | x :: xs ->
@@ -473,8 +473,8 @@ and walk_expr
      | Global _ ->
        (match failwith "todo: global variables in expressions" with
         | (_ : Nothing.t) -> .))
-  | { desc = If (cond, if_true, if_false); _ } ->
-    let #(cond_reg, acc) = walk_expr cond ~env ~function_builder ~acc in
+  | { desc = If { condition; if_true; if_false }; _ } ->
+    let #(cond_reg, acc) = walk_expr condition ~env ~function_builder ~acc in
     let then_block = Function.Builder.add_block function_builder ignore in
     let else_block = Function.Builder.add_block function_builder ignore in
     let after_block = Function.Builder.add_block function_builder ignore in

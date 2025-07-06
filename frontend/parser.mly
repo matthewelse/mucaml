@@ -72,19 +72,19 @@ let expr :=
     { { Expr.desc = Literal Unit; location = mkloc $startpos $endpos } }
   | UNARY_MINUS; ~ = expr;                    
     { let zero_lit = { Expr.desc = Literal (Int32 #0l); location = mkloc $startpos $startpos } in
-      { Expr.desc = App ({ Expr.desc = Var "-"; location = mkloc $startpos $startpos }, [ zero_lit; expr ]); location = mkloc $startpos $endpos } }
+      { Expr.desc = App { func = { Expr.desc = Var "-"; location = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; location = mkloc $startpos $endpos } }
   | l = expr; op = binop; r = expr;            
-    { { Expr.desc = App ({ Expr.desc = Var op; location = mkloc $startpos $endpos }, [l; r]); location = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = { Expr.desc = Var op; location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-    { { Expr.desc = Let ((var, type_), value, body); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Let { var; type_; value; body }; location = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-    { { Expr.desc = Letrec ((var, type_), value, body); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Letrec { var; type_; value; body }; location = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
-    { { Expr.desc = If (cond, if_true, if_false); location = mkloc $startpos $endpos } }
+    { { Expr.desc = If { condition = cond; if_true; if_false }; location = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
-    { { Expr.desc = Fun (param_list, expr); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Fun { params = param_list; body = expr }; location = mkloc $startpos $endpos } }
   | f = expr; arg = expr; %prec APP           
-    { { Expr.desc = App (f, [ arg ]); location = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = f; args = [ arg ] }; location = mkloc $startpos $endpos } }
   | LPAREN; ~ = expr; RPAREN;                     
     <> 
 
