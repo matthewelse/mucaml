@@ -58,7 +58,7 @@ let toplevel :=
       Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; location } }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
     { let location = mkloc $startpos $endpos in
-  Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_; c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; location } 
+  Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; location } 
     }
 
 let expr :=
@@ -78,9 +78,9 @@ let expr :=
   | l = expr; op = binop; r = expr;            
     { { Expr.desc = App { func = { Expr.desc = Var (mkid op); location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-            { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
+            { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = Option.map type_ ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t)); value; body }; location = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
+          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); value; body }; location = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
     { { Expr.desc = If { condition = cond; if_true; if_false }; location = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   

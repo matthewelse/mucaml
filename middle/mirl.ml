@@ -385,7 +385,7 @@ let rec of_ast (ast : Ast.t) =
             | Base I64 -> List.rev acc, Type.I64
             | Base Bool -> failwith "todo: bools"
           in
-          args [] type_
+          args [] type_.txt
         in
         env := Map.set !env ~key:name.txt ~data:(Value.Global c_name.txt);
         Second

@@ -1,5 +1,5 @@
 open! Ox
-  open! Import
+open! Import
 
 module Literal = struct
   type t =
@@ -28,13 +28,13 @@ module Expr = struct
     | Var of Identifier.t
     | Let of
         { var : Identifier.t Located.t
-        ; type_ : Type.t option
+        ; type_ : Type.t Located.t option
         ; value : t
         ; body : t
         }
     | Letrec of
         { var : Identifier.t Located.t
-        ; type_ : Type.t
+        ; type_ : Type.t Located.t
         ; value : t
         ; body : t
         }
@@ -63,14 +63,17 @@ module Expr = struct
       | Literal lit -> Literal.to_string_hum ~indent lit
       | Var v -> [%string "%{indent}$%{v#Identifier}"]
       | Let { var; type_; value; body } ->
-        let type_ = Option.value_map type_ ~default:"" ~f:Type.to_string in
+        let type_ =
+          Option.value_map type_ ~default:"" ~f:(fun t -> Type.to_string t.txt)
+        in
         let body = aux ~indent:(indent ^ "  ") body in
         [%string "%{indent}let %{var.txt#Identifier}%{type_} = %{aux value} in\n%{body}"]
       | Letrec { var; type_; value; body } ->
         let value = aux value in
         let body = aux ~indent:(indent ^ "  ") body in
         [%string
-          "%{indent}letrec %{var.txt#Identifier} : %{type_#Type} = %{value} in\n%{body}"]
+          "%{indent}letrec %{var.txt#Identifier} : %{type_.txt#Type} = %{value} in\n\
+           %{body}"]
       | If { condition; if_true; if_false } ->
         let condition = aux ~indent:(indent ^ "  ") condition in
         let if_true = aux ~indent:(indent ^ "  ") if_true in
@@ -103,7 +106,7 @@ module Toplevel = struct
         }
     | External of
         { name : Identifier.t Located.t
-        ; type_ : Type.t
+        ; type_ : Type.t Located.t
         ; c_name : string Located.t
         ; location : Location.t
         }
@@ -125,7 +128,7 @@ module Toplevel = struct
       [%string "%{indent}let %{name.txt#Identifier} %{params_str} =\n%{body}"]
     | External { name; type_; c_name; location = _ } ->
       [%string
-        "%{indent}external %{name.txt#Identifier} : %{type_#Type} = \"%{c_name.txt}\""]
+        "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type} = \"%{c_name.txt}\""]
   ;;
 end
 
