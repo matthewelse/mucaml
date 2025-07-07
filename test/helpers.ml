@@ -1,17 +1,37 @@
 open! Core
 open! Import
 
+let render_error diagnostic ~files =
+  Fmt_doc.render
+    Fmt.stderr
+    Grace_rendering.(
+      ppd_rich ~config:{ Config.default with color = false } ~files diagnostic);
+  Format.fprintf Fmt.stderr "%!"
+;;
+
+let parse' text ~file_id = Mucaml.Parse.parse_toplevel text ~file_id
+
 let parse text =
   let files = Grace.Files.create () in
-  match Mucaml.Parse.parse_toplevel text ~filename:"<test>" ~files with
+  let file_id = Grace.Files.add files "<test>" text in
+  match parse' text ~file_id with
   | Ok ast -> Ok ast
   | Error diagnostic ->
-    Fmt_doc.render
-      Fmt.stderr
-      Grace_rendering.(
-        ppd_rich ~config:{ Config.default with color = false } ~files diagnostic);
-    Format.fprintf Fmt.stderr "%!";
+    render_error diagnostic ~files;
     Error ()
+;;
+
+let typecheck text =
+  let files = Grace.Files.create () in
+  let file_id = Grace.Files.add files "<test>" text in
+  match
+    let%bind.Result ast = parse' text ~file_id in
+    Mucaml_typing.type_ast ast ~file_id
+  with
+  | Ok env -> Some env
+  | Error diagnostic ->
+    render_error diagnostic ~files;
+    None
 ;;
 
 let compile text =

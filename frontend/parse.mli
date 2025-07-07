@@ -5,6 +5,5 @@ open! Core
     failure. *)
 val parse_toplevel
   :  string
-  -> filename:string
-  -> files:Grace.Files.t
+  -> file_id:Grace.File.Id.t
   -> (Ast.t, Grace.Diagnostic.t) result

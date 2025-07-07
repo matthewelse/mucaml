@@ -164,7 +164,9 @@ let compile_toplevel
   =
   let open Deferred.Or_error.Let_syntax in
   let files = Grace.Files.create () in
-  match Parse.parse_toplevel input ~filename:"<stdin>" ~files with
+  let filename = "<stdin>" in
+  let file_id = Grace.Files.add files filename input in
+  match Parse.parse_toplevel input ~file_id with
   | Ok ast ->
     Stage.Pipeline.run'
       (stages (module Target) ~env ~linker_args ~output_binary)

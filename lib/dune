@@ -12,6 +12,7 @@
   mucaml_frontend
   mucaml_middle
   mucaml_backend
+  mucaml_typing
   otoml)
  (preprocess
   (pps ppx_jane)))

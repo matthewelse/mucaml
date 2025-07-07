@@ -1,0 +1,6 @@
+(library
+ (name mucaml_typing)
+ (libraries mucaml_frontend ox)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane)))

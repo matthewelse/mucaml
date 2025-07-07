@@ -54,39 +54,39 @@ let prog :=
 
 let toplevel :=
   | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
-    { let location = mkloc $startpos $endpos in
-      Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; location } }
+    { let loc = mkloc $startpos $endpos in
+      Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; loc } }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
-    { let location = mkloc $startpos $endpos in
-  Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; location } 
+    { let loc = mkloc $startpos $endpos in
+  Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; loc } 
     }
 
 let expr :=
   | n = INT32;                                
-    { { Expr.desc = Literal (Int32 (I32.of_int_exn n)); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Literal (Int32 (I32.of_int_exn n)); loc = mkloc $startpos $endpos } }
   | n = INT64;                                
-    { { Expr.desc = Literal (Int64 (I64.of_int n)); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Literal (Int64 (I64.of_int n)); loc = mkloc $startpos $endpos } }
   | b = BOOL;                                 
-    { { Expr.desc = Literal (Bool b); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Literal (Bool b); loc = mkloc $startpos $endpos } }
   | v = VAR;                                  
-    { { Expr.desc = Var (mkid v); location = mkloc $startpos $endpos } }
+    { { Expr.desc = Var (mkid v); loc = mkloc $startpos $endpos } }
   | LPAREN; RPAREN;                           
-    { { Expr.desc = Literal Unit; location = mkloc $startpos $endpos } }
+    { { Expr.desc = Literal Unit; loc = mkloc $startpos $endpos } }
   | UNARY_MINUS; ~ = expr;                    
-    { let zero_lit = { Expr.desc = Literal (Int32 #0l); location = mkloc $startpos $startpos } in
-      { Expr.desc = App { func = { Expr.desc = Var (mkid "-"); location = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; location = mkloc $startpos $endpos } }
+    { let zero_lit = { Expr.desc = Literal (Int32 #0l); loc = mkloc $startpos $startpos } in
+      { Expr.desc = App { func = { Expr.desc = Var (mkid "-"); loc = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; loc = mkloc $startpos $endpos } }
   | l = expr; op = binop; r = expr;            
-    { { Expr.desc = App { func = { Expr.desc = Var (mkid op); location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = { Expr.desc = Var (mkid op); loc = mkloc $startpos $endpos }; args = [l; r] }; loc = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-            { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = Option.map type_ ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t)); value; body }; location = mkloc $startpos $endpos } }
+            { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = Option.map type_ ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t)); value; body }; loc = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = option(type_annot_loc); EQ; value = expr; IN; body = expr;
-          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
+          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; loc = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
-    { { Expr.desc = If { condition = cond; if_true; if_false }; location = mkloc $startpos $endpos } }
+    { { Expr.desc = If { condition = cond; if_true; if_false }; loc = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
-    { { Expr.desc = Fun { params = param_list; body = expr }; location = mkloc $startpos $endpos } }
+    { { Expr.desc = Fun { params = param_list; body = expr }; loc = mkloc $startpos $endpos } }
   | f = expr; arg = expr; %prec APP           
-    { { Expr.desc = App { func = f; args = [ arg ] }; location = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = f; args = [ arg ] }; loc = mkloc $startpos $endpos } }
   | LPAREN; ~ = expr; RPAREN;                     
     <> 
 

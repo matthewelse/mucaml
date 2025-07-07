@@ -347,7 +347,7 @@ let rec of_ast (ast : Ast.t) =
   let functions, externs =
     List.partition_mapi ast ~f:(fun _ ast ->
       match ast with
-      | Function { name; params; body; location = _ } ->
+      | Function { name; params; body; loc = _ } ->
         let params =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
@@ -374,7 +374,7 @@ let rec of_ast (ast : Ast.t) =
                in
                Block.Builder.push acc (Instruction.Return [ result ]) [@nontail])
              [@nontail]))
-      | External { name; type_; c_name; location = _ } ->
+      | External { name; type_; c_name; loc = _ } ->
         let arg_types, return_type =
           match type_.txt with
           | Fun (arg_types, return_type) ->

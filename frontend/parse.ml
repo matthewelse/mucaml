@@ -26,7 +26,7 @@ module Recovery = struct
       0
   ;;
 
-  let fail buffer (checkpoint : _ I.checkpoint) ~file =
+  let fail buffer (checkpoint : _ I.checkpoint) ~file_id =
     let start_pos, end_pos = E.last buffer in
     let state = state checkpoint in
     let diagnostic : Grace.Diagnostic.t =
@@ -35,7 +35,7 @@ module Recovery = struct
       ; message = (fun fmt -> Format.fprintf fmt "Syntax error (%d)" state)
       ; labels =
           [ Diagnostic.Label.primary
-              ~id:file
+              ~id:file_id
               ~range:(Grace.Range.of_lex start_pos end_pos)
               (fun ppf ->
                  let message = Parser_messages.message state in
@@ -47,20 +47,19 @@ module Recovery = struct
     Error diagnostic
   ;;
 
-  let parse text ~file =
+  let parse text ~file_id =
     let lexbuf = Lexing.from_string text in
     let supplier = I.lexer_lexbuf_to_supplier Lexer.read lexbuf in
     let buffer, supplier = E.wrap_supplier supplier in
     let checkpoint = Recovery_parser.Incremental.prog lexbuf.lex_curr_p in
-    I.loop_handle succeed (fail buffer ~file) supplier checkpoint
+    I.loop_handle succeed (fail buffer ~file_id) supplier checkpoint
   ;;
 end
 
-let parse_toplevel text ~filename ~files =
+let parse_toplevel text ~file_id =
   let lexer = Lexing.from_string text in
-  let file = Grace.Files.add files filename text in
   try Ok (Parser.prog Lexer.read lexer) with
-  | Parser.Error -> Recovery.parse text ~file
+  | Parser.Error -> Recovery.parse text ~file_id
   | Lexer.Error message ->
     let start_pos = Lexing.lexeme_start_p lexer in
     let end_pos = Lexing.lexeme_end_p lexer in
@@ -70,7 +69,7 @@ let parse_toplevel text ~filename ~files =
       ; message = (fun fmt -> Format.fprintf fmt "Invalid character")
       ; labels =
           [ Diagnostic.Label.primary
-              ~id:file
+              ~id:file_id
               ~range:(Grace.Range.of_lex start_pos end_pos)
               (fun ppf -> Format.pp_print_string ppf message)
           ]

@@ -34,7 +34,7 @@ module Expr = struct
         }
     | Letrec of
         { var : Identifier.t Located.t
-        ; type_ : Type.t Located.t option
+        ; type_ : Type.t Located.t
         ; value : t
         ; body : t
         }
@@ -44,8 +44,9 @@ module Expr = struct
         ; if_false : t
         }
     | Fun of
-        { params : (Identifier.t Located.t * Type.t option) list
+        { params : (Identifier.t Located.t * Type.t) list
         ; body : t
+        ; body_type : Type.t
         }
     | App of
         { func : t
@@ -71,23 +72,20 @@ module Expr = struct
       | Letrec { var; type_; value; body } ->
         let value = aux value in
         let body = aux ~indent:(indent ^ "  ") body in
-        let type_ =
-          Option.value_map type_ ~default:"_" ~f:(fun { txt; _ } -> Type.to_string txt)
-        in
         [%string
-          "%{indent}letrec %{var.txt#Identifier} : %{type_} = %{value} in\n%{body}"]
+          "%{indent}letrec %{var.txt#Identifier} : %{type_.txt#Type} = %{value} in\n\
+           %{body}"]
       | If { condition; if_true; if_false } ->
         let condition = aux ~indent:(indent ^ "  ") condition in
         let if_true = aux ~indent:(indent ^ "  ") if_true in
         let if_false = aux ~indent:(indent ^ "  ") if_false in
         [%string "%{indent}if %{condition} then\n%{if_true}\nelse\n%{if_false}"]
-      | Fun { params; body } ->
+      | Fun { params; body; body_type = _ } ->
         let params_str =
           String.concat
             ~sep:", "
-            (List.map params ~f:(fun (name, ty) ->
-               let ty = Option.value_map ty ~default:"_" ~f:Type.to_string in
-               [%string "%{name.txt#Identifier}: %{ty}"]))
+            (List.map params ~f:(fun (name, t) ->
+               [%string "%{name.txt#Identifier}: %{t#Type}"]))
         in
         let body = aux ~indent:(indent ^ "  ") body in
         [%string "%{indent}fun ([%{params_str}] -> %{body})"]
@@ -103,7 +101,7 @@ module Toplevel = struct
   type t =
     | Function of
         { name : Identifier.t Located.t
-        ; params : (Identifier.t Located.t * Type.t option) list
+        ; params : (Identifier.t Located.t * Type.t) list
         ; body : Expr.t
         ; loc : Location.t
         }
@@ -124,9 +122,8 @@ module Toplevel = struct
       let params_str =
         String.concat
           ~sep:", "
-          (List.map params ~f:(fun (name, ty) ->
-             let ty = Option.value_map ~f:Type.to_string ~default:"_" ty in
-             [%string "%{name.txt#Identifier} : %{ty}"]))
+          (List.map params ~f:(fun (name, t) ->
+             [%string "%{name.txt#Identifier} : %{t#Type}"]))
       in
       let body = Expr.to_string_hum ~indent:(indent ^ "  ") body in
       [%string "%{indent}let %{name.txt#Identifier} %{params_str} =\n%{body}"]
@@ -137,7 +134,3 @@ module Toplevel = struct
 end
 
 type t = Toplevel.t list [@@deriving sexp_of]
-
-let to_string_hum ?(indent = "") t =
-  List.map t ~f:(Toplevel.to_string_hum ~indent) |> String.concat ~sep:"\n"
-;;

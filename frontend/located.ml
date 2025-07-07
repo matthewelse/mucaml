@@ -2,7 +2,7 @@ open! Ox
 open! Import
 
 type 'a t =
-  { txt : 'a
+  { txt : 'a @@ global
   ; loc : Location.t
   }
 [@@deriving sexp_of]
