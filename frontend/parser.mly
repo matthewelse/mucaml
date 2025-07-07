@@ -40,9 +40,10 @@
 
 %type <Ast.t> prog
 %type <Ast.Expr.t> expr
-%type <Identifier.t Located.t * Type.t> param
-%type <(Identifier.t Located.t * Type.t) list> param_list
+%type <Identifier.t Located.t * Type.t option> param
+%type <(Identifier.t Located.t * Type.t option) list> param_list
 %type <Type.t> type_annot type_name
+%type <Type.t Located.t> type_annot_loc 
 
 %start prog
 
@@ -78,8 +79,8 @@ let expr :=
     { { Expr.desc = App { func = { Expr.desc = Var (mkid op); location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
             { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = Option.map type_ ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t)); value; body }; location = mkloc $startpos $endpos } }
-  | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); value; body }; location = mkloc $startpos $endpos } }
+  | LET; REC; var = VAR; type_ = option(type_annot_loc); EQ; value = expr; IN; body = expr;
+          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
     { { Expr.desc = If { condition = cond; if_true; if_false }; location = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
@@ -93,7 +94,13 @@ let param_list :=
   | ~ = separated_list(COMMA, param); <>
 
 let param :=
-  | var = VAR; ~ = type_annot; { ({ Located.txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }, type_annot) }
+  | var = VAR; type_annot = option(type_annot); 
+    { (({ txt = mkid var; loc = mkloc $startpos(var) $endpos(var) } : _ Located.t), type_annot) }
+
+let type_annot_loc :=
+  | ty = type_annot; {
+    { txt = ty; loc = mkloc $startpos(ty) $endpos(ty) }
+  }
 
 let type_annot :=
   | ~ = preceded(COLON, type_name); <>

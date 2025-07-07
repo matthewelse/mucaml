@@ -352,8 +352,8 @@ let rec of_ast (ast : Ast.t) =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
               match ty with
-              | Base I32 -> Type.I32
-              | Base I64 -> Type.I64
+              | Some (Base I32) -> Type.I32
+              | Some (Base I64) -> Type.I64
               | _ -> failwith "todo: unsupported type"
             in
             param, ty)
