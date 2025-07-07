@@ -105,7 +105,7 @@ end
 module Function : sig
   type t = private
     { name : string
-    ; params : (string * Virtual_register.t * Type.t) list
+    ; params : (Identifier.t Located.t * Virtual_register.t * Type.t) list
     ; body : Block.t iarray
     ; registers : Register_descriptor.t iarray
     }
@@ -126,8 +126,11 @@ module Function : sig
 
   val build
     :  name:string
-    -> params:(string * Type.t) list
-    -> (Builder.t @ local -> (string * Virtual_register.t * Type.t) list -> unit) @ local
+    -> params:(Identifier.t Located.t * Type.t) list
+    -> (Builder.t @ local
+        -> (Identifier.t Located.t * Virtual_register.t * Type.t) list
+        -> unit)
+       @ local
     -> t
 end
 

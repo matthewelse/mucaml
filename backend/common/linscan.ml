@@ -2,6 +2,7 @@ open! Core
 open! Import
 module Mirl = Mucaml_middle.Mirl
 module Virtual_register = Mirl.Virtual_register
+module Ast = Mucaml_frontend.Ast
 
 (* Linear scan register allocator.
 
@@ -290,13 +291,17 @@ module%test _ = struct
   module Allocator = Make (Register)
   open Allocator
 
+  let ident s : Ast.Identifier.t Ast.Located.t =
+    { txt = Ast.Identifier.of_string s; loc = Grace.Range.initial }
+  ;;
+
   let%expect_test "live intervals" =
     let module Function = Mirl.Function in
     let module Block = Mirl.Block in
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "a", I32; "b", I32; "c", I32; "d", I32 ]
+        ~params:[ ident "a", I32; ident "b", I32; ident "c", I32; ident "d", I32 ]
         (fun function_builder params ->
           let a, b, c, d =
             match params with
@@ -363,7 +368,7 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "x", I32 ]
+        ~params:[ ident "x", I32 ]
         (fun function_builder params ->
           let x =
             match params with
@@ -499,7 +504,7 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "a", I32; "b", I32; "c", I32; "d", I32 ]
+        ~params:[ ident "a", I32; ident "b", I32; ident "c", I32; ident "d", I32 ]
         (fun function_builder params ->
           let a, b, c, d =
             match params with
@@ -583,7 +588,7 @@ module%test _ = struct
     let func =
       Function.build
         ~name:"test"
-        ~params:[ "x", I32 ]
+        ~params:[ ident "x", I32 ]
         (fun function_builder params ->
           let x =
             match params with

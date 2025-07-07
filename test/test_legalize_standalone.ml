@@ -1,11 +1,12 @@
 open! Core
+open! Import
 
 let test_simple_i64_add () =
   let open Mucaml_middle.Mirl in
   let func =
     Function.build
       ~name:"test_add"
-      ~params:[ "a", Type.I64; "b", Type.I64 ]
+      ~params:[ ident "a", Type.I64; ident "b", Type.I64 ]
       (fun builder params ->
         let a, b =
           match params with

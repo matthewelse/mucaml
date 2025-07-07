@@ -116,7 +116,12 @@ let legalize_function config func =
         match ty with
         | Mirl.Type.I64 ->
           (* Split i64 parameter into low and high i32 parameters *)
-          (name ^ "_low", Mirl.Type.I32) :: (name ^ "_high", Mirl.Type.I32) :: acc
+          let add_suffix id suffix =
+            Identifier.of_string [%string "%{id#Identifier}%{suffix}"]
+          in
+          ({ name with txt = add_suffix name.txt "_low" }, Mirl.Type.I32)
+          :: ({ name with txt = add_suffix name.txt "_high" }, Mirl.Type.I32)
+          :: acc
         | Mirl.Type.I32 -> (name, Mirl.Type.I32) :: acc)
     in
     Mirl.Function.build

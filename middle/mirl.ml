@@ -218,7 +218,7 @@ end
 module Function = struct
   type t =
     { name : string
-    ; params : (string * Virtual_register.t * Type.t) list
+    ; params : (Identifier.t Located.t * Virtual_register.t * Type.t) list
     ; body : Block.t iarray
     ; registers : Register_descriptor.t iarray
     }
@@ -282,7 +282,7 @@ module Function = struct
       String.concat
         ~sep:", "
         (List.map params ~f:(fun (p, reg, t) ->
-           [%string "%{reg#Virtual_register} (%{p}): %{t#Type}"]))
+           [%string "%{reg#Virtual_register} (%{p.txt#Identifier}): %{t#Type}"]))
     in
     let body =
       Iarray.map ~f:(Block.to_string ~indent:"  ") body
@@ -331,9 +331,9 @@ module Value = struct
 end
 
 module Env = struct
-  type t = Value.t String.Map.t [@@deriving sexp_of]
+  type t = Value.t Identifier.Map.t [@@deriving sexp_of]
 
-  let empty = String.Map.empty
+  let empty = Identifier.Map.empty
 end
 
 let to_string { functions; externs } =
@@ -358,12 +358,15 @@ let rec of_ast (ast : Ast.t) =
             in
             param, ty)
         in
-        let name = [%string "mucaml_%{name}"] in
+        let name = [%string "mucaml_%{name.txt#Identifier}"] in
         First
           (Function.build ~name ~params (fun builder params ->
              let env =
-               List.fold params ~init:!env ~f:(fun env (name, reg, _) ->
-                 Map.set env ~key:name ~data:(Value.Virtual_register reg))
+               List.fold
+                 params
+                 ~init:!env
+                 ~f:(fun env ({ Located.txt = name; loc = _ }, reg, _) ->
+                   Map.set env ~key:name ~data:(Value.Virtual_register reg))
              in
              Function.Builder.add_block' builder (fun acc ->
                let #(result, acc) @ local =
@@ -384,8 +387,13 @@ let rec of_ast (ast : Ast.t) =
           in
           args [] type_
         in
-        env := Map.set !env ~key:name ~data:(Value.Global c_name);
-        Second { External.name; arg_types; return_type; c_name })
+        env := Map.set !env ~key:name.txt ~data:(Value.Global c_name.txt);
+        Second
+          { External.name = Identifier.to_string name.txt
+          ; arg_types
+          ; return_type
+          ; c_name = c_name.txt
+          })
   in
   { functions; externs }
 
@@ -420,7 +428,8 @@ and walk_expr
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
-  | { desc = App { func = { desc = Var "+"; _ }; args = [ e1; e2 ] }; _ } ->
+  | { desc = App { func = { desc = Var op; _ }; args = [ e1; e2 ] }; _ }
+    when String.equal (Identifier.to_string op) "+" ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -428,7 +437,8 @@ and walk_expr
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
     push acc add_ins;
     #(dst, acc)
-  | { desc = App { func = { desc = Var "-"; _ }; args = [ e1; e2 ] }; _ } ->
+  | { desc = App { func = { desc = Var op; _ }; args = [ e1; e2 ] }; _ }
+    when String.equal (Identifier.to_string op) "-" ->
     let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
     let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
     let ty = require_type_equal reg1 reg2 in
@@ -438,7 +448,7 @@ and walk_expr
     #(dst, acc)
   | { desc = Let { var; type_ = _; value; body }; _ } ->
     let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
-    let env = Map.set env ~key:var ~data:(Value.Virtual_register reg1) in
+    let env = Map.set env ~key:var.txt ~data:(Value.Virtual_register reg1) in
     let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
     #(reg2, acc)
   | { desc = App { func = { desc = Var var; _ }; args }; _ } ->

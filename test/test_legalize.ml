@@ -7,7 +7,7 @@ let create_i64_add_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_add"
-    ~params:[ "a", Type.I64; "b", Type.I64 ]
+    ~params:[ ident "a", Type.I64; ident "b", Type.I64 ]
     (fun builder params ->
       let a, b =
         match params with
@@ -29,7 +29,7 @@ let create_i64_sub_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_sub"
-    ~params:[ "a", Type.I64; "b", Type.I64 ]
+    ~params:[ ident "a", Type.I64; ident "b", Type.I64 ]
     (fun builder params ->
       let a, b =
         match params with
@@ -66,7 +66,7 @@ let create_i64_move_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_move"
-    ~params:[ "x", Type.I64 ]
+    ~params:[ ident "x", Type.I64 ]
     (fun builder params ->
       let x =
         match params with
@@ -86,7 +86,7 @@ let create_mixed_i32_i64_function () =
   let open Mirl in
   Function.build
     ~name:"test_mixed"
-    ~params:[ "a", Type.I32; "b", Type.I64 ]
+    ~params:[ ident "a", Type.I32; ident "b", Type.I64 ]
     (fun builder params ->
       let a, b =
         match params with
@@ -130,7 +130,7 @@ let create_i64_chain_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_chain"
-    ~params:[ "x", Type.I64; "y", Type.I64 ]
+    ~params:[ ident "x", Type.I64; ident "y", Type.I64 ]
     (fun builder params ->
       let x, y =
         match params with
@@ -159,7 +159,7 @@ let create_i64_with_calls_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_with_calls"
-    ~params:[ "x", Type.I64 ]
+    ~params:[ ident "x", Type.I64 ]
     (fun builder params ->
       let x =
         match params with

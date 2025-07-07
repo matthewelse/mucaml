@@ -12,7 +12,7 @@ let create_high_register_pressure_function () =
   let open Mirl in
   Function.build
     ~name:"test_high_pressure"
-    ~params:[ "a", Type.I32; "b", Type.I32; "c", Type.I32; "d", Type.I32 ]
+    ~params:[ ident "a", Type.I32; ident "b", Type.I32; ident "c", Type.I32; ident "d", Type.I32 ]
     (fun builder params ->
       let a, b, c, d =
         match params with
@@ -57,7 +57,7 @@ let create_call_heavy_function () =
   let open Mirl in
   Function.build
     ~name:"test_call_heavy"
-    ~params:[ "x", Type.I32; "y", Type.I32 ]
+    ~params:[ ident "x", Type.I32; ident "y", Type.I32 ]
     (fun builder params ->
       let x, y =
         match params with
@@ -98,7 +98,7 @@ let create_branchy_high_pressure_function () =
   let open Mirl in
   Function.build
     ~name:"test_branchy_pressure"
-    ~params:[ "cond", Type.I32; "a", Type.I32; "b", Type.I32 ]
+    ~params:[ ident "cond", Type.I32; ident "a", Type.I32; ident "b", Type.I32 ]
     (fun builder params ->
       let cond, a, b =
         match params with
@@ -167,7 +167,7 @@ let create_i64_high_pressure_function () =
   let open Mirl in
   Function.build
     ~name:"test_i64_pressure"
-    ~params:[ "a", Type.I64; "b", Type.I64; "c", Type.I64 ]
+    ~params:[ ident "a", Type.I64; ident "b", Type.I64; ident "c", Type.I64 ]
     (fun builder params ->
       let a, b, c =
         match params with

@@ -11,7 +11,7 @@ let%expect_test "validate i64 parameter legalization fix" =
     let open Mirl in
     Function.build
       ~name:"validate_fix"
-      ~params:[ "param", Type.I64 ]
+      ~params:[ ident "param", Type.I64 ]
       (fun builder params ->
         let param =
           match params with

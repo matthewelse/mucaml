@@ -3,8 +3,11 @@
   module Expr = Ast.Expr
   module Toplevel = Ast.Toplevel
   module Location = Ast.Location
+  module Located = Ast.Located
+  module Identifier = Ast.Identifier
 
   let mkloc start_pos end_pos = Location.of_lex start_pos end_pos
+  let mkid s = Identifier.of_string s
 %}
 
 %token <int> INT32
@@ -40,8 +43,8 @@
 
 %type <Ast.t> prog
 %type <Ast.Expr.t> expr
-%type <string * Type.t> param
-%type <(string * Type.t) list> param_list
+%type <Identifier.t Located.t * Type.t> param
+%type <(Identifier.t Located.t * Type.t) list> param_list
 %type <Type.t> type_annot type_name
 
 %start prog
@@ -54,10 +57,11 @@ let prog :=
 let toplevel :=
   | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
     { let location = mkloc $startpos $endpos in
-      Toplevel.Function { name; params = param_list; body; location } }
+      Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; location } }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
     { let location = mkloc $startpos $endpos in
-      Toplevel.External { name; type_; c_name; location } }
+  Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_; c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; location } 
+    }
 
 let expr :=
   | n = INT32;                                
@@ -67,18 +71,18 @@ let expr :=
   | b = BOOL;                                 
     { { Expr.desc = Literal (Bool b); location = mkloc $startpos $endpos } }
   | v = VAR;                                  
-    { { Expr.desc = Var v; location = mkloc $startpos $endpos } }
+    { { Expr.desc = Var (mkid v); location = mkloc $startpos $endpos } }
   | LPAREN; RPAREN;                           
     { { Expr.desc = Literal Unit; location = mkloc $startpos $endpos } }
   | UNARY_MINUS; ~ = expr;                    
     { let zero_lit = { Expr.desc = Literal (Int32 #0l); location = mkloc $startpos $startpos } in
-      { Expr.desc = App { func = { Expr.desc = Var "-"; location = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; location = mkloc $startpos $endpos } }
+      { Expr.desc = App { func = { Expr.desc = Var (mkid "-"); location = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; location = mkloc $startpos $endpos } }
   | l = expr; op = binop; r = expr;            
-    { { Expr.desc = App { func = { Expr.desc = Var op; location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = { Expr.desc = Var (mkid op); location = mkloc $startpos $endpos }; args = [l; r] }; location = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
-    { { Expr.desc = Let { var; type_; value; body }; location = mkloc $startpos $endpos } }
+            { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = type_annot; EQ; value = expr; IN; body = expr;
-    { { Expr.desc = Letrec { var; type_; value; body }; location = mkloc $startpos $endpos } }
+          { { Expr.desc = Letrec { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_; value; body }; location = mkloc $startpos $endpos } }
   | IF; cond = expr; THEN; if_true = expr; ELSE; if_false = expr; %prec IF
     { { Expr.desc = If { condition = cond; if_true; if_false }; location = mkloc $startpos $endpos } }
   | FUN; ~ = param_list; DARROW; ~ = expr; %prec FUN   
@@ -92,7 +96,7 @@ let param_list :=
   | ~ = separated_list(COMMA, param); <>
 
 let param :=
-  | var = VAR; ~ = type_annot; { (var, type_annot) }
+  | var = VAR; ~ = type_annot; { ({ Located.txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }, type_annot) }
 
 let type_annot :=
   | ~ = preceded(COLON, type_name); <>
