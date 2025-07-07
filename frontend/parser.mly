@@ -30,7 +30,6 @@
 %nonassoc LET
 %nonassoc FUN
 %nonassoc IF
-%right ARROW
 %left EQ NE
 %left LT GT LE GE
 %left PLUS MINUS
@@ -101,7 +100,10 @@ let type_annot :=
 
 let type_name:=
   | var = VAR; { Type.(Base (Base.of_string var)) }
-  | l = type_name; ARROW; r = type_name; { Type.Fun (l, r) }
+  | arg_type = type_name; ARROW; ret_type = type_name; 
+    { Type.Fun ([ arg_type ], ret_type) }
+  | LPAREN; arg_types = separated_list(COMMA, type_name); RPAREN; ARROW; ret_type = type_name; 
+    { Type.Fun (arg_types, ret_type) }
 
 let binop == 
   | PLUS;  { "+" }

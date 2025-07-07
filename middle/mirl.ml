@@ -376,16 +376,21 @@ let rec of_ast (ast : Ast.t) =
              [@nontail]))
       | External { name; type_; c_name; location = _ } ->
         let arg_types, return_type =
-          let rec args acc (ret : Mucaml_frontend.Type.t) =
-            match ret with
-            | Fun (Base I32, ret) -> args (Type.I32 :: acc) ret
-            | Fun (Base I64, ret) -> args (Type.I64 :: acc) ret
-            | Fun ((Base _ | Fun _), _) -> failwith "todo: unsupported type"
-            | Base (Unit | I32) -> List.rev acc, Type.I32
-            | Base I64 -> List.rev acc, Type.I64
-            | Base Bool -> failwith "todo: bools"
-          in
-          args [] type_.txt
+          match type_.txt with
+          | Fun (arg_types, return_type) ->
+            let convert_type : Mucaml_frontend.Type.t -> Type.t = function
+              | Base I32 -> Type.I32
+              | Base I64 -> Type.I64
+              | Base Unit -> Type.I32
+              | Base Bool -> failwith "todo: bools"
+              | Fun _ -> failwith "todo: unsupported nested function type"
+            in
+            let arg_types = List.map arg_types ~f:convert_type in
+            let return_type = convert_type return_type in
+            arg_types, return_type
+          | Base (Unit | I32) -> [], Type.I32
+          | Base I64 -> [], Type.I64
+          | Base Bool -> failwith "todo: bools"
         in
         env := Map.set !env ~key:name.txt ~data:(Value.Global c_name.txt);
         Second
