@@ -16,5 +16,5 @@ type t =
 
 let rec to_string = function
   | Base ty -> Base.to_string ty
-  | Fun (t1, t2) -> Printf.sprintf "%s -> %s" (to_string t1) (to_string t2)
+  | Fun (t1, t2) -> [%string "%{to_string t1} -> %{to_string t2}"]
 ;;

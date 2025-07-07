@@ -34,10 +34,10 @@ let%expect_test "test parser" =
     external led_on : i32 -> unit = "led_on"
     external led_off : i32 -> unit = "led_off"
     let main x : i32 =
-      let _ : None = app ($sleep_ms, [100]) in
-        let _ : None = app ($led_on, [7]) in
-          let _ : None = app ($sleep_ms, [100]) in
-            let _ : None = app ($led_off, [7]) in
+      let _ = app ($sleep_ms, [100]) in
+        let _ = app ($led_on, [7]) in
+          let _ = app ($sleep_ms, [100]) in
+            let _ = app ($led_off, [7]) in
               0
     |}];
   test {|

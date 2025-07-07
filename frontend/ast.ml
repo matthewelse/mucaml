@@ -27,8 +27,8 @@ module Literal = struct
   let to_string_hum ?(indent = "") = function
     | Int32 i -> [%string "%{indent}%{i#I32}"]
     | Int64 i -> [%string "%{indent}%{i#I64}"]
-    | Bool b -> Printf.sprintf "%s%b" indent b
-    | Unit -> Printf.sprintf "%s()" indent
+    | Bool b -> [%string "%{indent}%{b#Bool}"]
+    | Unit -> [%string "%{indent}()"]
   ;;
 end
 
@@ -76,45 +76,33 @@ module Expr = struct
     let rec aux ?(indent = "") { desc; _ } =
       match desc with
       | Literal lit -> Literal.to_string_hum ~indent lit
-      | Var v -> Printf.sprintf "%s$%s" indent (Identifier.to_string v)
+      | Var v -> [%string "%{indent}$%{v#Identifier}"]
       | Let { var; type_; value; body } ->
-        Printf.sprintf
-          "%slet %s : %s = %s in\n%s"
-          indent
-          (Identifier.to_string var.txt)
-          (Option.value_map type_ ~default:"None" ~f:Type.to_string)
-          (aux value)
-          (aux ~indent:(indent ^ "  ") body)
+        let type_ = Option.value_map type_ ~default:"" ~f:Type.to_string in
+        let body = aux ~indent:(indent ^ "  ") body in
+        [%string "%{indent}let %{var.txt#Identifier}%{type_} = %{aux value} in\n%{body}"]
       | Letrec { var; type_; value; body } ->
-        Printf.sprintf
-          "%sletrec %s : %s = %s in\n%s"
-          indent
-          (Identifier.to_string var.txt)
-          (Type.to_string type_)
-          (aux value)
-          (aux ~indent:(indent ^ "  ") body)
+        let value = aux value in
+        let body = aux ~indent:(indent ^ "  ") body in
+        [%string
+          "%{indent}letrec %{var.txt#Identifier} : %{type_#Type} = %{value} in\n%{body}"]
       | If { condition; if_true; if_false } ->
-        Printf.sprintf
-          "%sif %s then\n%s\nelse\n%s"
-          indent
-          (aux ~indent:(indent ^ "  ") condition)
-          (aux ~indent:(indent ^ "  ") if_true)
-          (aux ~indent:(indent ^ "  ") if_false)
+        let condition = aux ~indent:(indent ^ "  ") condition in
+        let if_true = aux ~indent:(indent ^ "  ") if_true in
+        let if_false = aux ~indent:(indent ^ "  ") if_false in
+        [%string "%{indent}if %{condition} then\n%{if_true}\nelse\n%{if_false}"]
       | Fun { params; body } ->
         let params_str =
           String.concat
             ~sep:", "
             (List.map params ~f:(fun (name, t) ->
-               Printf.sprintf "%s: %s" (Identifier.to_string name.txt) (Type.to_string t)))
+               [%string "%{name.txt#Identifier}: %{t#Type}"]))
         in
-        Printf.sprintf
-          "%sfun ([%s] -> %s)"
-          indent
-          params_str
-          (aux ~indent:(indent ^ "  ") body)
+        let body = aux ~indent:(indent ^ "  ") body in
+        [%string "%{indent}fun ([%{params_str}] -> %{body})"]
       | App { func; args } ->
         let args_str = String.concat ~sep:", " (List.map args ~f:aux) in
-        Printf.sprintf "%sapp (%s, [%s])" indent (aux func) args_str
+        [%string "%{indent}app (%{aux func}, [%{args_str}])"]
     in
     aux ?indent expr
   ;;
@@ -146,21 +134,13 @@ module Toplevel = struct
         String.concat
           ~sep:", "
           (List.map params ~f:(fun (name, t) ->
-             Printf.sprintf "%s : %s" (Identifier.to_string name.txt) (Type.to_string t)))
+             [%string "%{name.txt#Identifier} : %{t#Type}"]))
       in
-      Printf.sprintf
-        "%slet %s %s =\n%s"
-        indent
-        (Identifier.to_string name.txt)
-        params_str
-        (Expr.to_string_hum ~indent:(indent ^ "  ") body)
+      let body = Expr.to_string_hum ~indent:(indent ^ "  ") body in
+      [%string "%{indent}let %{name.txt#Identifier} %{params_str} =\n%{body}"]
     | External { name; type_; c_name; location = _ } ->
-      Printf.sprintf
-        "%sexternal %s : %s = \"%s\""
-        indent
-        (Identifier.to_string name.txt)
-        (Type.to_string type_)
-        c_name.txt
+      [%string
+        "%{indent}external %{name.txt#Identifier} : %{type_#Type} = \"%{c_name.txt}\""]
   ;;
 end
 

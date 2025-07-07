@@ -12,7 +12,12 @@ let create_high_register_pressure_function () =
   let open Mirl in
   Function.build
     ~name:"test_high_pressure"
-    ~params:[ ident "a", Type.I32; ident "b", Type.I32; ident "c", Type.I32; ident "d", Type.I32 ]
+    ~params:
+      [ ident "a", Type.I32
+      ; ident "b", Type.I32
+      ; ident "c", Type.I32
+      ; ident "d", Type.I32
+      ]
     (fun builder params ->
       let a, b, c, d =
         match params with
