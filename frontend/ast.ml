@@ -1,20 +1,5 @@
 open! Ox
-module Location = Grace.Range
-
-module Located = struct
-  type 'a t =
-    { txt : 'a
-    ; loc : Location.t
-    }
-  [@@deriving sexp_of]
-end
-
-module Identifier =
-  String_id.Make
-    (struct
-      let module_name = "Ast.Identifier"
-    end)
-    ()
+  open! Import
 
 module Literal = struct
   type t =

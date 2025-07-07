@@ -1,3 +1,3 @@
 module Ast = Mucaml_frontend.Ast
-module Identifier = Ast.Identifier
-module Located = Ast.Located
+module Identifier = Mucaml_frontend.Identifier
+module Located = Mucaml_frontend.Located

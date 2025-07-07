@@ -1,10 +1,8 @@
 %{
   open! Ox 
+  open! Import
   module Expr = Ast.Expr
   module Toplevel = Ast.Toplevel
-  module Location = Ast.Location
-  module Located = Ast.Located
-  module Identifier = Ast.Identifier
 
   let mkloc start_pos end_pos = Location.of_lex start_pos end_pos
   let mkid s = Identifier.of_string s

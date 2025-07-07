@@ -291,8 +291,8 @@ module%test _ = struct
   module Allocator = Make (Register)
   open Allocator
 
-  let ident s : Ast.Identifier.t Ast.Located.t =
-    { txt = Ast.Identifier.of_string s; loc = Grace.Range.initial }
+  let ident s : Identifier.t Located.t =
+    { txt = Identifier.of_string s; loc = Grace.Range.initial }
   ;;
 
   let%expect_test "live intervals" =
