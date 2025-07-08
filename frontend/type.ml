@@ -23,4 +23,3 @@ let rec to_string = function
     let args_str = String.concat ~sep:"," (List.map arg_types ~f:to_string) in
     [%string "(%{args_str}) -> %{to_string ret_type}"]
 ;;
-

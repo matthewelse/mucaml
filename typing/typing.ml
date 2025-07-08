@@ -1,110 +1,84 @@
 open! Ox
 open! Import
 
-module Annotation = struct
-  type t = Expression_should_have_type of Ast.Expr.t * Type.t [@@deriving sexp_of]
-end
+let infer_literal (literal : Ast.Literal.t) ~loc : (Typed_ast.Expr.t * Type.t, _) result =
+  let (lit, ty) : Typed_ast.Literal.t * Type.Base.t =
+    match literal with
+    | Int32 n -> Int32 n, I32
+    | Int64 n -> Int64 n, I64
+    | Bool b -> Bool b, Bool
+    | Unit -> Unit, Unit
+  in
+  Ok ({ desc = Literal lit; loc }, Base ty)
+;;
 
-module Constraint = struct
-  type t = Same_type of Type.t * Type.t [@@deriving sexp_of]
-end
-
-module Env = struct
-  module Mutable = struct
-    type t = { mutable next_tv : Type.Var.t } [@@deriving sexp_of]
-
-    let empty () = { next_tv = Type.Var.zero }
-
-    let fresh_tv t =
-      let tv = t.next_tv in
-      t.next_tv <- Type.Var.succ t.next_tv;
-      tv
-    ;;
-  end
-
-  type t =
-    { values : Type.Poly.t Identifier.Map.t @@ global
-    ; mut : Mutable.t @@ global
-    }
-  [@@deriving globalize, sexp_of]
-
-  let empty () = { values = Identifier.Map.empty; mut = Mutable.empty () }
-  let fresh_tv t = Mutable.fresh_tv t.mut
-  let with_var t ~var ~ty = { t with values = Map.set t.values ~key:var ~data:ty }
-  let var t var = Map.find t.values var
-end
-
-module Diagnostic = struct
-  open Grace.Diagnostic
-
-  let error message : t =
-    { severity = Error
-    ; message = (fun fmt -> Format.pp_print_string fmt message)
-    ; labels = []
-    ; notes = []
-    }
-  ;;
-
-  let with_label ?(mode = `Primary) ~file_id ~loc ~label t =
-    let label =
-      match mode with
-      | `Primary ->
-        Label.primary ~id:file_id ~range:loc (fun fmt -> Format.pp_print_string fmt label)
-      | `Secondary ->
-        Label.secondary ~id:file_id ~range:loc (fun fmt ->
-          Format.pp_print_string fmt label)
-    in
-    { t with labels = label :: t.labels }
-  ;;
-
-  let with_note ~note t =
-    let note fmt = Format.pp_print_string fmt note in
-    { t with notes = note :: t.notes }
-  ;;
-end
+let infer_var ~var ~env ~file_id ~loc : (Typed_ast.Expr.t * Type.t, _) result =
+  let open Diagnostic in
+  match Env.var env var with
+  | None ->
+    Error
+      (error [%string "Unknown variable %{var#Identifier}"]
+       |> with_label ~file_id ~loc ~label:"used here")
+  | Some ty ->
+    let ty = Type.Poly.init ty ~fresh_var:(fun () -> Env.fresh_tv env) in
+    Ok ({ desc = Var var; loc }, ty)
+;;
 
 let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~file_id
   : (Typed_ast.Expr.t * Type.t, Grace.Diagnostic.t) result
   =
-  let open Result.Let_syntax in
   let open Diagnostic in
   match expr.desc with
-  | Literal (Int32 n) -> Ok ({ desc = Literal (Int32 n); loc = expr.loc }, Base I32)
-  | Literal (Int64 n) -> Ok ({ desc = Literal (Int64 n); loc = expr.loc }, Base I64)
-  | Literal (Bool b) -> Ok ({ desc = Literal (Bool b); loc = expr.loc }, Base Bool)
-  | Literal Unit -> Ok ({ desc = Literal Unit; loc = expr.loc }, Base Unit)
+  | Literal l -> infer_literal l ~loc:expr.loc
   | Fun { params; body } ->
-    let env, params =
-      List.fold_map params ~init:env ~f:(fun env (name, ty) ->
-        let (ty : Type.t) =
-          match ty with
-          | None -> Var (Env.fresh_tv env)
-          | Some ty ->
-            (* Skip generating a type variable (and a constraint), and just use the
-               provided type. *)
-            Type.of_ast ty
-        in
-        Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono ty), (name, ty))
-    in
-    let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
-    Ok
-      ( { Typed_ast.Expr.desc = Fun { params; body = body_typed_ast; body_type }
-        ; loc = expr.loc
-        }
-      , Type.Fun (List.map params ~f:snd, body_type) )
-  | Var v ->
-    (match Env.var env v with
-     | None ->
-       Error
-         (error [%string "Unknown variable %{v#Identifier}"]
-          |> with_label ~file_id ~loc:expr.loc ~label:"used here")
-     | Some ty ->
-       let ty = Type.Poly.init ty ~fresh_var:(fun () -> Env.fresh_tv env) in
-       Ok ({ desc = Var v; loc = expr.loc }, ty))
-  | _ ->
+    infer_func ~params ~body ~env ~constraints ~file_id ~loc:expr.loc
+  | Var var -> infer_var ~var ~env ~file_id ~loc:expr.loc
+  | App { func; args } -> infer_app ~func ~args ~loc:expr.loc ~constraints ~env ~file_id
+  | Let _ ->
     Error
-      (error [%string "Unsupported expression"]
+      (error [%string "Unsupported let expression"]
        |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+  | Letrec _ ->
+    Error
+      (error [%string "Unsupported letrec expression"]
+       |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+  | If _ ->
+    Error
+      (error [%string "Unsupported if expression"]
+       |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+
+and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
+  let open Result.Let_syntax in
+  let env, params =
+    List.fold_map params ~init:env ~f:(fun env (name, ty) ->
+      let ty : Type.t =
+        match ty with
+        | None -> Var (Env.fresh_tv env)
+        | Some ty -> Type.of_ast ty
+      in
+      Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono ty), (name, ty))
+  in
+  let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
+  Ok
+    ( { Typed_ast.Expr.desc = Fun { params; body = body_typed_ast; body_type }; loc }
+    , Type.Fun (List.map params ~f:snd, body_type) )
+
+and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
+  let open Result.Let_syntax in
+  let%bind args =
+    List.map args ~f:(fun arg -> infer' arg ~constraints ~env ~file_id) |> Result.all
+  in
+  let args, arg_tys = List.unzip args in
+  let return_ty : Type.t = Var (Env.fresh_tv env) in
+  let fun_ty : Type.t = Fun (arg_tys, return_ty) in
+  let%bind fun_ast = check func fun_ty ~constraints ~env ~file_id in
+  Ok (Typed_ast.Expr.{ desc = App { func = fun_ast; args }; loc }, return_ty)
+
+and check (expr : Ast.Expr.t) expected_ty ~constraints ~env ~file_id =
+  let open Result.Let_syntax in
+  let%bind typed_ast, ty = infer' expr ~constraints ~env ~file_id in
+  Queue.enqueue constraints (Same_type (ty, expected_ty));
+  Ok typed_ast
 ;;
 
 let infer (expr : Ast.Expr.t) ~env ~file_id =
@@ -116,14 +90,13 @@ let infer (expr : Ast.Expr.t) ~env ~file_id =
 
 let type_ast (ast : Ast.t) ~file_id =
   let open Result.Let_syntax in
-  let open Diagnostic in
   List.fold_result ast ~init:(Env.empty ()) ~f:(fun env (top_level : Ast.Toplevel.t) ->
     match top_level with
-    | External { loc; _ } ->
-      Error
-        (error [%string "Unsupported external"]
-         |> with_label ~file_id ~loc ~label:"specified here"
-         |> with_note ~note:"The FFI isn't supported by the type checker yet.")
+    | External { loc = _; type_; name; c_name = _ } ->
+      let env =
+        Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono (Type.of_ast type_.txt))
+      in
+      Ok env
     | Function { name; params; body; loc } ->
       let env =
         let tv = Env.fresh_tv env in
@@ -132,7 +105,7 @@ let type_ast (ast : Ast.t) ~file_id =
       let%bind _typed_expr, ty, constraints =
         infer { desc = Fun { params; body }; loc } ~env ~file_id
       in
-      print_s [%message (constraints : Constraint.t list)];
       print_endline (Type.to_string ty);
+      print_s [%message (constraints : Constraint.t list)];
       Ok env)
 ;;

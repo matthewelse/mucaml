@@ -56,6 +56,10 @@ let toplevel :=
   | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
     { let loc = mkloc $startpos $endpos in
       Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; loc } }
+  | EXTERNAL; LPAREN; op = binop; RPAREN; type_ = type_annot; EQ; c_name = STRING;
+    { let loc = mkloc $startpos $endpos in
+  Toplevel.External { name = { txt = mkid op; loc = mkloc $startpos(op) $endpos(op) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; loc } 
+    }
   | EXTERNAL; name = VAR; type_ = type_annot; EQ; c_name = STRING;
     { let loc = mkloc $startpos $endpos in
   Toplevel.External { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; loc } 
@@ -76,7 +80,7 @@ let expr :=
     { let zero_lit = { Expr.desc = Literal (Int32 #0l); loc = mkloc $startpos $startpos } in
       { Expr.desc = App { func = { Expr.desc = Var (mkid "-"); loc = mkloc $startpos $startpos }; args = [ zero_lit; expr ] }; loc = mkloc $startpos $endpos } }
   | l = expr; op = binop; r = expr;            
-    { { Expr.desc = App { func = { Expr.desc = Var (mkid op); loc = mkloc $startpos $endpos }; args = [l; r] }; loc = mkloc $startpos $endpos } }
+    { { Expr.desc = App { func = { Expr.desc = Var (mkid op); loc = mkloc $startpos(op) $endpos(op) }; args = [l; r] }; loc = mkloc $startpos $endpos } }
   | LET; var = VAR; type_ = type_annot?; EQ; value = expr; IN; body = expr;
             { { Expr.desc = Let { var = { txt = mkid var; loc = mkloc $startpos(var) $endpos(var) }; type_ = Option.map type_ ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t)); value; body }; loc = mkloc $startpos $endpos } }
   | LET; REC; var = VAR; type_ = option(type_annot_loc); EQ; value = expr; IN; body = expr;

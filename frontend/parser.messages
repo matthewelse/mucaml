@@ -38,7 +38,7 @@ prog: LET VAR VAR VAR
 ##
 ## Ends in an error in state: 3.
 ##
-## param -> VAR . type_annot [ EQ DARROW COMMA COLON ]
+## param -> VAR . option(type_annot) [ EQ DARROW COMMA COLON ]
 ##
 ## The known suffix of the stack is as follows:
 ## VAR
@@ -171,9 +171,9 @@ prog: EXTERNAL VAR COLON VAR RPAREN
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR VAR COLON VAR DARROW
+prog: LET VAR VAR DARROW
 ##
-## Ends in an error in state: 20.
+## Ends in an error in state: 21.
 ##
 ## toplevel -> LET VAR param_list . option(type_annot) EQ expr [ LET EXTERNAL EOF ]
 ##
@@ -184,10 +184,10 @@ prog: LET VAR VAR COLON VAR DARROW
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 17, spurious reduction of production type_annot -> COLON type_name
-## In state 18, spurious reduction of production param -> VAR type_annot
+## In state 3, spurious reduction of production option(type_annot) ->
+## In state 19, spurious reduction of production param -> VAR option(type_annot)
 ## In state 61, spurious reduction of production separated_nonempty_list(COMMA,param) -> param
-## In state 19, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
+## In state 20, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
 ## In state 64, spurious reduction of production param_list -> loption(separated_nonempty_list(COMMA,param))
 ##
 
@@ -207,7 +207,7 @@ prog: LET VAR COLON VAR DARROW
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 17, spurious reduction of production type_annot -> COLON type_name
-## In state 21, spurious reduction of production option(type_annot) -> type_annot
+## In state 18, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
@@ -254,7 +254,7 @@ prog: LET VAR EQ LET UNARY_MINUS
 ## Ends in an error in state: 28.
 ##
 ## expr -> LET . VAR option(type_annot) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
-## expr -> LET . REC VAR type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET . REC VAR option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET
@@ -288,7 +288,7 @@ prog: LET VAR EQ LET VAR COLON VAR DARROW
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 17, spurious reduction of production type_annot -> COLON type_name
-## In state 21, spurious reduction of production option(type_annot) -> type_annot
+## In state 18, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
@@ -329,7 +329,7 @@ prog: LET VAR EQ FUN UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ FUN VAR COLON VAR EQ
+prog: LET VAR EQ FUN VAR EQ
 ##
 ## Ends in an error in state: 36.
 ##
@@ -342,10 +342,10 @@ prog: LET VAR EQ FUN VAR COLON VAR EQ
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 17, spurious reduction of production type_annot -> COLON type_name
-## In state 18, spurious reduction of production param -> VAR type_annot
+## In state 3, spurious reduction of production option(type_annot) ->
+## In state 19, spurious reduction of production param -> VAR option(type_annot)
 ## In state 61, spurious reduction of production separated_nonempty_list(COMMA,param) -> param
-## In state 19, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
+## In state 20, spurious reduction of production loption(separated_nonempty_list(COMMA,param)) -> separated_nonempty_list(COMMA,param)
 ## In state 64, spurious reduction of production param_list -> loption(separated_nonempty_list(COMMA,param))
 ##
 
@@ -736,7 +736,7 @@ prog: LET VAR EQ BOOL EQ BOOL STRING
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR VAR COLON VAR COMMA UNARY_MINUS
+prog: LET VAR VAR COMMA UNARY_MINUS
 ##
 ## Ends in an error in state: 62.
 ##
@@ -903,7 +903,7 @@ prog: LET VAR EQ LET REC UNARY_MINUS
 ##
 ## Ends in an error in state: 73.
 ##
-## expr -> LET REC . VAR type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC . VAR option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET REC
@@ -915,7 +915,7 @@ prog: LET VAR EQ LET REC VAR VAR
 ##
 ## Ends in an error in state: 74.
 ##
-## expr -> LET REC VAR . type_annot EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR . option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET REC VAR
@@ -925,37 +925,39 @@ prog: LET VAR EQ LET REC VAR VAR
 
 prog: LET VAR EQ LET REC VAR COLON VAR DARROW
 ##
-## Ends in an error in state: 75.
+## Ends in an error in state: 77.
 ##
-## expr -> LET REC VAR type_annot . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR option(type_annot_loc) . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## LET REC VAR type_annot
+## LET REC VAR option(type_annot_loc)
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 17, spurious reduction of production type_annot -> COLON type_name
+## In state 76, spurious reduction of production type_annot_loc -> type_annot
+## In state 75, spurious reduction of production option(type_annot_loc) -> type_annot_loc
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR COLON VAR EQ TIMES
+prog: LET VAR EQ LET REC VAR EQ TIMES
 ##
-## Ends in an error in state: 76.
+## Ends in an error in state: 78.
 ##
-## expr -> LET REC VAR type_annot EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR option(type_annot_loc) EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## LET REC VAR type_annot EQ
+## LET REC VAR option(type_annot_loc) EQ
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL STRING
+prog: LET VAR EQ LET REC VAR EQ BOOL STRING
 ##
-## Ends in an error in state: 77.
+## Ends in an error in state: 79.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
@@ -967,30 +969,30 @@ prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL STRING
 ## expr -> expr . GT expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . LE expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . GE expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
-## expr -> LET REC VAR type_annot EQ expr . IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR option(type_annot_loc) EQ expr . IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## LET REC VAR type_annot EQ expr
+## LET REC VAR option(type_annot_loc) EQ expr
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL IN TIMES
+prog: LET VAR EQ LET REC VAR EQ BOOL IN TIMES
 ##
-## Ends in an error in state: 78.
+## Ends in an error in state: 80.
 ##
-## expr -> LET REC VAR type_annot EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR option(type_annot_loc) EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## LET REC VAR type_annot EQ expr IN
+## LET REC VAR option(type_annot_loc) EQ expr IN
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL IN BOOL STRING
+prog: LET VAR EQ LET REC VAR EQ BOOL IN BOOL STRING
 ##
-## Ends in an error in state: 79.
+## Ends in an error in state: 81.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -1002,18 +1004,18 @@ prog: LET VAR EQ LET REC VAR COLON VAR EQ BOOL IN BOOL STRING
 ## expr -> expr . GT expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . LE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . GE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
-## expr -> LET REC VAR type_annot EQ expr IN expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
+## expr -> LET REC VAR option(type_annot_loc) EQ expr IN expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
 ## The known suffix of the stack is as follows:
-## LET REC VAR type_annot EQ expr IN expr
+## LET REC VAR option(type_annot_loc) EQ expr IN expr
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: LET VAR EQ LPAREN BOOL STRING
 ##
-## Ends in an error in state: 80.
+## Ends in an error in state: 82.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
@@ -1036,7 +1038,7 @@ prog: LET VAR EQ LPAREN BOOL STRING
 
 prog: LET VAR EQ UNARY_MINUS BOOL STRING
 ##
-## Ends in an error in state: 82.
+## Ends in an error in state: 84.
 ##
 ## expr -> UNARY_MINUS expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -1059,7 +1061,7 @@ prog: LET VAR EQ UNARY_MINUS BOOL STRING
 
 prog: LET VAR EQ BOOL STRING
 ##
-## Ends in an error in state: 83.
+## Ends in an error in state: 85.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EXTERNAL EQ EOF DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EXTERNAL EQ EOF DIV BOOL ]
@@ -1082,8 +1084,18 @@ prog: LET VAR EQ BOOL STRING
 
 prog: EXTERNAL UNARY_MINUS
 ##
-## Ends in an error in state: 84.
+## Ends in an error in state: 86.
 ##
+## toplevel -> EXTERNAL . LPAREN PLUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN MINUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN TIMES RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN DIV RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN EQ RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN NE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN LT RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN GT RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN LE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL . LPAREN GE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ## toplevel -> EXTERNAL . VAR type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
 ## The known suffix of the stack is as follows:
@@ -1094,7 +1106,7 @@ prog: EXTERNAL UNARY_MINUS
 
 prog: EXTERNAL VAR VAR
 ##
-## Ends in an error in state: 85.
+## Ends in an error in state: 87.
 ##
 ## toplevel -> EXTERNAL VAR . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1106,7 +1118,7 @@ prog: EXTERNAL VAR VAR
 
 prog: EXTERNAL VAR COLON VAR DARROW
 ##
-## Ends in an error in state: 86.
+## Ends in an error in state: 88.
 ##
 ## toplevel -> EXTERNAL VAR type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1124,7 +1136,7 @@ prog: EXTERNAL VAR COLON VAR DARROW
 
 prog: EXTERNAL VAR COLON VAR EQ VAR
 ##
-## Ends in an error in state: 87.
+## Ends in an error in state: 89.
 ##
 ## toplevel -> EXTERNAL VAR type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1134,9 +1146,570 @@ prog: EXTERNAL VAR COLON VAR EQ VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
+prog: EXTERNAL LPAREN VAR
+##
+## Ends in an error in state: 91.
+##
+## toplevel -> EXTERNAL LPAREN . PLUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . MINUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . TIMES RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . DIV RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . EQ RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . NE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . LT RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . GT RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . LE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+## toplevel -> EXTERNAL LPAREN . GE RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN TIMES VAR
+##
+## Ends in an error in state: 92.
+##
+## toplevel -> EXTERNAL LPAREN TIMES . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN TIMES
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN TIMES RPAREN VAR
+##
+## Ends in an error in state: 93.
+##
+## toplevel -> EXTERNAL LPAREN TIMES RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN TIMES RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN TIMES RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 94.
+##
+## toplevel -> EXTERNAL LPAREN TIMES RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN TIMES RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN TIMES RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 95.
+##
+## toplevel -> EXTERNAL LPAREN TIMES RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN TIMES RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN PLUS VAR
+##
+## Ends in an error in state: 97.
+##
+## toplevel -> EXTERNAL LPAREN PLUS . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN PLUS
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN PLUS RPAREN VAR
+##
+## Ends in an error in state: 98.
+##
+## toplevel -> EXTERNAL LPAREN PLUS RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN PLUS RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN PLUS RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 99.
+##
+## toplevel -> EXTERNAL LPAREN PLUS RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN PLUS RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN PLUS RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 100.
+##
+## toplevel -> EXTERNAL LPAREN PLUS RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN PLUS RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN NE VAR
+##
+## Ends in an error in state: 102.
+##
+## toplevel -> EXTERNAL LPAREN NE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN NE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN NE RPAREN VAR
+##
+## Ends in an error in state: 103.
+##
+## toplevel -> EXTERNAL LPAREN NE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN NE RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN NE RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 104.
+##
+## toplevel -> EXTERNAL LPAREN NE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN NE RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN NE RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 105.
+##
+## toplevel -> EXTERNAL LPAREN NE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN NE RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN MINUS VAR
+##
+## Ends in an error in state: 107.
+##
+## toplevel -> EXTERNAL LPAREN MINUS . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN MINUS
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN MINUS RPAREN VAR
+##
+## Ends in an error in state: 108.
+##
+## toplevel -> EXTERNAL LPAREN MINUS RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN MINUS RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN MINUS RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 109.
+##
+## toplevel -> EXTERNAL LPAREN MINUS RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN MINUS RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN MINUS RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 110.
+##
+## toplevel -> EXTERNAL LPAREN MINUS RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN MINUS RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LT VAR
+##
+## Ends in an error in state: 112.
+##
+## toplevel -> EXTERNAL LPAREN LT . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LT RPAREN VAR
+##
+## Ends in an error in state: 113.
+##
+## toplevel -> EXTERNAL LPAREN LT RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LT RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LT RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 114.
+##
+## toplevel -> EXTERNAL LPAREN LT RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LT RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LT RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 115.
+##
+## toplevel -> EXTERNAL LPAREN LT RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LT RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LE VAR
+##
+## Ends in an error in state: 117.
+##
+## toplevel -> EXTERNAL LPAREN LE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LE RPAREN VAR
+##
+## Ends in an error in state: 118.
+##
+## toplevel -> EXTERNAL LPAREN LE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LE RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LE RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 119.
+##
+## toplevel -> EXTERNAL LPAREN LE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LE RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN LE RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 120.
+##
+## toplevel -> EXTERNAL LPAREN LE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN LE RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GT VAR
+##
+## Ends in an error in state: 122.
+##
+## toplevel -> EXTERNAL LPAREN GT . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GT RPAREN VAR
+##
+## Ends in an error in state: 123.
+##
+## toplevel -> EXTERNAL LPAREN GT RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GT RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GT RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 124.
+##
+## toplevel -> EXTERNAL LPAREN GT RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GT RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GT RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 125.
+##
+## toplevel -> EXTERNAL LPAREN GT RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GT RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GE VAR
+##
+## Ends in an error in state: 127.
+##
+## toplevel -> EXTERNAL LPAREN GE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GE RPAREN VAR
+##
+## Ends in an error in state: 128.
+##
+## toplevel -> EXTERNAL LPAREN GE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GE RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GE RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 129.
+##
+## toplevel -> EXTERNAL LPAREN GE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GE RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN GE RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 130.
+##
+## toplevel -> EXTERNAL LPAREN GE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN GE RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN EQ VAR
+##
+## Ends in an error in state: 132.
+##
+## toplevel -> EXTERNAL LPAREN EQ . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN EQ RPAREN VAR
+##
+## Ends in an error in state: 133.
+##
+## toplevel -> EXTERNAL LPAREN EQ RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN EQ RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN EQ RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 134.
+##
+## toplevel -> EXTERNAL LPAREN EQ RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN EQ RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN EQ RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 135.
+##
+## toplevel -> EXTERNAL LPAREN EQ RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN EQ RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN DIV VAR
+##
+## Ends in an error in state: 137.
+##
+## toplevel -> EXTERNAL LPAREN DIV . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN DIV
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN DIV RPAREN VAR
+##
+## Ends in an error in state: 138.
+##
+## toplevel -> EXTERNAL LPAREN DIV RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN DIV RPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN DIV RPAREN COLON VAR DARROW
+##
+## Ends in an error in state: 139.
+##
+## toplevel -> EXTERNAL LPAREN DIV RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN DIV RPAREN type_annot
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production type_annot -> COLON type_name
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL LPAREN DIV RPAREN COLON VAR EQ VAR
+##
+## Ends in an error in state: 140.
+##
+## toplevel -> EXTERNAL LPAREN DIV RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
+##
+## The known suffix of the stack is as follows:
+## EXTERNAL LPAREN DIV RPAREN type_annot EQ
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
 prog: EXTERNAL VAR COLON VAR EQ STRING VAR
 ##
-## Ends in an error in state: 89.
+## Ends in an error in state: 142.
 ##
 ## list(toplevel) -> toplevel . list(toplevel) [ EOF ]
 ##
