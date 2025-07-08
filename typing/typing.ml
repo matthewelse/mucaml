@@ -60,8 +60,8 @@ and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
   in
   let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
   Ok
-    ( { Typed_ast.Expr.desc = Fun { params; body = body_typed_ast; body_type }; loc }
-    , Type.Fun (List.map params ~f:snd, body_type) )
+    ( ({ desc = Fun { params; body = body_typed_ast; body_type }; loc } : Typed_ast.Expr.t)
+    , (Fun (List.map params ~f:snd, body_type) : Type.t) )
 
 and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let open Result.Let_syntax in
@@ -72,7 +72,7 @@ and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let return_ty : Type.t = Var (Env.fresh_tv env) in
   let fun_ty : Type.t = Fun (arg_tys, return_ty) in
   let%bind fun_ast = check func fun_ty ~constraints ~env ~file_id in
-  Ok (Typed_ast.Expr.{ desc = App { func = fun_ast; args }; loc }, return_ty)
+  Ok (({ desc = App { func = fun_ast; args }; loc } : Typed_ast.Expr.t), return_ty)
 
 and check (expr : Ast.Expr.t) expected_ty ~constraints ~env ~file_id =
   let open Result.Let_syntax in
