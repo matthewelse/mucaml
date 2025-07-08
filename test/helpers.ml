@@ -6,7 +6,7 @@ let render_error diagnostic ~files =
     Fmt.stderr
     Grace_rendering.(
       ppd_rich ~config:{ Config.default with color = false } ~files diagnostic);
-  Format.fprintf Fmt.stderr "%!"
+  Format.fprintf Fmt.stderr "\n%!"
 ;;
 
 let parse' text ~file_id = Mucaml.Parse.parse_toplevel text ~file_id

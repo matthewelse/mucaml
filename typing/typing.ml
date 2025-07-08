@@ -56,6 +56,11 @@ module Diagnostic = struct
     in
     { t with labels = label :: t.labels }
   ;;
+
+  let with_note ~note t =
+    let note fmt = Format.pp_print_string fmt note in
+    { t with notes = note :: t.notes }
+  ;;
 end
 
 let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~file_id
@@ -65,6 +70,7 @@ let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~f
   let open Diagnostic in
   match expr.desc with
   | Literal (Int32 n) -> Ok ({ desc = Literal (Int32 n); loc = expr.loc }, Base I32)
+  | Literal (Int64 n) -> Ok ({ desc = Literal (Int64 n); loc = expr.loc }, Base I64)
   | Fun { params; body } ->
     let env, params =
       List.fold_map params ~init:env ~f:(fun env (name, ty) ->
@@ -108,9 +114,14 @@ let infer (expr : Ast.Expr.t) ~env ~file_id =
 
 let type_ast (ast : Ast.t) ~file_id =
   let open Result.Let_syntax in
+  let open Diagnostic in
   List.fold_result ast ~init:(Env.empty ()) ~f:(fun env (top_level : Ast.Toplevel.t) ->
     match top_level with
-    | External _ -> failwith "todo"
+    | External { loc; _ } ->
+      Error
+        (error [%string "Unsupported external"]
+         |> with_label ~file_id ~loc ~label:"specified here"
+         |> with_note ~note:"The FFI isn't supported by the type checker yet.")
     | Function { name; params; body; loc } ->
       let env =
         let tv = Env.fresh_tv env in
