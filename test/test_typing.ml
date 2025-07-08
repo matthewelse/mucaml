@@ -19,6 +19,22 @@ let%expect_test "example (monomorphic functions)" =
     (env
      ((values ((test ((body (Var 0)) (quantifiers ()) (constraints ())))))
       (mut ((next_tv 2)))))
+    |}];
+  test "let test a = 42L";
+  [%expect {|
+    (constraints ())
+    ('_1) -> i64
+    (env
+     ((values ((test ((body (Var 0)) (quantifiers ()) (constraints ())))))
+      (mut ((next_tv 2)))))
+    |}];
+  test "let test a = ()";
+  [%expect {|
+    (constraints ())
+    ('_1) -> unit
+    (env
+     ((values ((test ((body (Var 0)) (quantifiers ()) (constraints ())))))
+      (mut ((next_tv 2)))))
     |}]
 ;;
 

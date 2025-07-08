@@ -71,6 +71,8 @@ let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~f
   match expr.desc with
   | Literal (Int32 n) -> Ok ({ desc = Literal (Int32 n); loc = expr.loc }, Base I32)
   | Literal (Int64 n) -> Ok ({ desc = Literal (Int64 n); loc = expr.loc }, Base I64)
+  | Literal (Bool b) -> Ok ({ desc = Literal (Bool b); loc = expr.loc }, Base Bool)
+  | Literal Unit -> Ok ({ desc = Literal Unit; loc = expr.loc }, Base Unit)
   | Fun { params; body } ->
     let env, params =
       List.fold_map params ~init:env ~f:(fun env (name, ty) ->
