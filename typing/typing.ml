@@ -35,21 +35,36 @@ let infer_var ~var ~env ~file_id ~loc : (Typed_ast.Expr.t * Type.t, _) result =
 let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~file_id
   : (Typed_ast.Expr.t * Type.t, Grace.Diagnostic.t) result
   =
-  let open Diagnostic in
   match expr.desc with
   | Literal l -> infer_literal l ~loc:expr.loc
   | Fun { params; body } ->
     infer_func ~params ~body ~env ~constraints ~file_id ~loc:expr.loc
   | Var var -> infer_var ~var ~env ~file_id ~loc:expr.loc
   | App { func; args } -> infer_app ~func ~args ~loc:expr.loc ~constraints ~env ~file_id
+  | Letrec { var; type_; value; body } ->
+    infer_let
+      ~var
+      ~type_
+      ~value
+      ~body
+      ~loc:expr.loc
+      ~constraints
+      ~env
+      ~file_id
+      ~recursive:true
   | Let { var; type_; value; body } ->
-    infer_let ~var ~type_ ~value ~body ~loc:expr.loc ~constraints ~env ~file_id
+    infer_let
+      ~var
+      ~type_
+      ~value
+      ~body
+      ~loc:expr.loc
+      ~constraints
+      ~env
+      ~file_id
+      ~recursive:false
   | If { condition; if_true; if_false } ->
     infer_if ~condition ~if_true ~if_false ~loc:expr.loc ~constraints ~env ~file_id
-  | Letrec _ ->
-    Error
-      (error [%string "Unsupported letrec expression"]
-       |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
 
 and infer_if ~condition ~if_true ~if_false ~loc ~env ~constraints ~file_id =
   let open Result.Let_syntax in
@@ -63,15 +78,29 @@ and infer_if ~condition ~if_true ~if_false ~loc ~env ~constraints ~file_id =
        : Typed_ast.Expr.t)
     , if_true_ty )
 
-and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id =
+and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id ~recursive =
   (* [let v = x in y] should be equivalent to [(fun v -> y) x], but for the purposes
      of error messages, the two need to be slightly different. *)
   let open Result.Let_syntax in
   let%bind var_expr, var_ty =
-    (* FIXME: it would be nice to add an annotation here like "defined here" *)
+    let env, type_ =
+      if recursive
+      then (
+        (* FIXME: require that recursive values are functions *)
+        let (var_ty, loc) : Type.t * Location.t =
+          match type_ with
+          | None -> Var (Env.fresh_tv env), var.loc
+          | Some ty -> Type.of_ast ty.txt, ty.loc
+        in
+        ( Env.with_var env ~var:var.txt ~ty:{ txt = Type.Poly.mono var_ty; loc }
+        , Some var_ty ))
+      else env, Option.map type_ ~f:(fun type_ -> Type.of_ast type_.txt)
+    in
     match type_ with
     | None -> infer' value ~env ~constraints ~file_id
-    | Some type_ -> check value (Type.of_ast type_.txt) ~env ~constraints ~file_id
+    | Some type_ ->
+      (* FIXME: it would be nice to add an annotation here like "defined here" *)
+      check value type_ ~env ~constraints ~file_id
   in
   let env =
     Env.with_var env ~var:var.txt ~ty:{ txt = Type.Poly.mono var_ty; loc = var.loc }

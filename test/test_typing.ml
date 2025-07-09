@@ -123,6 +123,37 @@ let test a =
     |}]
 ;;
 
+let%expect_test "example: letrec expression" =
+  test
+    {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+let test a =
+  let rec x : i32 = 3 + x in
+  if a then x else 9|};
+  [%expect
+    {|
+    (bool) -> i32
+    (constraints
+     ((Same_type (Fun ((Base I32) (Base I32)) (Base I32))
+       (Fun ((Var 2) (Var 3)) (Var 4)) <opaque>)
+      (Same_type (Base I32) (Var 2) <opaque>)
+      (Same_type (Base I32) (Var 3) <opaque>)
+      (Same_type (Var 4) (Base I32) <opaque>)
+      (Same_type (Var 1) (Base Bool) <opaque>)
+      (Same_type (Base I32) (Var 4) <opaque>)))
+    (env
+     ((values
+       ((+
+         ((txt
+           ((body (Fun ((Base I32) (Base I32)) (Base I32))) (quantifiers ())
+            (constraints ())))
+          (loc ((start 15) (stop 34)))))
+        (test
+         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
+          (loc ((start 51) (stop 55)))))))
+      (mut ((next_tv 5)))))
+    |}]
+;;
+
 let%expect_test "example: if expression" =
   test
     {|external is_zero : i32 -> bool = "equal_i32"
