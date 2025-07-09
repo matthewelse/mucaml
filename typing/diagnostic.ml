@@ -35,10 +35,11 @@ let with_annotations
   ~normalize_ty
   t
   =
+  let identified_vars = Identifier.Hash_set.create () in
   Nonempty_list.to_list annotations
   |> List.fold ~init:t ~f:(fun t (annotation : Annotation.t) ->
     match annotation with
-    | Expected_type (expr, ty, ~but) ->
+    | Expected_type (expr, ty, ~but, ~defined) ->
       let ty = normalize_ty ty in
       let label =
         match but with
@@ -48,6 +49,22 @@ let with_annotations
           [%string "expected to have type %{ty#Type}, but has type %{but_ty#Type}."]
       in
       let t = with_label t ?mode ~file_id ~loc:expr.loc ~label in
+      let t =
+        match expr.desc, defined with
+        | Var v, Some loc ->
+          (* Avoid adding duplicate annotations for the same variable. *)
+          if Hash_set.mem identified_vars v
+          then t
+          else (
+            Hash_set.add identified_vars v;
+            with_label
+              t
+              ~mode:`Secondary
+              ~file_id
+              ~loc
+              ~label:[%string "%{v#Identifier} was defined here"])
+        | _ -> t
+      in
       (match expr.desc, ty with
        | Literal (Int32 n), Base I64 ->
          with_note

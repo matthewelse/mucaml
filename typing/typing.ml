@@ -1,6 +1,14 @@
 open! Ox
 open! Import
 
+let defined (expr : Ast.Expr.t) ~env =
+  match expr.desc with
+  | Var v ->
+    let%bind.Option defn = Env.var env v in
+    Some defn.loc
+  | _ -> None
+;;
+
 let infer_literal (literal : Ast.Literal.t) ~loc : (Typed_ast.Expr.t * Type.t, _) result =
   let (lit, ty) : Typed_ast.Literal.t * Type.Base.t =
     match literal with
@@ -20,7 +28,7 @@ let infer_var ~var ~env ~file_id ~loc : (Typed_ast.Expr.t * Type.t, _) result =
       (error [%string "Unknown variable %{var#Identifier}"]
        |> with_label ~file_id ~loc ~label:"used here")
   | Some ty ->
-    let ty = Type.Poly.init ty ~fresh_var:(fun () -> Env.fresh_tv env) in
+    let ty = Type.Poly.init ty.txt ~fresh_var:(fun () -> Env.fresh_tv env) in
     Ok ({ desc = Var var; loc }, ty)
 ;;
 
@@ -34,10 +42,8 @@ let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~f
     infer_func ~params ~body ~env ~constraints ~file_id ~loc:expr.loc
   | Var var -> infer_var ~var ~env ~file_id ~loc:expr.loc
   | App { func; args } -> infer_app ~func ~args ~loc:expr.loc ~constraints ~env ~file_id
-  | Let _ ->
-    Error
-      (error [%string "Unsupported let expression"]
-       |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+  | Let { var; type_; value; body } ->
+    infer_let ~var ~type_ ~value ~body ~loc:expr.loc ~constraints ~env ~file_id
   | Letrec _ ->
     Error
       (error [%string "Unsupported letrec expression"]
@@ -46,6 +52,27 @@ let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~f
     Error
       (error [%string "Unsupported if expression"]
        |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+
+and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id =
+  (* [let v = x in y] should be equivalent to [(fun v -> y) x], but for the purposes
+     of error messages, the two need to be slightly different. *)
+  let open Result.Let_syntax in
+  let%bind var_expr, var_ty =
+    (* FIXME: it would be nice to add an annotation here like "defined here" *)
+    match type_ with
+    | None -> infer' value ~env ~constraints ~file_id
+    | Some type_ -> check value (Type.of_ast type_.txt) ~env ~constraints ~file_id
+  in
+  let env =
+    Env.with_var env ~var:var.txt ~ty:{ txt = Type.Poly.mono var_ty; loc = var.loc }
+  in
+  let%bind body_expr, body_ty = infer' body ~env ~constraints ~file_id in
+  Ok
+    ( { Typed_ast.Expr.desc =
+          Let { var; type_ = var_ty; value = var_expr; body = body_expr }
+      ; loc
+      }
+    , body_ty )
 
 and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
   let open Result.Let_syntax in
@@ -56,7 +83,8 @@ and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
         | None -> Var (Env.fresh_tv env)
         | Some ty -> Type.of_ast ty
       in
-      Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono ty), (name, ty))
+      ( Env.with_var env ~var:name.txt ~ty:{ txt = Type.Poly.mono ty; loc = name.loc }
+      , (name, ty) ))
   in
   let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
   Ok
@@ -79,7 +107,7 @@ and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let fresh_arg_tys = List.map args ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
   let return_ty = Type.var (Env.fresh_tv env) in
   let fun_ty : Type.t = Fun (fresh_arg_tys, return_ty) in
-  let%bind fun_ast = check func fun_ty ~constraints ~env ~file_id in
+  let%bind fun_ast, _ = check func fun_ty ~constraints ~env ~file_id in
   let%bind arg_asts =
     List.map2_exn args fresh_arg_tys ~f:(fun arg_value fresh_ty ->
       let%bind arg_ast, arg_ty = infer' arg_value ~constraints ~env ~file_id in
@@ -88,8 +116,12 @@ and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
         (Same_type
            ( arg_ty
            , fresh_ty
-           , [ Expected_type (arg_value, fresh_ty, ~but:(Some arg_ty))
-             ; Expected_type (func, fun_ty, ~but:None)
+           , [ Expected_type
+                 ( arg_value
+                 , fresh_ty
+                 , ~but:(Some arg_ty)
+                 , ~defined:(defined arg_value ~env) )
+             ; Expected_type (func, fun_ty, ~but:None, ~defined:(defined func ~env))
              ] ));
       Ok arg_ast)
     |> Result.all
@@ -103,8 +135,12 @@ and check (expr : Ast.Expr.t) expected_ty ~constraints ~env ~file_id =
   let%bind typed_ast, ty = infer' expr ~constraints ~env ~file_id in
   Queue.enqueue
     constraints
-    (Same_type (ty, expected_ty, [ Expected_type (expr, expected_ty, ~but:(Some ty)) ]));
-  Ok typed_ast
+    (Same_type
+       ( ty
+       , expected_ty
+       , [ Expected_type (expr, expected_ty, ~but:(Some ty), ~defined:(defined expr ~env))
+         ] ));
+  Ok (typed_ast, ty)
 ;;
 
 let infer (expr : Ast.Expr.t) ~env ~file_id =
@@ -120,13 +156,19 @@ let type_ast (ast : Ast.t) ~file_id =
     match top_level with
     | External { loc = _; type_; name; c_name = _ } ->
       let env =
-        Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono (Type.of_ast type_.txt))
+        Env.with_var
+          env
+          ~var:name.txt
+          ~ty:{ txt = Type.Poly.mono (Type.of_ast type_.txt); loc = type_.loc }
       in
       Ok env
     | Function { name; params; body; loc } ->
       let env =
         let tv = Env.fresh_tv env in
-        Env.with_var env ~var:name.txt ~ty:(Type.Poly.mono (Var tv))
+        Env.with_var
+          env
+          ~var:name.txt
+          ~ty:{ txt = Type.Poly.mono (Var tv); loc = name.loc }
       in
       let%bind _typed_expr, ty, constraints =
         infer { desc = Fun { params; body }; loc } ~env ~file_id

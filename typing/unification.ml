@@ -87,6 +87,10 @@ struct
       else (
         Lookup.unify_var_ty t v ty;
         Ok ())
-    | _, _ -> Error (error "Type error" |> with_note ~note:"Type mismatch")
+    | _, _ ->
+      Error
+        (error "Type error"
+         |> with_note ~note:"These types are incompatible."
+         |> with_annotations ~normalize_ty:(normalize_ty t ~env) ~annotations ~file_id)
   ;;
 end

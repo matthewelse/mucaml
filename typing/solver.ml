@@ -59,10 +59,12 @@ let solve t (constraints : Constraint.t list) ~(env : Env.t) ~file_id =
   in
   let values =
     Map.map env.values ~f:(fun typ ->
-      let ty = normalize_ty t typ.body ~env in
+      let ty = normalize_ty t typ.txt.body ~env in
       if debug
-      then print_s [%message "final normalization" (typ : Type.Poly.t) (ty : Type.t)];
-      { typ with body = ty })
+      then
+        print_s
+          [%message "final normalization" (typ : Type.Poly.t Located.t) (ty : Type.t)];
+      { typ with txt = { typ.txt with body = ty } })
   in
   Ok { env with values }
 ;;

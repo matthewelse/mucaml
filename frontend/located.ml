@@ -5,4 +5,4 @@ type 'a t =
   { txt : 'a @@ global
   ; loc : Location.t
   }
-[@@deriving sexp_of]
+[@@deriving fields ~getters, sexp_of]

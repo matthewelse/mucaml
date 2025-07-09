@@ -28,7 +28,7 @@ module Expr = struct
     | Var of Identifier.t
     | Let of
         { var : Identifier.t Located.t
-        ; type_ : Type.t Located.t option
+        ; type_ : Type.t
         ; value : t
         ; body : t
         }
@@ -64,9 +64,7 @@ module Expr = struct
       | Literal lit -> Literal.to_string_hum ~indent lit
       | Var v -> [%string "%{indent}$%{v#Identifier}"]
       | Let { var; type_; value; body } ->
-        let type_ =
-          Option.value_map type_ ~default:"" ~f:(fun t -> Type.to_string t.txt)
-        in
+        let type_ = Type.to_string type_ in
         let body = aux ~indent:(indent ^ "  ") body in
         [%string "%{indent}let %{var.txt#Identifier}%{type_} = %{aux value} in\n%{body}"]
       | Letrec { var; type_; value; body } ->

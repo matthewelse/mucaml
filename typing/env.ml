@@ -14,7 +14,7 @@ module Mutable = struct
 end
 
 type t =
-  { values : Type.Poly.t Identifier.Map.t @@ global
+  { values : Type.Poly.t Located.t Identifier.Map.t @@ global
   ; mut : Mutable.t @@ global
   }
 [@@deriving globalize, sexp_of]
