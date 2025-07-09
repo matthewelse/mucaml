@@ -44,14 +44,24 @@ let rec infer' (expr : Ast.Expr.t) ~env ~(constraints : Constraint.t Queue.t) ~f
   | App { func; args } -> infer_app ~func ~args ~loc:expr.loc ~constraints ~env ~file_id
   | Let { var; type_; value; body } ->
     infer_let ~var ~type_ ~value ~body ~loc:expr.loc ~constraints ~env ~file_id
+  | If { condition; if_true; if_false } ->
+    infer_if ~condition ~if_true ~if_false ~loc:expr.loc ~constraints ~env ~file_id
   | Letrec _ ->
     Error
       (error [%string "Unsupported letrec expression"]
        |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
-  | If _ ->
-    Error
-      (error [%string "Unsupported if expression"]
-       |> with_label ~file_id ~loc:expr.loc ~label:"specified here")
+
+and infer_if ~condition ~if_true ~if_false ~loc ~env ~constraints ~file_id =
+  let open Result.Let_syntax in
+  let%bind condition_expr, _condition_ty =
+    check condition (Type.Base Bool) ~env ~constraints ~file_id
+  in
+  let%bind if_true, if_true_ty = infer' if_true ~env ~constraints ~file_id in
+  let%bind if_false, _ = check if_false if_true_ty ~env ~constraints ~file_id in
+  Ok
+    ( ({ desc = If { condition = condition_expr; if_true; if_false }; loc }
+       : Typed_ast.Expr.t)
+    , if_true_ty )
 
 and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id =
   (* [let v = x in y] should be equivalent to [(fun v -> y) x], but for the purposes

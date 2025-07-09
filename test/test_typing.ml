@@ -123,6 +123,34 @@ let test a =
     |}]
 ;;
 
+let%expect_test "example: if expression" =
+  test
+    {|external is_zero : i32 -> bool = "equal_i32"
+let test a =
+  let x = 3 in
+  if is_zero x then x else a|};
+  [%expect
+    {|
+    (i32) -> i32
+    (constraints
+     ((Same_type (Fun ((Base I32)) (Base Bool)) (Fun ((Var 2)) (Var 3)) <opaque>)
+      (Same_type (Base I32) (Var 2) <opaque>)
+      (Same_type (Var 3) (Base Bool) <opaque>)
+      (Same_type (Var 1) (Base I32) <opaque>)))
+    (env
+     ((values
+       ((is_zero
+         ((txt
+           ((body (Fun ((Base I32)) (Base Bool))) (quantifiers ())
+            (constraints ())))
+          (loc ((start 17) (stop 30)))))
+        (test
+         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
+          (loc ((start 49) (stop 53)))))))
+      (mut ((next_tv 4)))))
+    |}]
+;;
+
 let%expect_test "error: application" =
   test {|external ( + ) : (i64, i64) -> i64 = "add_i64"
 let test a = a + 1|};
@@ -136,7 +164,7 @@ let test a = a + 1|};
         │                 ^ ^ expected to have type i64, but has type i32.
         │                 │
         │                 has type (i64, i64) -> i64.
-        = Plain integers are i32s. i64 literals look like 1L.
+        = Plain integers have type `i32`. `i64` literals look like `42L`.
     |}];
   test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
 let test a = a + 1L|};
@@ -150,7 +178,7 @@ let test a = a + 1L|};
         │                 ^ ^^ expected to have type i32, but has type i64.
         │                 │
         │                 has type (i32, i32) -> i32.
-        = Integers with an L suffix are i64s. i32 literals look like 1.
+        = Integers with an L suffix have type `i64`. `i32` literals look like `42`.
     |}];
   test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
 let test a = a + true|};
@@ -222,5 +250,25 @@ let test a =
         │    ^ ^ has type (i64, i64) -> i64.
         │    │
         │    expected to have type i64, but has type i32.
+        = Plain integers have type `i32`. `i64` literals look like `42L`.
+    |}]
+;;
+
+let%expect_test "error: if expression" =
+  (* TODO: it would be nice to show that `a` has type `bool` because it was used as a
+     condition in an if expression. *)
+  test {|let test a =
+  let x = 3 in
+  if a then x else a|};
+  [%expect
+    {|
+    error: Type error
+        ┌─ <test>:3:20
+      1 │  let test a =
+        │           - a was defined here
+      2 │    let x = 3 in
+
+      3 │    if a then x else a
+        │                     ^ expected to have type i32, but has type bool.
     |}]
 ;;

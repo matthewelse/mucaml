@@ -50,6 +50,7 @@ let with_annotations
       in
       let t = with_label t ?mode ~file_id ~loc:expr.loc ~label in
       let t =
+        (* If something is a variable, add an annotation showing where it was defined. *)
         match expr.desc, defined with
         | Var v, Some loc ->
           (* Avoid adding duplicate annotations for the same variable. *)
@@ -65,16 +66,17 @@ let with_annotations
               ~label:[%string "%{v#Identifier} was defined here"])
         | _ -> t
       in
-      (match expr.desc, ty with
-       | Literal (Int32 n), Base I64 ->
+      (match but, ty with
+       | Some (Base I32), Base I64 ->
          with_note
            t
-           ~note:[%string "Plain integers are i32s. i64 literals look like %{n#I32}L."]
-       | Literal (Int64 n), Base I32 ->
+           ~note:
+             [%string "Plain integers have type `i32`. `i64` literals look like `42L`."]
+       | Some (Base I64), Base I32 ->
          with_note
            t
            ~note:
              [%string
-               "Integers with an L suffix are i64s. i32 literals look like %{n#I64}."]
+               "Integers with an L suffix have type `i64`. `i32` literals look like `42`."]
        | _ -> t))
 ;;
