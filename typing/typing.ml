@@ -65,19 +65,45 @@ and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
 
 and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let open Result.Let_syntax in
-  let%bind args =
-    List.map args ~f:(fun arg -> infer' arg ~constraints ~env ~file_id) |> Result.all
-  in
-  let args, arg_tys = List.unzip args in
-  let return_ty : Type.t = Var (Env.fresh_tv env) in
-  let fun_ty : Type.t = Fun (arg_tys, return_ty) in
+  (* type_of([$function_($arg_values...)])
+
+       - [arg_values] is a list of expressions, so just infer the type of each expression.
+       - Infer the type of [function_].
+       - [check] that the inferred type of [function_] is [Fun _].
+
+       We do this in two phases: first we generate fresh type variables for each argument to the
+       function, and then we add constraints that check that each type variable is equal to the
+       inferred type of each value in [arg_values]. This pushes type errors "down" into each
+       argument, rather than checking the function as a whole, giving better error messages (at
+       the cost of more constraints to iterate through). *)
+  let fresh_arg_tys = List.map args ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
+  let return_ty = Type.var (Env.fresh_tv env) in
+  let fun_ty : Type.t = Fun (fresh_arg_tys, return_ty) in
   let%bind fun_ast = check func fun_ty ~constraints ~env ~file_id in
-  Ok (({ desc = App { func = fun_ast; args }; loc } : Typed_ast.Expr.t), return_ty)
+  let%bind arg_asts =
+    List.map2_exn args fresh_arg_tys ~f:(fun arg_value fresh_ty ->
+      let%bind arg_ast, arg_ty = infer' arg_value ~constraints ~env ~file_id in
+      Queue.enqueue
+        constraints
+        (Same_type
+           ( arg_ty
+           , fresh_ty
+           , [ Expected_type (arg_value, fresh_ty, ~but:(Some arg_ty))
+             ; Expected_type (func, fun_ty, ~but:None)
+             ] ));
+      Ok arg_ast)
+    |> Result.all
+  in
+  Ok
+    ( ({ desc = App { func = fun_ast; args = arg_asts }; loc } : Typed_ast.Expr.t)
+    , return_ty )
 
 and check (expr : Ast.Expr.t) expected_ty ~constraints ~env ~file_id =
   let open Result.Let_syntax in
   let%bind typed_ast, ty = infer' expr ~constraints ~env ~file_id in
-  Queue.enqueue constraints (Same_type (ty, expected_ty));
+  Queue.enqueue
+    constraints
+    (Same_type (ty, expected_ty, [ Expected_type (expr, expected_ty, ~but:(Some ty)) ]));
   Ok typed_ast
 ;;
 
@@ -105,6 +131,9 @@ let type_ast (ast : Ast.t) ~file_id =
       let%bind _typed_expr, ty, constraints =
         infer { desc = Fun { params; body }; loc } ~env ~file_id
       in
+      let solver = Solver.create () in
+      let%bind env = Solver.solve solver constraints ~env ~file_id in
+      let ty = Solver.normalize_ty solver ty ~env in
       print_endline (Type.to_string ty);
       print_s [%message (constraints : Constraint.t list)];
       Ok env)

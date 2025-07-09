@@ -5,14 +5,16 @@ module Var : sig
   type t : immediate [@@deriving sexp_of]
 
   include Comparable.S_plain with type t := t
+  include Hashable.S_plain with type t := t
 
   val zero : t
   val succ : t -> t
   val to_string : t -> string
 end = struct
-  type t = int [@@deriving compare, sexp_of]
+  type t = int [@@deriving compare, hash, sexp_of]
 
   include functor Comparable.Make_plain
+  include functor Hashable.Make_plain
 
   let zero = 0
   let succ t = t + 1
@@ -25,12 +27,19 @@ type t =
   | Base of Base.t
   | Var of Var.t
   | Fun of t list * t
-[@@deriving sexp_of]
+[@@deriving sexp_of, variants]
 
 let rec of_ast (ty : Mucaml_frontend.Type.t) =
   match ty with
   | Base b -> Base b
   | Fun (args, ret) -> Fun (List.map args ~f:of_ast, of_ast ret)
+;;
+
+let rec occurs t ~var =
+  match t with
+  | Base _ -> false
+  | Var v -> Var.equal v var
+  | Fun (args, res) -> List.exists args ~f:(occurs ~var) || occurs res ~var
 ;;
 
 let rec subst t ~replacements =
