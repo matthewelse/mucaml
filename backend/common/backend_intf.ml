@@ -15,14 +15,14 @@ module type Target_isa = sig
 
   val name : string
   val triple : Triple.t
-  val build_program : Mucaml_middle.Mirl.t -> Assembly.t Or_error.t
+  val build_program : Mucaml_middle.Mirl.t -> (Assembly.t, Grace.Diagnostic.t) Result.t
 
   val compile_and_link
     :  Assembly.t
     -> env:Env.t
     -> linker_args:string list
     -> output_binary:string
-    -> unit Async.Deferred.Or_error.t
+    -> (unit, Grace.Diagnostic.t) Async.Deferred.Result.t
 end
 
 module type S = sig

@@ -108,7 +108,7 @@ let%expect_test _ =
     .size mucaml_main, . - mucaml_main
     |}];
   test {|
-    let main x : i32 =
+    let main x =
       if x then (3 + 4) else (5 + 6)
     |};
   [%expect

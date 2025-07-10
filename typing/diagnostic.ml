@@ -54,7 +54,7 @@ let with_annotations
         match expr.desc, defined with
         | Var v, Some loc ->
           (* Avoid adding duplicate annotations for the same variable. *)
-          if Hash_set.mem identified_vars v
+          if Hash_set.mem identified_vars v || Location.equal loc Location.initial
           then t
           else (
             Hash_set.add identified_vars v;

@@ -342,7 +342,7 @@ let to_string { functions; externs } =
   ^ String.concat ~sep:"\n\n" (List.map externs ~f:External.to_string)
 ;;
 
-let rec of_ast (ast : Ast.t) =
+let rec of_ast (ast : Typed_ast.t) =
   let env = ref Env.empty in
   let functions, externs =
     List.partition_mapi ast ~f:(fun _ ast ->
@@ -352,8 +352,11 @@ let rec of_ast (ast : Ast.t) =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
               match ty with
-              | Some (Base I32) -> Type.I32
-              | Some (Base I64) -> Type.I64
+              | Base I32 -> Type.I32
+              | Base I64 -> Type.I64
+              | Base Bool ->
+                (* FIXME: todo *)
+                Type.I32
               | _ -> failwith "todo: unsupported type"
             in
             param, ty)
@@ -376,14 +379,17 @@ let rec of_ast (ast : Ast.t) =
              [@nontail]))
       | External { name; type_; c_name; loc = _ } ->
         let arg_types, return_type =
-          match type_.txt with
+          match type_.txt.body with
           | Fun (arg_types, return_type) ->
-            let convert_type : Mucaml_frontend.Type.t -> Type.t = function
+            let convert_type : Mucaml_typing.Type.t -> Type.t = function
               | Base I32 -> Type.I32
               | Base I64 -> Type.I64
               | Base Unit -> Type.I32
               | Base Bool -> failwith "todo: bools"
               | Fun _ -> failwith "todo: unsupported nested function type"
+              | Var _ ->
+                (* FIXME: monomorphisation *)
+                failwith "todo: type variable left in typed ast"
             in
             let arg_types = List.map arg_types ~f:convert_type in
             let return_type = convert_type return_type in
@@ -391,6 +397,9 @@ let rec of_ast (ast : Ast.t) =
           | Base (Unit | I32) -> [], Type.I32
           | Base I64 -> [], Type.I64
           | Base Bool -> failwith "todo: bools"
+          | Var _ ->
+            (* FIXME: monomorphisation *)
+            failwith "type variable left after typed ast."
         in
         env := Map.set !env ~key:name.txt ~data:(Value.Global c_name.txt);
         Second
@@ -403,7 +412,7 @@ let rec of_ast (ast : Ast.t) =
   { functions; externs }
 
 and walk_expr
-  (expr : Ast.Expr.t)
+  (expr : Typed_ast.Expr.t)
   ~(env : Env.t)
   ~(function_builder @ local)
   ~(acc : Block.Builder.t @ local)
@@ -521,6 +530,6 @@ and walk_expr
     push acc (Jump { target = else_block.label });
     #(dst, after_block)
   | _ ->
-    (match raise_s [%message "todo:" (expr : Ast.Expr.t)] with
+    (match raise_s [%message "todo:" (expr : Typed_ast.Expr.t)] with
      | (_ : Nothing.t) -> .)
 ;;

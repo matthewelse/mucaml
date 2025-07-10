@@ -2,8 +2,8 @@ open! Core
 
 let test text =
   match Helpers.parse text with
-  | Ok ast -> Mucaml.Ast.to_string_hum ast |> print_endline
-  | Error () -> ()
+  | Some ast -> Mucaml.Ast.to_string_hum ast |> print_endline
+  | None -> ()
 ;;
 
 let%expect_test "test parser" =
@@ -54,7 +54,8 @@ let%expect_test "test parser" =
     |}];
   test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
 let test a = a + 1|};
-  [%expect {|
+  [%expect
+    {|
     external + : (i32,i32) -> i32 = "add_i32"
     let test a : _ =
       app ($+, [$a, 1])

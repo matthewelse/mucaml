@@ -52,6 +52,14 @@ let rec subst t ~replacements =
   | Fun (args, r) -> Fun (List.map args ~f:(subst ~replacements), subst r ~replacements)
 ;;
 
+let rec to_string = function
+  | Base base -> Base.to_string base
+  | Var v -> Var.to_string v
+  | Fun (arg_types, ret_type) ->
+    let args_str = String.concat ~sep:", " (List.map arg_types ~f:to_string) in
+    [%string "(%{args_str}) -> %{to_string ret_type}"]
+;;
+
 module Poly = struct
   type ty = t [@@deriving sexp_of]
 
@@ -70,12 +78,6 @@ module Poly = struct
     in
     subst body ~replacements:fresh_vars
   ;;
-end
 
-let rec to_string = function
-  | Base base -> Base.to_string base
-  | Var v -> Var.to_string v
-  | Fun (arg_types, ret_type) ->
-    let args_str = String.concat ~sep:", " (List.map arg_types ~f:to_string) in
-    [%string "(%{args_str}) -> %{to_string ret_type}"]
-;;
+  let to_string t = to_string t.body
+end

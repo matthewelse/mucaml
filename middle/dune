@@ -1,5 +1,5 @@
 (library
  (name mucaml_middle)
- (libraries grace ox mucaml_frontend)
+ (libraries grace ox mucaml_frontend mucaml_typing)
  (preprocess
   (pps ppx_jane)))

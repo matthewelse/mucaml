@@ -1,11 +1,11 @@
 open! Core
 
 let test text =
-  match Helpers.parse text with
-  | Ok ast ->
+  match Helpers.typecheck text with
+  | Some ast ->
     let mirl = Mucaml.Mirl.of_ast ast in
     Mucaml.Mirl.to_string mirl |> print_endline
-  | Error () -> ()
+  | None -> ()
 ;;
 
 let%expect_test _ =
@@ -104,7 +104,7 @@ let%expect_test _ =
     }
     |}];
   test {|
-    let main x : i32 =
+    let main x =
       if x then (3 + 4) else (5 + 6)
     |};
   [%expect

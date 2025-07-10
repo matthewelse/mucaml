@@ -9,43 +9,37 @@ let render_error diagnostic ~files =
   Format.fprintf Fmt.stderr "\n%!"
 ;;
 
-let parse' text ~file_id = Mucaml.Parse.parse_toplevel text ~file_id
-
-let parse text =
+let with_file text f =
   let files = Grace.Files.create () in
   let file_id = Grace.Files.add files "<test>" text in
-  match parse' text ~file_id with
-  | Ok ast -> Ok ast
-  | Error diagnostic ->
-    render_error diagnostic ~files;
-    Error ()
-;;
-
-let typecheck text =
-  let files = Grace.Files.create () in
-  let file_id = Grace.Files.add files "<test>" text in
-  match
-    let%bind.Result ast = parse' text ~file_id in
-    Mucaml_typing.type_ast ast ~file_id
-  with
-  | Ok env -> Some env
+  match f file_id with
+  | Ok x -> Some x
   | Error diagnostic ->
     render_error diagnostic ~files;
     None
 ;;
 
-let compile text =
-  let target = "thumbv8m.main-none-eabi" in
+let parse' text ~file_id = Mucaml.Parse.parse_toplevel text ~file_id
+let parse text = with_file text (fun file_id -> parse' text ~file_id)
+
+let typecheck text =
+  with_file text (fun file_id ->
+    let%bind.Result ast = parse' text ~file_id in
+    Mucaml_typing.type_ast ast ~file_id)
+;;
+
+let compile ?(target = "thumbv8m.main-none-eabi") ?(board = Some "rp2350") text =
   let (module Target) =
-    Mucaml_backend.create
-      (Mucaml_backend_common.Triple.of_string target)
-      { board = Some "rp2350" }
+    Mucaml_backend.create (Mucaml_backend_common.Triple.of_string target) { board }
     |> ok_exn
   in
-  match parse text with
-  | Ok ast ->
-    let mirl = Mirl.of_ast ast in
-    let assembly = Target.build_program mirl |> ok_exn in
-    print_endline (Target.Assembly.to_string assembly)
-  | Error () -> ()
+  match
+    with_file text (fun file_id ->
+      let%bind.Result ast = parse' text ~file_id in
+      let%bind.Result ast = Mucaml_typing.type_ast ast ~file_id in
+      let mirl = Mirl.of_ast ast in
+      Target.build_program mirl)
+  with
+  | Some assembly -> print_endline (Target.Assembly.to_string assembly)
+  | None -> ()
 ;;

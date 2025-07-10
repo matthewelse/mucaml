@@ -150,6 +150,6 @@ type t =
   }
 [@@deriving sexp_of, to_string]
 
-(** Convert an [Ast.t] to [Mirl.t]. This is the main entry point for converting the
+(** Convert an [Typed_ast.t] to [Mirl.t]. This is the main entry point for converting the
     high-level AST to the low-level MIRL representation. *)
-val of_ast : Ast.t -> t
+val of_ast : Typed_ast.t -> t

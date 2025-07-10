@@ -189,33 +189,70 @@ let infer (expr : Ast.Expr.t) ~env ~file_id =
   Ok (typed_expr, ty, Queue.to_list constraints)
 ;;
 
-let type_ast (ast : Ast.t) ~file_id =
+let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
   let open Result.Let_syntax in
-  List.fold_result ast ~init:(Env.empty ()) ~f:(fun env (top_level : Ast.Toplevel.t) ->
-    match top_level with
-    | External { loc = _; type_; name; c_name = _ } ->
-      let env =
-        Env.with_var
-          env
-          ~var:name.txt
-          ~ty:{ txt = Type.Poly.mono (Type.of_ast type_.txt); loc = type_.loc }
-      in
-      Ok env
-    | Function { name; params; body; loc } ->
-      let env =
-        let tv = Env.fresh_tv env in
-        Env.with_var
-          env
-          ~var:name.txt
-          ~ty:{ txt = Type.Poly.mono (Var tv); loc = name.loc }
-      in
-      let%bind _typed_expr, ty, constraints =
-        infer { desc = Fun { params; body }; loc } ~env ~file_id
-      in
-      let solver = Solver.create () in
-      let%bind env = Solver.solve solver constraints ~env ~file_id in
-      let ty = Solver.normalize_ty solver ty ~env in
-      print_endline (Type.to_string ty);
-      print_s [%message (constraints : Constraint.t list)];
-      Ok env)
+  let env =
+    Env.empty ()
+    |> Env.with_var
+         ~var:(Identifier.of_string "+")
+         ~ty:
+           { txt = Type.Poly.mono (Fun ([ Base I32; Base I32 ], Base I32))
+           ; loc = Location.initial
+           }
+    |> Env.with_var
+         ~var:(Identifier.of_string "=")
+         ~ty:
+           { txt = Type.Poly.mono (Fun ([ Base I32; Base I32 ], Base Bool))
+           ; loc = Location.initial
+           }
+    |> Env.with_var
+         ~var:(Identifier.of_string "-")
+         ~ty:
+           { txt = Type.Poly.mono (Fun ([ Base I32; Base I32 ], Base I32))
+           ; loc = Location.initial
+           }
+  in
+  let%bind _env, ast =
+    List.fold_result
+      ast
+      ~init:(env, [])
+      ~f:(fun (env, acc) (top_level : Ast.Toplevel.t) ->
+        match top_level with
+        | External { loc; type_; name; c_name } ->
+          let type_ : _ Located.t =
+            { txt = Type.Poly.mono (Type.of_ast type_.txt); loc = type_.loc }
+          in
+          let env = Env.with_var env ~var:name.txt ~ty:type_ in
+          Ok (env, Typed_ast.Toplevel.External { loc; type_; name; c_name } :: acc)
+        | Function { name; params; body; loc } ->
+          let arg_types = List.map params ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
+          let ty : Type.t = Fun (arg_types, Var (Env.fresh_tv env)) in
+          let env =
+            Env.with_var env ~var:name.txt ~ty:{ txt = Type.Poly.mono ty; loc = name.loc }
+          in
+          let constraints = Queue.create () in
+          let%bind body, _ty =
+            check { desc = Fun { params; body }; loc } ty ~env ~file_id ~constraints
+          in
+          let body =
+            match body.desc with
+            | Fun { params = _; body; body_type = _ } -> body
+            | _ -> assert false
+          in
+          let constraints = Queue.to_list constraints in
+          let solver = Solver.create () in
+          let%bind env = Solver.solve solver constraints ~env ~file_id in
+          Ok
+            ( env
+            , Typed_ast.Toplevel.Function
+                { name
+                ; params =
+                    List.map2_exn params arg_types ~f:(fun (ident, _) ty ->
+                      ident, Solver.normalize_ty solver ty ~env)
+                ; body
+                ; loc
+                }
+              :: acc ))
+  in
+  Ok (List.rev ast)
 ;;

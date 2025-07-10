@@ -1,7 +1,7 @@
 external print : i32 -> unit = "mucaml_print"
 external exit : i32 -> unit = "mucaml_exit"
 
-let main x : i32 =
+let main x =
   let value = 
     if x
     then (

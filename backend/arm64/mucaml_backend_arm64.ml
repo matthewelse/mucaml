@@ -48,7 +48,7 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
 
       let compile_and_link program ~env:(_ : Env.t) ~linker_args ~output_binary =
         let open Async in
-        let open Deferred.Or_error.Let_syntax in
+        let open Deferred.Result.Let_syntax in
         let link_command = "gcc" in
         (* TODO: Link a real runtime. For the time being, just call directly into the
            main function. *)
@@ -95,6 +95,13 @@ mucaml_print.str:
         in
         let%bind () =
           Process.run_expect_no_output ~prog:link_command ~args ~stdin:assembly ()
+          |> Deferred.Result.map_error ~f:(fun error : Grace.Diagnostic.t ->
+            { severity = Error
+            ; message =
+                (fun fmt -> Format.pp_print_string fmt (Error.to_string_hum error))
+            ; labels = []
+            ; notes = []
+            })
         in
         return ()
       ;;

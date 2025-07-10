@@ -66,7 +66,8 @@ module Expr = struct
       | Let { var; type_; value; body } ->
         let type_ = Type.to_string type_ in
         let body = aux ~indent:(indent ^ "  ") body in
-        [%string "%{indent}let %{var.txt#Identifier}%{type_} = %{aux value} in\n%{body}"]
+        [%string
+          "%{indent}let %{var.txt#Identifier} : %{type_} = %{aux value} in\n%{body}"]
       | Letrec { var; type_; value; body } ->
         let value = aux value in
         let body = aux ~indent:(indent ^ "  ") body in
@@ -105,7 +106,7 @@ module Toplevel = struct
         }
     | External of
         { name : Identifier.t Located.t
-        ; type_ : Type.t Located.t
+        ; type_ : Type.Poly.t Located.t
         ; c_name : string Located.t
         ; loc : Location.t
         }
@@ -127,8 +128,11 @@ module Toplevel = struct
       [%string "%{indent}let %{name.txt#Identifier} %{params_str} =\n%{body}"]
     | External { name; type_; c_name; loc = _ } ->
       [%string
-        "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type} = \"%{c_name.txt}\""]
+        "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type.Poly} = \
+         \"%{c_name.txt}\""]
   ;;
 end
 
 type t = Toplevel.t list [@@deriving sexp_of]
+
+let to_string_hum t = List.map t ~f:Toplevel.to_string_hum |> String.concat ~sep:"\n\n"

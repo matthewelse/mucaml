@@ -73,7 +73,7 @@ let build_target_isa (triple : Triple.t) ({ board } : Settings.t) =
 
       let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in
-        let open Deferred.Or_error.Let_syntax in
+        let open Deferred.Result.Let_syntax in
         let asm_command = "arm-none-eabi-gcc" in
         let object_name = Filename.basename output_binary ^ ".o" in
         let args =
@@ -95,6 +95,13 @@ let build_target_isa (triple : Triple.t) ({ board } : Settings.t) =
             ~args
             ~stdin:(Assembly.to_string program)
             ()
+          |> Deferred.Result.map_error ~f:(fun error : Grace.Diagnostic.t ->
+            { severity = Error
+            ; message =
+                (fun fmt -> Format.pp_print_string fmt (Error.to_string_hum error))
+            ; labels = []
+            ; notes = []
+            })
         in
         let link_command = "arm-none-eabi-gcc" in
         let args =
@@ -115,6 +122,13 @@ let build_target_isa (triple : Triple.t) ({ board } : Settings.t) =
             ~args
             ~stdin:(Assembly.to_string program)
             ()
+          |> Deferred.Result.map_error ~f:(fun error : Grace.Diagnostic.t ->
+            { severity = Error
+            ; message =
+                (fun fmt -> Format.pp_print_string fmt (Error.to_string_hum error))
+            ; labels = []
+            ; notes = []
+            })
         in
         return ()
       ;;

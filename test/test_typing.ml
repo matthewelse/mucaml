@@ -4,10 +4,10 @@ open Helpers
 
 let test text =
   let ast = text in
-  let env = typecheck ast |> [%globalize: Env.t option] in
-  match env with
+  let typed_ast = typecheck ast in
+  match typed_ast with
   | None -> ()
-  | Some env -> print_s [%message (env : Env.t)]
+  | Some typed_ast -> print_endline (Typed_ast.to_string_hum typed_ast)
 ;;
 
 let%expect_test "example: const functions" =
@@ -19,49 +19,28 @@ let test_true a = true
 let test_false a = false|};
   [%expect
     {|
-    ('_1) -> i32
-    (constraints ())
-    ('_3) -> i64
-    (constraints ())
-    ('_5) -> unit
-    (constraints ())
-    ('_7) -> bool
-    (constraints ())
-    ('_9) -> bool
-    (constraints ())
-    (env
-     ((values
-       ((test_false
-         ((txt ((body (Var 8)) (quantifiers ()) (constraints ())))
-          (loc ((start 89) (stop 99)))))
-        (test_i32
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 4) (stop 12)))))
-        (test_i64
-         ((txt ((body (Var 2)) (quantifiers ()) (constraints ())))
-          (loc ((start 24) (stop 32)))))
-        (test_true
-         ((txt ((body (Var 6)) (quantifiers ()) (constraints ())))
-          (loc ((start 66) (stop 75)))))
-        (test_unit
-         ((txt ((body (Var 4)) (quantifiers ()) (constraints ())))
-          (loc ((start 45) (stop 54)))))))
-      (mut ((next_tv 10)))))
+    let test_i32 a : '_2 =
+      42
+
+    let test_i64 a : '_5 =
+      42
+
+    let test_unit a : '_8 =
+      ()
+
+    let test_true a : '_11 =
+      true
+
+    let test_false a : '_14 =
+      false
     |}]
 ;;
 
 let%expect_test "example: identity function" =
   test "let test a = a";
-  [%expect
-    {|
-    ('_1) -> '_1
-    (constraints ())
-    (env
-     ((values
-       ((test
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 4) (stop 8)))))))
-      (mut ((next_tv 2)))))
+  [%expect {|
+    let test a : '_2 =
+      $a
     |}]
 ;;
 
@@ -70,23 +49,10 @@ let%expect_test "example: application" =
 let test a = a + 1|};
   [%expect
     {|
-    (i32) -> i32
-    (constraints
-     ((Same_type (Fun ((Base I32) (Base I32)) (Base I32))
-       (Fun ((Var 2) (Var 3)) (Var 4)) <opaque>)
-      (Same_type (Var 1) (Var 2) <opaque>)
-      (Same_type (Base I32) (Var 3) <opaque>)))
-    (env
-     ((values
-       ((+
-         ((txt
-           ((body (Fun ((Base I32) (Base I32)) (Base I32))) (quantifiers ())
-            (constraints ())))
-          (loc ((start 15) (stop 34)))))
-        (test
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 51) (stop 55)))))))
-      (mut ((next_tv 5)))))
+    external + : (i32, i32) -> i32 = "add_i32"
+
+    let test a : i32 =
+      app ($+, [$a, 1])
     |}]
 ;;
 
@@ -99,27 +65,12 @@ let test a =
   a + x + y|};
   [%expect
     {|
-    (i32) -> i32
-    (constraints
-     ((Same_type (Fun ((Base I32) (Base I32)) (Base I32))
-       (Fun ((Var 2) (Var 3)) (Var 4)) <opaque>)
-      (Same_type (Fun ((Base I32) (Base I32)) (Base I32))
-       (Fun ((Var 5) (Var 6)) (Var 7)) <opaque>)
-      (Same_type (Var 1) (Var 5) <opaque>)
-      (Same_type (Base I32) (Var 6) <opaque>)
-      (Same_type (Var 7) (Var 2) <opaque>)
-      (Same_type (Base I32) (Var 3) <opaque>)))
-    (env
-     ((values
-       ((+
-         ((txt
-           ((body (Fun ((Base I32) (Base I32)) (Base I32))) (quantifiers ())
-            (constraints ())))
-          (loc ((start 15) (stop 34)))))
-        (test
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 51) (stop 55)))))))
-      (mut ((next_tv 8)))))
+    external + : (i32, i32) -> i32 = "add_i32"
+
+    let test a : i32 =
+      let x : i32 = 3 in
+        let y : i32 = 2 in
+          app ($+, [app ($+, [$a, $x]), $y])
     |}]
 ;;
 
@@ -131,26 +82,14 @@ let test a =
   if a then x else 9|};
   [%expect
     {|
-    (bool) -> i32
-    (constraints
-     ((Same_type (Fun ((Base I32) (Base I32)) (Base I32))
-       (Fun ((Var 2) (Var 3)) (Var 4)) <opaque>)
-      (Same_type (Base I32) (Var 2) <opaque>)
-      (Same_type (Base I32) (Var 3) <opaque>)
-      (Same_type (Var 4) (Base I32) <opaque>)
-      (Same_type (Var 1) (Base Bool) <opaque>)
-      (Same_type (Base I32) (Var 4) <opaque>)))
-    (env
-     ((values
-       ((+
-         ((txt
-           ((body (Fun ((Base I32) (Base I32)) (Base I32))) (quantifiers ())
-            (constraints ())))
-          (loc ((start 15) (stop 34)))))
-        (test
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 51) (stop 55)))))))
-      (mut ((next_tv 5)))))
+    external + : (i32, i32) -> i32 = "add_i32"
+
+    let test a : bool =
+      let x : '_5 = app ($+, [3, $x]) in
+        if       $a then
+          $x
+    else
+          9
     |}]
 ;;
 
@@ -162,23 +101,14 @@ let test a =
   if is_zero x then x else a|};
   [%expect
     {|
-    (i32) -> i32
-    (constraints
-     ((Same_type (Fun ((Base I32)) (Base Bool)) (Fun ((Var 2)) (Var 3)) <opaque>)
-      (Same_type (Base I32) (Var 2) <opaque>)
-      (Same_type (Var 3) (Base Bool) <opaque>)
-      (Same_type (Var 1) (Base I32) <opaque>)))
-    (env
-     ((values
-       ((is_zero
-         ((txt
-           ((body (Fun ((Base I32)) (Base Bool))) (quantifiers ())
-            (constraints ())))
-          (loc ((start 17) (stop 30)))))
-        (test
-         ((txt ((body (Var 0)) (quantifiers ()) (constraints ())))
-          (loc ((start 49) (stop 53)))))))
-      (mut ((next_tv 4)))))
+    external is_zero : (i32) -> bool = "equal_i32"
+
+    let test a : i32 =
+      let x : i32 = 3 in
+        if       app ($is_zero, [$x]) then
+          $x
+    else
+          $a
     |}]
 ;;
 
@@ -233,7 +163,7 @@ let test a = a + 1|};
       1 │  external ( + ) : (i32) -> i32 = "add_i32"
         │                 -------------- + was defined here
       2 │  let test a = a + 1
-        │                 ^ expected to have type (i32, '_3) -> '_4, but has type (i32) -> i32.
+        │                 ^ expected to have type (i32, '_4) -> '_5, but has type (i32) -> i32.
     |}];
   test {|let test a = a a|};
   [%expect
@@ -241,9 +171,9 @@ let test a = a + 1|};
     error: Type error
         ┌─ <test>:1:16
       1 │  let test a = a a
-        │           -   ^ ^ expected to have type '_2, but has type ('_2) -> '_3.
+        │           -   ^ ^ expected to have type '_3, but has type ('_3) -> '_4.
         │           │   │
-        │           │   has type ('_2) -> '_3.
+        │           │   has type ('_3) -> '_4.
         │           a was defined here
         = This would create an infinitely nested type like `'a list list list list...`
         = we <3 recursion, but not _that_ much.

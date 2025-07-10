@@ -11,6 +11,7 @@ module Stage = struct
   module T = struct
     type t =
       | Ast
+      | Type
       | Mirl
       | Legalized
       | Assembly
@@ -32,7 +33,7 @@ module Stage = struct
     end
 
     val name : t
-    val run : Input.t -> Output.t Deferred.Or_error.t
+    val run : Input.t -> (Output.t, Grace.Diagnostic.t) Deferred.Result.t
   end
 
   module Pipeline = struct
@@ -51,22 +52,23 @@ module Stage = struct
         -> input
         -> stop_after:stage option
         -> dump_stage:stage option
-        -> output option Deferred.Or_error.t
+        -> (output option, Grace.Diagnostic.t) Deferred.Result.t
       =
       fun t input ~stop_after ~dump_stage ->
+      let open Deferred.Result.Let_syntax in
       match t with
-      | [] -> Deferred.Or_error.return (Some input)
+      | [] -> return (Some input)
       | (module Stage) :: tl ->
-        let%bind.Deferred.Or_error output = Stage.run input in
+        let%bind output = Stage.run input in
         if [%equal: stage option] (Some Stage.name) dump_stage
         then print_endline (Stage.Output.to_string_hum output);
         if [%equal: stage option] (Some Stage.name) stop_after
-        then Deferred.Or_error.return None
+        then Deferred.Result.return None
         else run tl output ~stop_after ~dump_stage
     ;;
 
     let run' t i ~stop_after ~dump_stage =
-      let open Deferred.Or_error.Let_syntax in
+      let open Deferred.Result.Let_syntax in
       let%bind (None | Some ()) = run t i ~stop_after ~dump_stage in
       return ()
     ;;
@@ -105,6 +107,7 @@ let stages
   ~env
   ~linker_args
   ~output_binary
+  ~file_id
   : (Ast.t, _) Stage.Pipeline.t
   =
   let stage (type i o) ~(output_to_string_hum : o -> string) ~run name
@@ -127,16 +130,20 @@ let stages
   in
   [ stage
       ~output_to_string_hum:Ast.to_string_hum
-      ~run:(fun x -> Deferred.Or_error.return x)
+      ~run:(fun x -> Deferred.Result.return x)
       Ast
   ; stage
+      ~output_to_string_hum:Typed_ast.to_string_hum
+      ~run:(fun x -> Deferred.return (Mucaml_typing.type_ast x ~file_id))
+      Type
+  ; stage
       ~output_to_string_hum:Mirl.to_string
-      ~run:(fun x -> Deferred.Or_error.return (Mirl.of_ast x))
+      ~run:(fun x -> Deferred.Result.return (Mirl.of_ast x))
       Mirl
   ; stage
       ~output_to_string_hum:Mirl.to_string
       ~run:(fun x ->
-        Deferred.Or_error.return
+        Deferred.Result.return
           (Legalize.legalize_program
              { supports_native_i64 = Target.Capabilities.supports_native_i64 }
              x))
@@ -162,17 +169,20 @@ let compile_toplevel
   ~linker_args
   ~env
   =
-  let open Deferred.Or_error.Let_syntax in
+  let open Deferred.Let_syntax in
   let files = Grace.Files.create () in
   let filename = "<stdin>" in
   let file_id = Grace.Files.add files filename input in
-  match Parse.parse_toplevel input ~file_id with
-  | Ok ast ->
+  match%bind.Deferred
+    let open Deferred.Result.Let_syntax in
+    let%bind ast = Parse.parse_toplevel input ~file_id |> Deferred.return in
     Stage.Pipeline.run'
-      (stages (module Target) ~env ~linker_args ~output_binary)
+      (stages (module Target) ~env ~linker_args ~output_binary ~file_id)
       ast
       ~stop_after
       ~dump_stage
+  with
+  | Ok () -> return ()
   | Error diagnostic ->
     let diagnostic_config = Grace_rendering.Config.default in
     Fmt_doc.render
@@ -202,7 +212,7 @@ let repl =
                  duplicate message, which is not a problem. *)
               LNoise.history_add input |> (ignore : (unit, string) Result.t -> unit);
               let output_binary = "program.elf" in
-              let%bind () =
+              let%bind.Deferred () =
                 compile_toplevel
                   (module Backend)
                   input
@@ -276,16 +286,15 @@ let build ~should_run =
           @@ Deferred.Or_error.try_with (fun () -> Reader.file_contents project.top_level)
         in
         let output_binary = [%string "%{project.name#String_id}.elf"] in
-        let%bind () =
-          Deferred.map ~f:wrap
-          @@ compile_toplevel
-               ?stop_after
-               (module Target)
-               code
-               ~dump_stage
-               ~output_binary
-               ~linker_args:project.linker_args
-               ~env
+        let%bind.Deferred () =
+          compile_toplevel
+            ?stop_after
+            (module Target)
+            code
+            ~dump_stage
+            ~output_binary
+            ~linker_args:project.linker_args
+            ~env
         in
         let%bind () =
           Deferred.map ~f:wrap
