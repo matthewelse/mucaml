@@ -57,7 +57,7 @@ let%expect_test "i64 literal parsing and legalization" =
 
 let%expect_test "i64 addition parsing and legalization" =
   test_i64_parsing
-    {|external ( + ) : (i64, i64) -> i64 = "add_i64"
+    {|external ( + ) : i64 -> i64 -> i64 = "add_i64"
 let main (a : i64) = a + 100L |};
   [%expect
     {|

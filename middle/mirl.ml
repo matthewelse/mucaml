@@ -349,7 +349,7 @@ let rec of_ast (ast : Typed_ast.t) =
       match ast with
       | Function { name; params; return_type = _; body; loc = _ } ->
         let params =
-          List.map params ~f:(fun (param, ty) ->
+          Nonempty_list.map params ~f:(fun (param, ty) ->
             let ty : Type.t =
               match ty with
               | Base I32 -> Type.I32
@@ -360,6 +360,7 @@ let rec of_ast (ast : Typed_ast.t) =
               | _ -> failwith "todo: unsupported type"
             in
             param, ty)
+          |> Nonempty_list.to_list
         in
         let name = [%string "mucaml_%{name.txt#Identifier}"] in
         First
@@ -391,7 +392,7 @@ let rec of_ast (ast : Typed_ast.t) =
                 (* FIXME: monomorphisation *)
                 failwith "todo: type variable left in typed ast"
             in
-            let arg_types = List.map arg_types ~f:convert_type in
+            let arg_types = List.map (Nonempty_list.to_list arg_types) ~f:convert_type in
             let return_type = convert_type return_type in
             arg_types, return_type
           | Base (Unit | I32) -> [], Type.I32

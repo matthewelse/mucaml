@@ -44,7 +44,7 @@ module Expr = struct
         ; if_false : t
         }
     | Fun of
-        { params : (Identifier.t Located.t * Type.t option) list
+        { params : (Identifier.t Located.t * Type.t option) Nonempty_list.t
         ; body : t
         }
     | App of
@@ -85,7 +85,7 @@ module Expr = struct
         let params_str =
           String.concat
             ~sep:", "
-            (List.map params ~f:(fun (name, ty) ->
+            (List.map (Nonempty_list.to_list params) ~f:(fun (name, ty) ->
                let ty = Option.value_map ty ~default:"_" ~f:Type.to_string in
                [%string "%{name.txt#Identifier}: %{ty}"]))
         in
@@ -103,7 +103,7 @@ module Toplevel = struct
   type t =
     | Function of
         { name : Identifier.t Located.t
-        ; params : (Identifier.t Located.t * Type.t option) list
+        ; params : (Identifier.t Located.t * Type.t option) Nonempty_list.t
         ; return_type : Type.t Located.t option
         ; body : Expr.t
         ; loc : Location.t
@@ -125,15 +125,17 @@ module Toplevel = struct
       let params_str =
         String.concat
           ~sep:" "
-          (List.map params ~f:(fun (name, ty) ->
+          (List.map (Nonempty_list.to_list params) ~f:(fun (name, ty) ->
              let ty = Option.value_map ~f:Type.to_string ~default:"_" ty in
              [%string "(%{name.txt#Identifier} : %{ty})"]))
       in
-      let return_type_str = 
-        Option.value_map return_type ~default:"" ~f:(fun t -> [%string " : %{t.txt#Type}"])
+      let return_type_str =
+        Option.value_map return_type ~default:"" ~f:(fun t ->
+          [%string " : %{t.txt#Type}"])
       in
       let body = Expr.to_string_hum ~indent:(indent ^ "  ") body in
-      [%string "%{indent}let %{name.txt#Identifier} %{params_str}%{return_type_str} =\n%{body}"]
+      [%string
+        "%{indent}let %{name.txt#Identifier} %{params_str}%{return_type_str} =\n%{body}"]
     | External { name; type_; c_name; loc = _ } ->
       [%string
         "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type} = \"%{c_name.txt}\""]

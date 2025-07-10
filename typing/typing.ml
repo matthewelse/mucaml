@@ -116,7 +116,7 @@ and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id ~recursiv
 and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
   let open Result.Let_syntax in
   let env, params =
-    List.fold_map params ~init:env ~f:(fun env (name, ty) ->
+    List.fold_map (Nonempty_list.to_list params) ~init:env ~f:(fun env (name, ty) ->
       let ty : Type.t =
         match ty with
         | None -> Var (Env.fresh_tv env)
@@ -125,10 +125,12 @@ and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
       ( Env.with_var env ~var:name.txt ~ty:{ txt = Type.Poly.mono ty; loc = name.loc }
       , (name, ty) ))
   in
+  let params = Nonempty_list.of_list_exn params in
   let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
+  let param_types = Nonempty_list.map params ~f:snd in
   Ok
     ( ({ desc = Fun { params; body = body_typed_ast; body_type }; loc } : Typed_ast.Expr.t)
-    , (Fun (List.map params ~f:snd, body_type) : Type.t) )
+    , (Fun (param_types, body_type) : Type.t) )
 
 and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let open Result.Let_syntax in
@@ -145,7 +147,14 @@ and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
        the cost of more constraints to iterate through). *)
   let fresh_arg_tys = List.map args ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
   let return_ty = Type.var (Env.fresh_tv env) in
-  let fun_ty : Type.t = Fun (fresh_arg_tys, return_ty) in
+  let fresh_arg_tys_nonempty =
+    match Nonempty_list.of_list fresh_arg_tys with
+    | Some nl -> nl
+    | None ->
+      (* If args is empty, treat it as a unit function call *)
+      Nonempty_list.singleton (Type.base Unit)
+  in
+  let fun_ty : Type.t = Fun (fresh_arg_tys_nonempty, return_ty) in
   let%bind fun_ast, _ = check func fun_ty ~constraints ~env ~file_id in
   let%bind arg_asts =
     List.map2_exn args fresh_arg_tys ~f:(fun arg_value fresh_ty ->
@@ -225,8 +234,10 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
           let env = Env.with_var env ~var:name.txt ~ty:type_ in
           Ok (env, Typed_ast.Toplevel.External { loc; type_; name; c_name } :: acc)
         | Function { name; params; return_type; body; loc } ->
-          let arg_types = List.map params ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
-          let return_type_ty = 
+          let arg_types =
+            Nonempty_list.map params ~f:(fun _ : Type.t -> Var (Env.fresh_tv env))
+          in
+          let return_type_ty =
             match return_type with
             | Some rt -> Type.of_ast rt.txt
             | None -> Var (Env.fresh_tv env)
@@ -253,8 +264,11 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
             , Typed_ast.Toplevel.Function
                 { name
                 ; params =
-                    List.map2_exn params arg_types ~f:(fun (ident, _) ty ->
-                      ident, Solver.normalize_ty solver ty ~env)
+                    List.map2_exn
+                      (Nonempty_list.to_list params)
+                      (Nonempty_list.to_list arg_types)
+                      ~f:(fun (ident, _) ty -> ident, Solver.normalize_ty solver ty ~env)
+                    |> Nonempty_list.of_list_exn
                 ; return_type = typed_return_type
                 ; body
                 ; loc

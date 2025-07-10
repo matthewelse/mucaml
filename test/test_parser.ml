@@ -52,19 +52,19 @@ let%expect_test "test parser" =
     else
         app ($+, [5, 6])
     |}];
-  test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+  test {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a b = a + b|};
   [%expect
     {|
-    external + : (i32,i32) -> i32 = "add_i32"
+    external + : i32 -> i32 -> i32 = "add_i32"
     let test (a : _) (b : _) =
       app ($+, [$a, $b])
     |}];
-  test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+  test {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a b : i32 = a + b|};
   [%expect
     {|
-    external + : (i32,i32) -> i32 = "add_i32"
+    external + : i32 -> i32 -> i32 = "add_i32"
     let test (a : _) (b : _) : i32 =
       app ($+, [$a, $b])
     |}];
@@ -76,5 +76,14 @@ let test a b : i32 = a + b|};
   [%expect
     {|
     external compare : ('a : ord, 'b : eq). 'a -> 'b -> bool = "compare"
+    |}];
+  (* Test function type parsing - these should all parse as Fun([arg1; arg2; ...], ret) *)
+  test {|external curry3 : i32 -> i32 -> i32 -> i32 = "curry3"|};
+  [%expect {|
+    external curry3 : i32 -> i32 -> i32 -> i32 = "curry3"
+    |}];
+  test {|external curry4 : bool -> i32 -> i64 -> unit -> bool = "curry4"|};
+  [%expect {|
+    external curry4 : bool -> i32 -> i64 -> unit -> bool = "curry4"
     |}]
 ;;

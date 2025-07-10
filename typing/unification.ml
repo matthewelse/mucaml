@@ -38,7 +38,7 @@ struct
          if debug then print_s [%message "normalising" (v : Type.Var.t) (ty : Type.t)];
          normalize_ty t ty ~env)
     | Fun (args, result) ->
-      let args = List.map ~f:(normalize_ty t ~env) args in
+      let args = Nonempty_list.map ~f:(normalize_ty t ~env) args in
       let result = normalize_ty t result ~env in
       Fun (args, result)
   ;;
@@ -53,9 +53,12 @@ struct
     match ty1, ty2 with
     | Fun (args_left, result_left), Fun (args_right, result_right) ->
       let%bind () =
-        iter2_result args_left args_right ~f:(fun arg_left arg_right ->
-          (* FIXME melse: Add an extra annotation to highlight progress *)
-          unify_ty_ty t arg_left arg_right ~env ~annotations ~file_id)
+        iter2_result
+          (Nonempty_list.to_list args_left)
+          (Nonempty_list.to_list args_right)
+          ~f:(fun arg_left arg_right ->
+            (* FIXME melse: Add an extra annotation to highlight progress *)
+            unify_ty_ty t arg_left arg_right ~env ~annotations ~file_id)
         |> Result.map_error ~f:(function
           | `Error err -> err
           | `Mismatched_lengths ->

@@ -44,7 +44,7 @@ module Expr = struct
         ; if_false : t
         }
     | Fun of
-        { params : (Identifier.t Located.t * Type.t) list
+        { params : (Identifier.t Located.t * Type.t) Nonempty_list.t
         ; body : t
         ; body_type : Type.t
         }
@@ -89,7 +89,7 @@ module Expr = struct
         let params_str =
           String.concat
             ~sep:", "
-            (List.map params ~f:(fun (name, t) ->
+            (List.map (Nonempty_list.to_list params) ~f:(fun (name, t) ->
                [%string "%{name.txt#Identifier}: %{t#Type}"]))
         in
         let body = aux ~indent:(indent ^ "  ") body in
@@ -106,7 +106,7 @@ module Toplevel = struct
   type t =
     | Function of
         { name : Identifier.t Located.t
-        ; params : (Identifier.t Located.t * Type.t) list
+        ; params : (Identifier.t Located.t * Type.t) Nonempty_list.t
         ; return_type : Type.t
         ; body : Expr.t
         ; loc : Location.t
@@ -128,12 +128,13 @@ module Toplevel = struct
       let params_str =
         String.concat
           ~sep:", "
-          (List.map params ~f:(fun (name, t) ->
+          (List.map (Nonempty_list.to_list params) ~f:(fun (name, t) ->
              [%string "%{name.txt#Identifier} : %{t#Type}"]))
       in
       let return_type_str = [%string " : %{return_type#Type}"] in
       let body = Expr.to_string_hum ~indent:(indent ^ "  ") body in
-      [%string "%{indent}let %{name.txt#Identifier} %{params_str}%{return_type_str} =\n%{body}"]
+      [%string
+        "%{indent}let %{name.txt#Identifier} %{params_str}%{return_type_str} =\n%{body}"]
     | External { name; type_; c_name; loc = _ } ->
       [%string
         "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type.Poly} = \

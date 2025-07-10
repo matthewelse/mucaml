@@ -45,11 +45,11 @@ let%expect_test "example: identity function" =
 ;;
 
 let%expect_test "example: application" =
-  test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+  test {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a = a + 1|};
   [%expect
     {|
-    external + : (i32, i32) -> i32 = "add_i32"
+    external + : i32 -> i32 -> i32 = "add_i32"
 
     let test a : i32 : i32 =
       app ($+, [$a, 1])
@@ -58,14 +58,14 @@ let test a = a + 1|};
 
 let%expect_test "example: let expression" =
   test
-    {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+    {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a =
   let x = 3 in
   let y = 2 in
   a + x + y|};
   [%expect
     {|
-    external + : (i32, i32) -> i32 = "add_i32"
+    external + : i32 -> i32 -> i32 = "add_i32"
 
     let test a : i32 : i32 =
       let x : i32 = 3 in
@@ -76,13 +76,13 @@ let test a =
 
 let%expect_test "example: letrec expression" =
   test
-    {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+    {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a =
   let rec x : i32 = 3 + x in
   if a then x else 9|};
   [%expect
     {|
-    external + : (i32, i32) -> i32 = "add_i32"
+    external + : i32 -> i32 -> i32 = "add_i32"
 
     let test a : bool : i32 =
       let x : 'a = app ($+, [3, $x]) in
@@ -117,46 +117,46 @@ let test a =
 ;;
 
 let%expect_test "error: application" =
-  test {|external ( + ) : (i64, i64) -> i64 = "add_i64"
+  test {|external ( + ) : i64 -> i64 -> i64 = "add_i64"
 let test a = a + 1|};
   [%expect
     {|
     error: Type error
         ┌─ <test>:2:18
-      1 │  external ( + ) : (i64, i64) -> i64 = "add_i64"
+      1 │  external ( + ) : i64 -> i64 -> i64 = "add_i64"
         │                 ------------------- + was defined here
       2 │  let test a = a + 1
         │                 - ^ this is expected to have type i64, but has type i32.
         │                 │
-        │                 this has type (i64, i64) -> i64.
+        │                 this has type i64 -> i64 -> i64.
         = Plain integers have type `i32`. `i64` literals look like `42L`.
     |}];
-  test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+  test {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a = a + 1L|};
   [%expect
     {|
     error: Type error
         ┌─ <test>:2:18
-      1 │  external ( + ) : (i32, i32) -> i32 = "add_i32"
+      1 │  external ( + ) : i32 -> i32 -> i32 = "add_i32"
         │                 ------------------- + was defined here
       2 │  let test a = a + 1L
         │                 - ^^ this is expected to have type i32, but has type i64.
         │                 │
-        │                 this has type (i32, i32) -> i32.
+        │                 this has type i32 -> i32 -> i32.
         = Integers with an L suffix have type `i64`. `i32` literals look like `42`.
     |}];
-  test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
+  test {|external ( + ) : i32 -> i32 -> i32 = "add_i32"
 let test a = a + true|};
   [%expect
     {|
     error: Type error
         ┌─ <test>:2:18
-      1 │  external ( + ) : (i32, i32) -> i32 = "add_i32"
+      1 │  external ( + ) : i32 -> i32 -> i32 = "add_i32"
         │                 ------------------- + was defined here
       2 │  let test a = a + true
         │                 - ^^^^ this is expected to have type i32, but has type bool.
         │                 │
-        │                 this has type (i32, i32) -> i32.
+        │                 this has type i32 -> i32 -> i32.
     |}];
   test {|external ( + ) : (i32) -> i32 = "add_i32"
 let test a = a + 1|};
@@ -167,7 +167,7 @@ let test a = a + 1|};
       1 │  external ( + ) : (i32) -> i32 = "add_i32"
         │                 -------------- + was defined here
       2 │  let test a = a + 1
-        │                 ^ this is expected to have type (i32, 'a) -> 'b, but has type i32 -> i32.
+        │                 ^ this is expected to have type i32 -> 'a -> 'b, but has type i32 -> i32.
     |}];
   test {|let test a = a a|};
   [%expect
@@ -197,7 +197,7 @@ let%expect_test "error: unknown variable" =
 
 let%expect_test "error: let binding used incorrectly" =
   test
-    {|external ( + ) : (i64, i64) -> i64 = "add_i64"
+    {|external ( + ) : i64 -> i64 -> i64 = "add_i64"
 
 let test a = 
   let x = 3 in
@@ -206,13 +206,13 @@ let test a =
     {|
     error: Type error
         ┌─ <test>:5:3
-      1 │  external ( + ) : (i64, i64) -> i64 = "add_i64"
+      1 │  external ( + ) : i64 -> i64 -> i64 = "add_i64"
         │                 ------------------- + was defined here
         ·
       4 │    let x = 3 in
         │        - x was defined here
       5 │    x + a
-        │    ^ - this has type (i64, i64) -> i64.
+        │    ^ - this has type i64 -> i64 -> i64.
         │    │
         │    this is expected to have type i64, but has type i32.
         = Plain integers have type `i32`. `i64` literals look like `42L`.

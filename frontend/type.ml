@@ -1,4 +1,5 @@
-open! Core
+open! Ox
+open! Import
 
 module Base = struct
   type t =
@@ -27,19 +28,17 @@ end
 
 type t =
   | Base of Base.t
-  | Fun of t list * t
+  | Fun of t Nonempty_list.t * t
   | Var of string
   | Constrained of Constraint.t list * t
 [@@deriving sexp_of]
 
 let rec to_string = function
   | Base ty -> Base.to_string ty
-  | Fun ([ arg_type ], ret_type) ->
-    let arg_str = to_string arg_type in
-    [%string "%{arg_str} -> %{to_string ret_type}"]
-  | Fun (arg_types, ret_type) ->
-    let args_str = String.concat ~sep:"," (List.map arg_types ~f:to_string) in
-    [%string "(%{args_str}) -> %{to_string ret_type}"]
+  | Fun (args, ret_type) ->
+    let args_list = Nonempty_list.to_list args in
+    let args_and_ret = args_list @ [ ret_type ] in
+    String.concat ~sep:" -> " (List.map args_and_ret ~f:to_string)
   | Var var -> [%string "'%{var}"]
   | Constrained (constraints, ty) ->
     let constraints_str =

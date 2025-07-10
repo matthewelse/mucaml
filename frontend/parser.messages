@@ -74,8 +74,8 @@ prog: EXTERNAL VAR COLON LPAREN UNARY_MINUS
 ##
 ## Ends in an error in state: 9.
 ##
-## constrained_type -> LPAREN . type_constraint_list RPAREN DOT type_name [ RPAREN EQ COMMA ARROW ]
-## type_name -> LPAREN . loption(separated_nonempty_list(COMMA,type_name)) RPAREN ARROW type_name [ RPAREN EQ COMMA ARROW ]
+## atomic_type -> LPAREN . type_name RPAREN [ RPAREN EQ ARROW ]
+## constrained_type -> LPAREN . type_constraint_list RPAREN DOT type_name [ RPAREN EQ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN
@@ -87,8 +87,8 @@ prog: EXTERNAL VAR COLON LPAREN TYPE_VAR VAR
 ##
 ## Ends in an error in state: 10.
 ##
+## atomic_type -> TYPE_VAR . [ RPAREN ARROW ]
 ## type_constraint -> TYPE_VAR . COLON VAR [ RPAREN COMMA ]
-## type_name -> TYPE_VAR . [ RPAREN COMMA ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE_VAR
@@ -112,58 +112,25 @@ prog: EXTERNAL VAR COLON LPAREN VAR EQ
 ##
 ## Ends in an error in state: 13.
 ##
-## separated_nonempty_list(COMMA,type_name) -> type_name . [ RPAREN ]
-## separated_nonempty_list(COMMA,type_name) -> type_name . COMMA separated_nonempty_list(COMMA,type_name) [ RPAREN ]
-## type_name -> type_name . ARROW type_name [ RPAREN COMMA ARROW ]
+## atomic_type -> LPAREN type_name . RPAREN [ RPAREN EQ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
-## type_name
+## LPAREN type_name
 ##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COMMA UNARY_MINUS
-##
-## Ends in an error in state: 14.
-##
-## separated_nonempty_list(COMMA,type_name) -> type_name COMMA . separated_nonempty_list(COMMA,type_name) [ RPAREN ]
-##
-## The known suffix of the stack is as follows:
-## type_name COMMA
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON TYPE_VAR ARROW UNARY_MINUS
-##
-## Ends in an error in state: 17.
-##
-## type_name -> type_name ARROW . type_name [ RPAREN EQ COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## type_name ARROW
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON TYPE_VAR ARROW TYPE_VAR VAR
-##
-## Ends in an error in state: 18.
-##
-## type_name -> type_name . ARROW type_name [ RPAREN EQ COMMA ARROW ]
-## type_name -> type_name ARROW type_name . [ RPAREN EQ COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## type_name ARROW type_name
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 20, spurious reduction of production type_name -> atomic_type
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR RPAREN VAR
 ##
-## Ends in an error in state: 20.
+## Ends in an error in state: 16.
 ##
-## constrained_type -> LPAREN type_constraint_list RPAREN . DOT type_name [ RPAREN EQ COMMA ARROW ]
+## constrained_type -> LPAREN type_constraint_list RPAREN . DOT type_name [ RPAREN EQ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN type_constraint_list RPAREN
@@ -173,9 +140,9 @@ prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR RPAREN VAR
 
 prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR RPAREN DOT UNARY_MINUS
 ##
-## Ends in an error in state: 21.
+## Ends in an error in state: 17.
 ##
-## constrained_type -> LPAREN type_constraint_list RPAREN DOT . type_name [ RPAREN EQ COMMA ARROW ]
+## constrained_type -> LPAREN type_constraint_list RPAREN DOT . type_name [ RPAREN EQ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN type_constraint_list RPAREN DOT
@@ -183,15 +150,27 @@ prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR RPAREN DOT UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR RPAREN DOT TYPE_VAR VAR
+prog: EXTERNAL VAR COLON TYPE_VAR VAR
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 20.
 ##
-## constrained_type -> LPAREN type_constraint_list RPAREN DOT type_name . [ RPAREN EQ COMMA ARROW ]
-## type_name -> type_name . ARROW type_name [ RPAREN EQ COMMA ARROW ]
+## type_name -> atomic_type . [ RPAREN EQ ARROW ]
+## type_name -> atomic_type . ARROW type_name [ RPAREN EQ ARROW ]
 ##
 ## The known suffix of the stack is as follows:
-## LPAREN type_constraint_list RPAREN DOT type_name
+## atomic_type
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+prog: EXTERNAL VAR COLON TYPE_VAR ARROW UNARY_MINUS
+##
+## Ends in an error in state: 21.
+##
+## type_name -> atomic_type ARROW . type_name [ RPAREN EQ ARROW ]
+##
+## The known suffix of the stack is as follows:
+## atomic_type ARROW
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
@@ -233,59 +212,9 @@ prog: EXTERNAL VAR COLON LPAREN TYPE_VAR COLON VAR COMMA TYPE_VAR VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: EXTERNAL VAR COLON LPAREN RPAREN VAR
-##
-## Ends in an error in state: 30.
-##
-## type_name -> LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN . ARROW type_name [ RPAREN EQ COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON LPAREN RPAREN ARROW UNARY_MINUS
-##
-## Ends in an error in state: 31.
-##
-## type_name -> LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN ARROW . type_name [ RPAREN EQ COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN ARROW
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON LPAREN RPAREN ARROW TYPE_VAR VAR
-##
-## Ends in an error in state: 32.
-##
-## type_name -> type_name . ARROW type_name [ RPAREN EQ COMMA ARROW ]
-## type_name -> LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN ARROW type_name . [ RPAREN EQ COMMA ARROW ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN loption(separated_nonempty_list(COMMA,type_name)) RPAREN ARROW type_name
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-prog: EXTERNAL VAR COLON TYPE_VAR COMMA
-##
-## Ends in an error in state: 33.
-##
-## type_annot -> COLON type_name . [ RPAREN EQ ]
-## type_name -> type_name . ARROW type_name [ RPAREN EQ ARROW ]
-##
-## The known suffix of the stack is as follows:
-## COLON type_name
-##
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
 prog: LET VAR LPAREN VAR COLON TYPE_VAR EQ
 ##
-## Ends in an error in state: 35.
+## Ends in an error in state: 30.
 ##
 ## param -> LPAREN VAR option(type_annot) . RPAREN [ VAR LPAREN EQ DARROW COLON ]
 ##
@@ -296,15 +225,16 @@ prog: LET VAR LPAREN VAR COLON TYPE_VAR EQ
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
-## In state 34, spurious reduction of production option(type_annot) -> type_annot
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
+## In state 29, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: LET VAR VAR DARROW
 ##
-## Ends in an error in state: 37.
+## Ends in an error in state: 32.
 ##
 ## toplevel -> LET VAR param_list . option(type_annot) EQ expr [ LET EXTERNAL EOF ]
 ##
@@ -315,16 +245,15 @@ prog: LET VAR VAR DARROW
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 77, spurious reduction of production list(param) ->
-## In state 78, spurious reduction of production list(param) -> param list(param)
-## In state 79, spurious reduction of production param_list -> list(param)
+## In state 72, spurious reduction of production nonempty_list(param) -> param
+## In state 74, spurious reduction of production param_list -> nonempty_list(param)
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR COLON TYPE_VAR RPAREN
+prog: LET VAR VAR COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 38.
+## Ends in an error in state: 33.
 ##
 ## toplevel -> LET VAR param_list option(type_annot) . EQ expr [ LET EXTERNAL EOF ]
 ##
@@ -335,15 +264,16 @@ prog: LET VAR COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
-## In state 34, spurious reduction of production option(type_annot) -> type_annot
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
+## In state 29, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ TYPE_VAR
+prog: LET VAR VAR EQ TYPE_VAR
 ##
-## Ends in an error in state: 39.
+## Ends in an error in state: 34.
 ##
 ## toplevel -> LET VAR param_list option(type_annot) EQ . expr [ LET EXTERNAL EOF ]
 ##
@@ -353,9 +283,9 @@ prog: LET VAR EQ TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ UNARY_MINUS TYPE_VAR
+prog: LET VAR VAR EQ UNARY_MINUS TYPE_VAR
 ##
-## Ends in an error in state: 41.
+## Ends in an error in state: 36.
 ##
 ## expr -> UNARY_MINUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -365,9 +295,9 @@ prog: LET VAR EQ UNARY_MINUS TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LPAREN TYPE_VAR
+prog: LET VAR VAR EQ LPAREN TYPE_VAR
 ##
-## Ends in an error in state: 42.
+## Ends in an error in state: 37.
 ##
 ## expr -> LPAREN . RPAREN [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> LPAREN . expr RPAREN [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -378,9 +308,9 @@ prog: LET VAR EQ LPAREN TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET UNARY_MINUS
+prog: LET VAR VAR EQ LET UNARY_MINUS
 ##
-## Ends in an error in state: 44.
+## Ends in an error in state: 39.
 ##
 ## expr -> LET . VAR option(type_annot) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> LET . REC VAR option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -391,9 +321,9 @@ prog: LET VAR EQ LET UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR VAR
+prog: LET VAR VAR EQ LET VAR VAR
 ##
-## Ends in an error in state: 45.
+## Ends in an error in state: 40.
 ##
 ## expr -> LET VAR . option(type_annot) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -403,9 +333,9 @@ prog: LET VAR EQ LET VAR VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR COLON TYPE_VAR RPAREN
+prog: LET VAR VAR EQ LET VAR COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 46.
+## Ends in an error in state: 41.
 ##
 ## expr -> LET VAR option(type_annot) . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -416,15 +346,16 @@ prog: LET VAR EQ LET VAR COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
-## In state 34, spurious reduction of production option(type_annot) -> type_annot
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
+## In state 29, spurious reduction of production option(type_annot) -> type_annot
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR EQ TYPE_VAR
+prog: LET VAR VAR EQ LET VAR EQ TYPE_VAR
 ##
-## Ends in an error in state: 47.
+## Ends in an error in state: 42.
 ##
 ## expr -> LET VAR option(type_annot) EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -434,9 +365,9 @@ prog: LET VAR EQ LET VAR EQ TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF TYPE_VAR
+prog: LET VAR VAR EQ IF TYPE_VAR
 ##
-## Ends in an error in state: 50.
+## Ends in an error in state: 45.
 ##
 ## expr -> IF . expr THEN expr ELSE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -446,9 +377,9 @@ prog: LET VAR EQ IF TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ FUN UNARY_MINUS
+prog: LET VAR VAR EQ FUN UNARY_MINUS
 ##
-## Ends in an error in state: 51.
+## Ends in an error in state: 46.
 ##
 ## expr -> FUN . param_list DARROW expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -458,9 +389,9 @@ prog: LET VAR EQ FUN UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ FUN VAR EQ
+prog: LET VAR VAR EQ FUN VAR EQ
 ##
-## Ends in an error in state: 52.
+## Ends in an error in state: 47.
 ##
 ## expr -> FUN param_list . DARROW expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -471,16 +402,15 @@ prog: LET VAR EQ FUN VAR EQ
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 77, spurious reduction of production list(param) ->
-## In state 78, spurious reduction of production list(param) -> param list(param)
-## In state 79, spurious reduction of production param_list -> list(param)
+## In state 72, spurious reduction of production nonempty_list(param) -> param
+## In state 74, spurious reduction of production param_list -> nonempty_list(param)
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ FUN DARROW TYPE_VAR
+prog: LET VAR VAR EQ FUN VAR DARROW TYPE_VAR
 ##
-## Ends in an error in state: 53.
+## Ends in an error in state: 48.
 ##
 ## expr -> FUN param_list DARROW . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -490,9 +420,9 @@ prog: LET VAR EQ FUN DARROW TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ FUN DARROW BOOL TYPE_VAR
+prog: LET VAR VAR EQ FUN VAR DARROW BOOL TYPE_VAR
 ##
-## Ends in an error in state: 55.
+## Ends in an error in state: 50.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -513,9 +443,9 @@ prog: LET VAR EQ FUN DARROW BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL TIMES TYPE_VAR
+prog: LET VAR VAR EQ BOOL TIMES TYPE_VAR
 ##
-## Ends in an error in state: 56.
+## Ends in an error in state: 51.
 ##
 ## expr -> expr TIMES . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -525,9 +455,9 @@ prog: LET VAR EQ BOOL TIMES TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL TIMES BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL TIMES BOOL TYPE_VAR
 ##
-## Ends in an error in state: 57.
+## Ends in an error in state: 52.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -548,9 +478,9 @@ prog: LET VAR EQ BOOL TIMES BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL PLUS TYPE_VAR
+prog: LET VAR VAR EQ BOOL PLUS TYPE_VAR
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 54.
 ##
 ## expr -> expr PLUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -560,9 +490,9 @@ prog: LET VAR EQ BOOL PLUS TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL PLUS BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL PLUS BOOL TYPE_VAR
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 55.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr PLUS expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -583,9 +513,9 @@ prog: LET VAR EQ BOOL PLUS BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL DIV TYPE_VAR
+prog: LET VAR VAR EQ BOOL DIV TYPE_VAR
 ##
-## Ends in an error in state: 61.
+## Ends in an error in state: 56.
 ##
 ## expr -> expr DIV . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -595,9 +525,9 @@ prog: LET VAR EQ BOOL DIV TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL DIV BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL DIV BOOL TYPE_VAR
 ##
-## Ends in an error in state: 62.
+## Ends in an error in state: 57.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -618,9 +548,9 @@ prog: LET VAR EQ BOOL DIV BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL NE TYPE_VAR
+prog: LET VAR VAR EQ BOOL NE TYPE_VAR
 ##
-## Ends in an error in state: 63.
+## Ends in an error in state: 58.
 ##
 ## expr -> expr NE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -630,9 +560,9 @@ prog: LET VAR EQ BOOL NE TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL NE BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL NE BOOL TYPE_VAR
 ##
-## Ends in an error in state: 64.
+## Ends in an error in state: 59.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -653,9 +583,9 @@ prog: LET VAR EQ BOOL NE BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL MINUS TYPE_VAR
+prog: LET VAR VAR EQ BOOL MINUS TYPE_VAR
 ##
-## Ends in an error in state: 65.
+## Ends in an error in state: 60.
 ##
 ## expr -> expr MINUS . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -665,9 +595,9 @@ prog: LET VAR EQ BOOL MINUS TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL MINUS BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL MINUS BOOL TYPE_VAR
 ##
-## Ends in an error in state: 66.
+## Ends in an error in state: 61.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -688,9 +618,9 @@ prog: LET VAR EQ BOOL MINUS BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL LT TYPE_VAR
+prog: LET VAR VAR EQ BOOL LT TYPE_VAR
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 62.
 ##
 ## expr -> expr LT . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -700,9 +630,9 @@ prog: LET VAR EQ BOOL LT TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL LT BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL LT BOOL TYPE_VAR
 ##
-## Ends in an error in state: 68.
+## Ends in an error in state: 63.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -723,9 +653,9 @@ prog: LET VAR EQ BOOL LT BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL LE TYPE_VAR
+prog: LET VAR VAR EQ BOOL LE TYPE_VAR
 ##
-## Ends in an error in state: 69.
+## Ends in an error in state: 64.
 ##
 ## expr -> expr LE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -735,9 +665,9 @@ prog: LET VAR EQ BOOL LE TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL LE BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL LE BOOL TYPE_VAR
 ##
-## Ends in an error in state: 70.
+## Ends in an error in state: 65.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -758,9 +688,9 @@ prog: LET VAR EQ BOOL LE BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL GT TYPE_VAR
+prog: LET VAR VAR EQ BOOL GT TYPE_VAR
 ##
-## Ends in an error in state: 71.
+## Ends in an error in state: 66.
 ##
 ## expr -> expr GT . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -770,9 +700,9 @@ prog: LET VAR EQ BOOL GT TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL GT BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL GT BOOL TYPE_VAR
 ##
-## Ends in an error in state: 72.
+## Ends in an error in state: 67.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -793,9 +723,9 @@ prog: LET VAR EQ BOOL GT BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL GE TYPE_VAR
+prog: LET VAR VAR EQ BOOL GE TYPE_VAR
 ##
-## Ends in an error in state: 73.
+## Ends in an error in state: 68.
 ##
 ## expr -> expr GE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -805,9 +735,9 @@ prog: LET VAR EQ BOOL GE TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL GE BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL GE BOOL TYPE_VAR
 ##
-## Ends in an error in state: 74.
+## Ends in an error in state: 69.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -828,9 +758,9 @@ prog: LET VAR EQ BOOL GE BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL EQ TYPE_VAR
+prog: LET VAR VAR EQ BOOL EQ TYPE_VAR
 ##
-## Ends in an error in state: 75.
+## Ends in an error in state: 70.
 ##
 ## expr -> expr EQ . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -840,9 +770,9 @@ prog: LET VAR EQ BOOL EQ TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL EQ BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL EQ BOOL TYPE_VAR
 ##
-## Ends in an error in state: 76.
+## Ends in an error in state: 71.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -865,9 +795,10 @@ prog: LET VAR EQ BOOL EQ BOOL TYPE_VAR
 
 prog: LET VAR VAR UNARY_MINUS
 ##
-## Ends in an error in state: 77.
+## Ends in an error in state: 72.
 ##
-## list(param) -> param . list(param) [ EQ DARROW COLON ]
+## nonempty_list(param) -> param . [ EQ DARROW COLON ]
+## nonempty_list(param) -> param . nonempty_list(param) [ EQ DARROW COLON ]
 ##
 ## The known suffix of the stack is as follows:
 ## param
@@ -875,9 +806,9 @@ prog: LET VAR VAR UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF BOOL TYPE_VAR
+prog: LET VAR VAR EQ IF BOOL TYPE_VAR
 ##
-## Ends in an error in state: 80.
+## Ends in an error in state: 75.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
@@ -898,9 +829,9 @@ prog: LET VAR EQ IF BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF BOOL THEN TYPE_VAR
+prog: LET VAR VAR EQ IF BOOL THEN TYPE_VAR
 ##
-## Ends in an error in state: 81.
+## Ends in an error in state: 76.
 ##
 ## expr -> IF expr THEN . expr ELSE expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -910,9 +841,9 @@ prog: LET VAR EQ IF BOOL THEN TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF BOOL THEN BOOL TYPE_VAR
+prog: LET VAR VAR EQ IF BOOL THEN BOOL TYPE_VAR
 ##
-## Ends in an error in state: 82.
+## Ends in an error in state: 77.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ ELSE DIV BOOL ]
@@ -933,9 +864,9 @@ prog: LET VAR EQ IF BOOL THEN BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF BOOL THEN BOOL ELSE TYPE_VAR
+prog: LET VAR VAR EQ IF BOOL THEN BOOL ELSE TYPE_VAR
 ##
-## Ends in an error in state: 83.
+## Ends in an error in state: 78.
 ##
 ## expr -> IF expr THEN expr ELSE . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -945,9 +876,9 @@ prog: LET VAR EQ IF BOOL THEN BOOL ELSE TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ IF BOOL THEN BOOL ELSE BOOL TYPE_VAR
+prog: LET VAR VAR EQ IF BOOL THEN BOOL ELSE BOOL TYPE_VAR
 ##
-## Ends in an error in state: 84.
+## Ends in an error in state: 79.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -968,9 +899,9 @@ prog: LET VAR EQ IF BOOL THEN BOOL ELSE BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR EQ BOOL TYPE_VAR
+prog: LET VAR VAR EQ LET VAR EQ BOOL TYPE_VAR
 ##
-## Ends in an error in state: 85.
+## Ends in an error in state: 80.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
@@ -991,9 +922,9 @@ prog: LET VAR EQ LET VAR EQ BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR EQ BOOL IN TYPE_VAR
+prog: LET VAR VAR EQ LET VAR EQ BOOL IN TYPE_VAR
 ##
-## Ends in an error in state: 86.
+## Ends in an error in state: 81.
 ##
 ## expr -> LET VAR option(type_annot) EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1003,9 +934,9 @@ prog: LET VAR EQ LET VAR EQ BOOL IN TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET VAR EQ BOOL IN BOOL TYPE_VAR
+prog: LET VAR VAR EQ LET VAR EQ BOOL IN BOOL TYPE_VAR
 ##
-## Ends in an error in state: 87.
+## Ends in an error in state: 82.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -1026,9 +957,9 @@ prog: LET VAR EQ LET VAR EQ BOOL IN BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC UNARY_MINUS
+prog: LET VAR VAR EQ LET REC UNARY_MINUS
 ##
-## Ends in an error in state: 88.
+## Ends in an error in state: 83.
 ##
 ## expr -> LET REC . VAR option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1038,9 +969,9 @@ prog: LET VAR EQ LET REC UNARY_MINUS
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR VAR
+prog: LET VAR VAR EQ LET REC VAR VAR
 ##
-## Ends in an error in state: 89.
+## Ends in an error in state: 84.
 ##
 ## expr -> LET REC VAR . option(type_annot_loc) EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1050,9 +981,9 @@ prog: LET VAR EQ LET REC VAR VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR COLON TYPE_VAR RPAREN
+prog: LET VAR VAR EQ LET REC VAR COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 92.
+## Ends in an error in state: 87.
 ##
 ## expr -> LET REC VAR option(type_annot_loc) . EQ expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1063,16 +994,17 @@ prog: LET VAR EQ LET REC VAR COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
-## In state 91, spurious reduction of production type_annot_loc -> type_annot
-## In state 90, spurious reduction of production option(type_annot_loc) -> type_annot_loc
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
+## In state 86, spurious reduction of production type_annot_loc -> type_annot
+## In state 85, spurious reduction of production option(type_annot_loc) -> type_annot_loc
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR EQ TYPE_VAR
+prog: LET VAR VAR EQ LET REC VAR EQ TYPE_VAR
 ##
-## Ends in an error in state: 93.
+## Ends in an error in state: 88.
 ##
 ## expr -> LET REC VAR option(type_annot_loc) EQ . expr IN expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1082,9 +1014,9 @@ prog: LET VAR EQ LET REC VAR EQ TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR EQ BOOL TYPE_VAR
+prog: LET VAR VAR EQ LET REC VAR EQ BOOL TYPE_VAR
 ##
-## Ends in an error in state: 94.
+## Ends in an error in state: 89.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EQ DIV BOOL ]
@@ -1105,9 +1037,9 @@ prog: LET VAR EQ LET REC VAR EQ BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR EQ BOOL IN TYPE_VAR
+prog: LET VAR VAR EQ LET REC VAR EQ BOOL IN TYPE_VAR
 ##
-## Ends in an error in state: 95.
+## Ends in an error in state: 90.
 ##
 ## expr -> LET REC VAR option(type_annot_loc) EQ expr IN . expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ##
@@ -1117,9 +1049,9 @@ prog: LET VAR EQ LET REC VAR EQ BOOL IN TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LET REC VAR EQ BOOL IN BOOL TYPE_VAR
+prog: LET VAR VAR EQ LET REC VAR EQ BOOL IN BOOL TYPE_VAR
 ##
-## Ends in an error in state: 96.
+## Ends in an error in state: 91.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -1140,9 +1072,9 @@ prog: LET VAR EQ LET REC VAR EQ BOOL IN BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ LPAREN BOOL TYPE_VAR
+prog: LET VAR VAR EQ LPAREN BOOL TYPE_VAR
 ##
-## Ends in an error in state: 97.
+## Ends in an error in state: 92.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EQ DIV BOOL ]
@@ -1163,9 +1095,9 @@ prog: LET VAR EQ LPAREN BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ UNARY_MINUS BOOL TYPE_VAR
+prog: LET VAR VAR EQ UNARY_MINUS BOOL TYPE_VAR
 ##
-## Ends in an error in state: 99.
+## Ends in an error in state: 94.
 ##
 ## expr -> UNARY_MINUS expr . [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES THEN RPAREN PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IN IF GT GE FUN EXTERNAL EQ EOF ELSE DIV BOOL ]
@@ -1186,9 +1118,9 @@ prog: LET VAR EQ UNARY_MINUS BOOL TYPE_VAR
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
-prog: LET VAR EQ BOOL TYPE_VAR
+prog: LET VAR VAR EQ BOOL TYPE_VAR
 ##
-## Ends in an error in state: 100.
+## Ends in an error in state: 95.
 ##
 ## expr -> expr . PLUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EXTERNAL EQ EOF DIV BOOL ]
 ## expr -> expr . MINUS expr [ VAR UNARY_MINUS TIMES PLUS NE MINUS LT LPAREN LET LE INT64 INT32 IF GT GE FUN EXTERNAL EQ EOF DIV BOOL ]
@@ -1211,7 +1143,7 @@ prog: LET VAR EQ BOOL TYPE_VAR
 
 prog: EXTERNAL UNARY_MINUS
 ##
-## Ends in an error in state: 101.
+## Ends in an error in state: 96.
 ##
 ## toplevel -> EXTERNAL . LPAREN PLUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ## toplevel -> EXTERNAL . LPAREN MINUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
@@ -1233,7 +1165,7 @@ prog: EXTERNAL UNARY_MINUS
 
 prog: EXTERNAL VAR VAR
 ##
-## Ends in an error in state: 102.
+## Ends in an error in state: 97.
 ##
 ## toplevel -> EXTERNAL VAR . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1245,7 +1177,7 @@ prog: EXTERNAL VAR VAR
 
 prog: EXTERNAL VAR COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 103.
+## Ends in an error in state: 98.
 ##
 ## toplevel -> EXTERNAL VAR type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1256,14 +1188,15 @@ prog: EXTERNAL VAR COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL VAR COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 104.
+## Ends in an error in state: 99.
 ##
 ## toplevel -> EXTERNAL VAR type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1275,7 +1208,7 @@ prog: EXTERNAL VAR COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN VAR
 ##
-## Ends in an error in state: 106.
+## Ends in an error in state: 101.
 ##
 ## toplevel -> EXTERNAL LPAREN . PLUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ## toplevel -> EXTERNAL LPAREN . MINUS RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
@@ -1296,7 +1229,7 @@ prog: EXTERNAL LPAREN VAR
 
 prog: EXTERNAL LPAREN TIMES VAR
 ##
-## Ends in an error in state: 107.
+## Ends in an error in state: 102.
 ##
 ## toplevel -> EXTERNAL LPAREN TIMES . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1308,7 +1241,7 @@ prog: EXTERNAL LPAREN TIMES VAR
 
 prog: EXTERNAL LPAREN TIMES RPAREN VAR
 ##
-## Ends in an error in state: 108.
+## Ends in an error in state: 103.
 ##
 ## toplevel -> EXTERNAL LPAREN TIMES RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1320,7 +1253,7 @@ prog: EXTERNAL LPAREN TIMES RPAREN VAR
 
 prog: EXTERNAL LPAREN TIMES RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 109.
+## Ends in an error in state: 104.
 ##
 ## toplevel -> EXTERNAL LPAREN TIMES RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1331,14 +1264,15 @@ prog: EXTERNAL LPAREN TIMES RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN TIMES RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 110.
+## Ends in an error in state: 105.
 ##
 ## toplevel -> EXTERNAL LPAREN TIMES RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1350,7 +1284,7 @@ prog: EXTERNAL LPAREN TIMES RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN PLUS VAR
 ##
-## Ends in an error in state: 112.
+## Ends in an error in state: 107.
 ##
 ## toplevel -> EXTERNAL LPAREN PLUS . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1362,7 +1296,7 @@ prog: EXTERNAL LPAREN PLUS VAR
 
 prog: EXTERNAL LPAREN PLUS RPAREN VAR
 ##
-## Ends in an error in state: 113.
+## Ends in an error in state: 108.
 ##
 ## toplevel -> EXTERNAL LPAREN PLUS RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1374,7 +1308,7 @@ prog: EXTERNAL LPAREN PLUS RPAREN VAR
 
 prog: EXTERNAL LPAREN PLUS RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 114.
+## Ends in an error in state: 109.
 ##
 ## toplevel -> EXTERNAL LPAREN PLUS RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1385,14 +1319,15 @@ prog: EXTERNAL LPAREN PLUS RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN PLUS RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 115.
+## Ends in an error in state: 110.
 ##
 ## toplevel -> EXTERNAL LPAREN PLUS RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1404,7 +1339,7 @@ prog: EXTERNAL LPAREN PLUS RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN NE VAR
 ##
-## Ends in an error in state: 117.
+## Ends in an error in state: 112.
 ##
 ## toplevel -> EXTERNAL LPAREN NE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1416,7 +1351,7 @@ prog: EXTERNAL LPAREN NE VAR
 
 prog: EXTERNAL LPAREN NE RPAREN VAR
 ##
-## Ends in an error in state: 118.
+## Ends in an error in state: 113.
 ##
 ## toplevel -> EXTERNAL LPAREN NE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1428,7 +1363,7 @@ prog: EXTERNAL LPAREN NE RPAREN VAR
 
 prog: EXTERNAL LPAREN NE RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 119.
+## Ends in an error in state: 114.
 ##
 ## toplevel -> EXTERNAL LPAREN NE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1439,14 +1374,15 @@ prog: EXTERNAL LPAREN NE RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN NE RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 120.
+## Ends in an error in state: 115.
 ##
 ## toplevel -> EXTERNAL LPAREN NE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1458,7 +1394,7 @@ prog: EXTERNAL LPAREN NE RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN MINUS VAR
 ##
-## Ends in an error in state: 122.
+## Ends in an error in state: 117.
 ##
 ## toplevel -> EXTERNAL LPAREN MINUS . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1470,7 +1406,7 @@ prog: EXTERNAL LPAREN MINUS VAR
 
 prog: EXTERNAL LPAREN MINUS RPAREN VAR
 ##
-## Ends in an error in state: 123.
+## Ends in an error in state: 118.
 ##
 ## toplevel -> EXTERNAL LPAREN MINUS RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1482,7 +1418,7 @@ prog: EXTERNAL LPAREN MINUS RPAREN VAR
 
 prog: EXTERNAL LPAREN MINUS RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 124.
+## Ends in an error in state: 119.
 ##
 ## toplevel -> EXTERNAL LPAREN MINUS RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1493,14 +1429,15 @@ prog: EXTERNAL LPAREN MINUS RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN MINUS RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 125.
+## Ends in an error in state: 120.
 ##
 ## toplevel -> EXTERNAL LPAREN MINUS RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1512,7 +1449,7 @@ prog: EXTERNAL LPAREN MINUS RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN LT VAR
 ##
-## Ends in an error in state: 127.
+## Ends in an error in state: 122.
 ##
 ## toplevel -> EXTERNAL LPAREN LT . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1524,7 +1461,7 @@ prog: EXTERNAL LPAREN LT VAR
 
 prog: EXTERNAL LPAREN LT RPAREN VAR
 ##
-## Ends in an error in state: 128.
+## Ends in an error in state: 123.
 ##
 ## toplevel -> EXTERNAL LPAREN LT RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1536,7 +1473,7 @@ prog: EXTERNAL LPAREN LT RPAREN VAR
 
 prog: EXTERNAL LPAREN LT RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 129.
+## Ends in an error in state: 124.
 ##
 ## toplevel -> EXTERNAL LPAREN LT RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1547,14 +1484,15 @@ prog: EXTERNAL LPAREN LT RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN LT RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 130.
+## Ends in an error in state: 125.
 ##
 ## toplevel -> EXTERNAL LPAREN LT RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1566,7 +1504,7 @@ prog: EXTERNAL LPAREN LT RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN LE VAR
 ##
-## Ends in an error in state: 132.
+## Ends in an error in state: 127.
 ##
 ## toplevel -> EXTERNAL LPAREN LE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1578,7 +1516,7 @@ prog: EXTERNAL LPAREN LE VAR
 
 prog: EXTERNAL LPAREN LE RPAREN VAR
 ##
-## Ends in an error in state: 133.
+## Ends in an error in state: 128.
 ##
 ## toplevel -> EXTERNAL LPAREN LE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1590,7 +1528,7 @@ prog: EXTERNAL LPAREN LE RPAREN VAR
 
 prog: EXTERNAL LPAREN LE RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 134.
+## Ends in an error in state: 129.
 ##
 ## toplevel -> EXTERNAL LPAREN LE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1601,14 +1539,15 @@ prog: EXTERNAL LPAREN LE RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN LE RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 135.
+## Ends in an error in state: 130.
 ##
 ## toplevel -> EXTERNAL LPAREN LE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1620,7 +1559,7 @@ prog: EXTERNAL LPAREN LE RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN GT VAR
 ##
-## Ends in an error in state: 137.
+## Ends in an error in state: 132.
 ##
 ## toplevel -> EXTERNAL LPAREN GT . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1632,7 +1571,7 @@ prog: EXTERNAL LPAREN GT VAR
 
 prog: EXTERNAL LPAREN GT RPAREN VAR
 ##
-## Ends in an error in state: 138.
+## Ends in an error in state: 133.
 ##
 ## toplevel -> EXTERNAL LPAREN GT RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1644,7 +1583,7 @@ prog: EXTERNAL LPAREN GT RPAREN VAR
 
 prog: EXTERNAL LPAREN GT RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 139.
+## Ends in an error in state: 134.
 ##
 ## toplevel -> EXTERNAL LPAREN GT RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1655,14 +1594,15 @@ prog: EXTERNAL LPAREN GT RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN GT RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 140.
+## Ends in an error in state: 135.
 ##
 ## toplevel -> EXTERNAL LPAREN GT RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1674,7 +1614,7 @@ prog: EXTERNAL LPAREN GT RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN GE VAR
 ##
-## Ends in an error in state: 142.
+## Ends in an error in state: 137.
 ##
 ## toplevel -> EXTERNAL LPAREN GE . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1686,7 +1626,7 @@ prog: EXTERNAL LPAREN GE VAR
 
 prog: EXTERNAL LPAREN GE RPAREN VAR
 ##
-## Ends in an error in state: 143.
+## Ends in an error in state: 138.
 ##
 ## toplevel -> EXTERNAL LPAREN GE RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1698,7 +1638,7 @@ prog: EXTERNAL LPAREN GE RPAREN VAR
 
 prog: EXTERNAL LPAREN GE RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 144.
+## Ends in an error in state: 139.
 ##
 ## toplevel -> EXTERNAL LPAREN GE RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1709,14 +1649,15 @@ prog: EXTERNAL LPAREN GE RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN GE RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 145.
+## Ends in an error in state: 140.
 ##
 ## toplevel -> EXTERNAL LPAREN GE RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1728,7 +1669,7 @@ prog: EXTERNAL LPAREN GE RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN EQ VAR
 ##
-## Ends in an error in state: 147.
+## Ends in an error in state: 142.
 ##
 ## toplevel -> EXTERNAL LPAREN EQ . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1740,7 +1681,7 @@ prog: EXTERNAL LPAREN EQ VAR
 
 prog: EXTERNAL LPAREN EQ RPAREN VAR
 ##
-## Ends in an error in state: 148.
+## Ends in an error in state: 143.
 ##
 ## toplevel -> EXTERNAL LPAREN EQ RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1752,7 +1693,7 @@ prog: EXTERNAL LPAREN EQ RPAREN VAR
 
 prog: EXTERNAL LPAREN EQ RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 149.
+## Ends in an error in state: 144.
 ##
 ## toplevel -> EXTERNAL LPAREN EQ RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1763,14 +1704,15 @@ prog: EXTERNAL LPAREN EQ RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN EQ RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 150.
+## Ends in an error in state: 145.
 ##
 ## toplevel -> EXTERNAL LPAREN EQ RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1782,7 +1724,7 @@ prog: EXTERNAL LPAREN EQ RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL LPAREN DIV VAR
 ##
-## Ends in an error in state: 152.
+## Ends in an error in state: 147.
 ##
 ## toplevel -> EXTERNAL LPAREN DIV . RPAREN type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1794,7 +1736,7 @@ prog: EXTERNAL LPAREN DIV VAR
 
 prog: EXTERNAL LPAREN DIV RPAREN VAR
 ##
-## Ends in an error in state: 153.
+## Ends in an error in state: 148.
 ##
 ## toplevel -> EXTERNAL LPAREN DIV RPAREN . type_annot EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1806,7 +1748,7 @@ prog: EXTERNAL LPAREN DIV RPAREN VAR
 
 prog: EXTERNAL LPAREN DIV RPAREN COLON TYPE_VAR RPAREN
 ##
-## Ends in an error in state: 154.
+## Ends in an error in state: 149.
 ##
 ## toplevel -> EXTERNAL LPAREN DIV RPAREN type_annot . EQ STRING [ LET EXTERNAL EOF ]
 ##
@@ -1817,14 +1759,15 @@ prog: EXTERNAL LPAREN DIV RPAREN COLON TYPE_VAR RPAREN
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production type_annot -> COLON type_name
+## In state 20, spurious reduction of production type_name -> atomic_type
+## In state 28, spurious reduction of production type_annot -> COLON type_name
 ##
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
 
 prog: EXTERNAL LPAREN DIV RPAREN COLON TYPE_VAR EQ VAR
 ##
-## Ends in an error in state: 155.
+## Ends in an error in state: 150.
 ##
 ## toplevel -> EXTERNAL LPAREN DIV RPAREN type_annot EQ . STRING [ LET EXTERNAL EOF ]
 ##
@@ -1836,7 +1779,7 @@ prog: EXTERNAL LPAREN DIV RPAREN COLON TYPE_VAR EQ VAR
 
 prog: EXTERNAL VAR COLON TYPE_VAR EQ STRING VAR
 ##
-## Ends in an error in state: 157.
+## Ends in an error in state: 152.
 ##
 ## list(toplevel) -> toplevel . list(toplevel) [ EOF ]
 ##

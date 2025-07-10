@@ -26,14 +26,14 @@ module Base = Mucaml_frontend.Type.Base
 type t =
   | Base of Base.t
   | Var of Var.t
-  | Fun of t list * t
+  | Fun of t Nonempty_list.t * t
 [@@deriving sexp_of, variants]
 
 let rec of_ast (ty : Mucaml_frontend.Type.t) =
   match ty with
   | Base b -> Base b
-  | Fun (args, ret) -> Fun (List.map args ~f:of_ast, of_ast ret)
-  | Var _var_name -> 
+  | Fun (args, ret) -> Fun (Nonempty_list.map args ~f:of_ast, of_ast ret)
+  | Var _var_name ->
     (* FIXME: For now, we'll convert frontend type variables to a fresh type variable *)
     (* This is a simplified approach - proper handling would require a var mapping *)
     Var Var.zero
@@ -47,7 +47,7 @@ let rec occurs t ~var =
   match t with
   | Base _ -> false
   | Var v -> Var.equal v var
-  | Fun (args, res) -> List.exists args ~f:(occurs ~var) || occurs res ~var
+  | Fun (args, res) -> Nonempty_list.exists args ~f:(occurs ~var) || occurs res ~var
 ;;
 
 let rec subst t ~replacements =
@@ -57,20 +57,18 @@ let rec subst t ~replacements =
     (match Map.find replacements v with
      | Some t -> t
      | None -> Var v)
-  | Fun (args, r) -> Fun (List.map args ~f:(subst ~replacements), subst r ~replacements)
+  | Fun (args, r) ->
+    Fun (Nonempty_list.map args ~f:(subst ~replacements), subst r ~replacements)
 ;;
 
 let rec to_string_aux t ~mapping =
   match t with
   | Base base -> Base.to_string base
   | Var v -> Map.find_exn mapping v
-  | Fun ([ arg_type ], ret_type) ->
-    [%string "%{to_string_aux arg_type ~mapping} -> %{to_string_aux ret_type ~mapping}"]
-  | Fun (arg_types, ret_type) ->
-    let args_str =
-      String.concat ~sep:", " (List.map arg_types ~f:(to_string_aux ~mapping))
-    in
-    [%string "(%{args_str}) -> %{to_string_aux ret_type ~mapping}"]
+  | Fun (args, ret_type) ->
+    let args_list = Nonempty_list.to_list args in
+    let args_and_ret = args_list @ [ ret_type ] in
+    String.concat ~sep:" -> " (List.map args_and_ret ~f:(to_string_aux ~mapping))
 ;;
 
 let tvs t : Var.Set.t =
@@ -79,7 +77,7 @@ let tvs t : Var.Set.t =
     | Base _ -> acc
     | Var v -> Set.add acc v
     | Fun (l, r) ->
-      let acc = List.fold ~init:acc ~f:(fun acc ty -> aux ty ~acc) l in
+      let acc = Nonempty_list.fold ~init:acc ~f:(fun acc ty -> aux ty ~acc) l in
       aux r ~acc
   in
   aux t ~acc:Var.Set.empty

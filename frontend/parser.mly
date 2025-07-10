@@ -42,8 +42,8 @@
 %type <Ast.t> prog
 %type <Ast.Expr.t> expr
 %type <Identifier.t Located.t * Type.t option> param
-%type <(Identifier.t Located.t * Type.t option) list> param_list
-%type <Type.t> type_annot type_name constrained_type
+%type <(Identifier.t Located.t * Type.t option) Nonempty_list.t> param_list
+%type <Type.t> type_annot type_name constrained_type atomic_type
 %type <Type.t Located.t> type_annot_loc
 %type <Type.Constraint.t> type_constraint
 %type <Type.Constraint.t list> type_constraint_list 
@@ -99,7 +99,7 @@ let expr :=
     <> 
 
 let param_list :=
-  | ~ = list(param); <>
+  | ~ = nonempty_list(param); <Nonempty_list.of_list_exn>
 
 let param :=
   | var = VAR; 
@@ -116,12 +116,18 @@ let type_annot :=
   | ~ = preceded(COLON, type_name); <>
 
 let type_name:=
+  | ~ = atomic_type; <>
+  | left = atomic_type; ARROW; right = type_name;
+    { 
+      match right with
+      | Type.Fun (args, ret_type) -> Type.Fun (Nonempty_list.cons left args, ret_type)
+        | _ -> Type.Fun ([ left ], right)
+    }
+
+let atomic_type :=
   | var = VAR; { Type.(Base (Base.of_string var)) }
   | type_var = TYPE_VAR; { Type.Var (String.drop_prefix type_var 1) }
-  | arg_type = type_name; ARROW; ret_type = type_name; 
-    { Type.Fun ([ arg_type ], ret_type) }
-  | LPAREN; arg_types = separated_list(COMMA, type_name); RPAREN; ARROW; ret_type = type_name; 
-    { Type.Fun (arg_types, ret_type) }
+  | LPAREN; ~ = type_name; RPAREN; <>
   | ~ = constrained_type; <>
 
 let constrained_type :=
