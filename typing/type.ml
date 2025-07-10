@@ -52,12 +52,42 @@ let rec subst t ~replacements =
   | Fun (args, r) -> Fun (List.map args ~f:(subst ~replacements), subst r ~replacements)
 ;;
 
-let rec to_string = function
+let rec to_string_aux t ~mapping =
+  match t with
   | Base base -> Base.to_string base
-  | Var v -> Var.to_string v
+  | Var v -> Map.find_exn mapping v
+  | Fun ([ arg_type ], ret_type) ->
+    [%string "%{to_string_aux arg_type ~mapping} -> %{to_string_aux ret_type ~mapping}"]
   | Fun (arg_types, ret_type) ->
-    let args_str = String.concat ~sep:", " (List.map arg_types ~f:to_string) in
-    [%string "(%{args_str}) -> %{to_string ret_type}"]
+    let args_str =
+      String.concat ~sep:", " (List.map arg_types ~f:(to_string_aux ~mapping))
+    in
+    [%string "(%{args_str}) -> %{to_string_aux ret_type ~mapping}"]
+;;
+
+let tvs t : Var.Set.t =
+  let rec aux t ~acc =
+    match t with
+    | Base _ -> acc
+    | Var v -> Set.add acc v
+    | Fun (l, r) ->
+      let acc = List.fold ~init:acc ~f:(fun acc ty -> aux ty ~acc) l in
+      aux r ~acc
+  in
+  aux t ~acc:Var.Set.empty
+;;
+
+let to_string t =
+  let tvs = tvs t in
+  let char = ref 0 in
+  let mapping =
+    Map.of_key_set tvs ~f:(fun _ ->
+      let alpha = "abcdefghijklmnopqrstuvwxyz" in
+      let i = !char in
+      incr char;
+      [%string "'%{alpha.[i]#Char}"])
+  in
+  to_string_aux t ~mapping
 ;;
 
 module Poly = struct

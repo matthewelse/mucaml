@@ -78,7 +78,13 @@ module Expr = struct
         let condition = aux ~indent:(indent ^ "  ") condition in
         let if_true = aux ~indent:(indent ^ "  ") if_true in
         let if_false = aux ~indent:(indent ^ "  ") if_false in
-        [%string "%{indent}if %{condition} then\n%{if_true}\nelse\n%{if_false}"]
+        [%string
+          "%{indent}if\n\
+           %{condition}\n\
+           %{indent}then\n\
+           %{if_true}\n\
+           %{indent}else\n\
+           %{if_false}"]
       | Fun { params; body; body_type = _ } ->
         let params_str =
           String.concat

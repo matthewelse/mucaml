@@ -164,6 +164,7 @@ let compile_toplevel
   ?(stop_after : Stage.t option)
   (module Target : Mucaml_backend_common.Backend_intf.Target_isa)
   input
+  ~filename
   ~output_binary
   ~dump_stage
   ~linker_args
@@ -171,7 +172,6 @@ let compile_toplevel
   =
   let open Deferred.Let_syntax in
   let files = Grace.Files.create () in
-  let filename = "<stdin>" in
   let file_id = Grace.Files.add files filename input in
   match%bind.Deferred
     let open Deferred.Result.Let_syntax in
@@ -188,7 +188,7 @@ let compile_toplevel
     Fmt_doc.render
       Fmt.stderr
       Grace_rendering.(ppd_rich ~config:diagnostic_config ~files diagnostic);
-    Format.fprintf Fmt.stderr "%!";
+    Format.fprintf Fmt.stderr "\n%!";
     return ()
 ;;
 
@@ -216,6 +216,7 @@ let repl =
                 compile_toplevel
                   (module Backend)
                   input
+                  ~filename:"<stdin>"
                   ~output_binary
                   ~dump_stage
                   ~linker_args:[]
@@ -291,6 +292,7 @@ let build ~should_run =
             ?stop_after
             (module Target)
             code
+            ~filename:project.top_level
             ~dump_stage
             ~output_binary
             ~linker_args:project.linker_args

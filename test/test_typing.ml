@@ -19,19 +19,19 @@ let test_true a = true
 let test_false a = false|};
   [%expect
     {|
-    let test_i32 a : '_2 =
+    let test_i32 a : 'a =
       42
 
-    let test_i64 a : '_5 =
+    let test_i64 a : 'a =
       42
 
-    let test_unit a : '_8 =
+    let test_unit a : 'a =
       ()
 
-    let test_true a : '_11 =
+    let test_true a : 'a =
       true
 
-    let test_false a : '_14 =
+    let test_false a : 'a =
       false
     |}]
 ;;
@@ -39,7 +39,7 @@ let test_false a = false|};
 let%expect_test "example: identity function" =
   test "let test a = a";
   [%expect {|
-    let test a : '_2 =
+    let test a : 'a =
       $a
     |}]
 ;;
@@ -85,10 +85,12 @@ let test a =
     external + : (i32, i32) -> i32 = "add_i32"
 
     let test a : bool =
-      let x : '_5 = app ($+, [3, $x]) in
-        if       $a then
+      let x : 'a = app ($+, [3, $x]) in
+        if
+          $a
+        then
           $x
-    else
+        else
           9
     |}]
 ;;
@@ -101,13 +103,15 @@ let test a =
   if is_zero x then x else a|};
   [%expect
     {|
-    external is_zero : (i32) -> bool = "equal_i32"
+    external is_zero : i32 -> bool = "equal_i32"
 
     let test a : i32 =
       let x : i32 = 3 in
-        if       app ($is_zero, [$x]) then
+        if
+          app ($is_zero, [$x])
+        then
           $x
-    else
+        else
           $a
     |}]
 ;;
@@ -122,9 +126,9 @@ let test a = a + 1|};
       1 │  external ( + ) : (i64, i64) -> i64 = "add_i64"
         │                 ------------------- + was defined here
       2 │  let test a = a + 1
-        │                 ^ ^ expected to have type i64, but has type i32.
+        │                 - ^ this is expected to have type i64, but has type i32.
         │                 │
-        │                 has type (i64, i64) -> i64.
+        │                 this has type (i64, i64) -> i64.
         = Plain integers have type `i32`. `i64` literals look like `42L`.
     |}];
   test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
@@ -136,9 +140,9 @@ let test a = a + 1L|};
       1 │  external ( + ) : (i32, i32) -> i32 = "add_i32"
         │                 ------------------- + was defined here
       2 │  let test a = a + 1L
-        │                 ^ ^^ expected to have type i32, but has type i64.
+        │                 - ^^ this is expected to have type i32, but has type i64.
         │                 │
-        │                 has type (i32, i32) -> i32.
+        │                 this has type (i32, i32) -> i32.
         = Integers with an L suffix have type `i64`. `i32` literals look like `42`.
     |}];
   test {|external ( + ) : (i32, i32) -> i32 = "add_i32"
@@ -150,9 +154,9 @@ let test a = a + true|};
       1 │  external ( + ) : (i32, i32) -> i32 = "add_i32"
         │                 ------------------- + was defined here
       2 │  let test a = a + true
-        │                 ^ ^^^^ expected to have type i32, but has type bool.
+        │                 - ^^^^ this is expected to have type i32, but has type bool.
         │                 │
-        │                 has type (i32, i32) -> i32.
+        │                 this has type (i32, i32) -> i32.
     |}];
   test {|external ( + ) : (i32) -> i32 = "add_i32"
 let test a = a + 1|};
@@ -163,7 +167,7 @@ let test a = a + 1|};
       1 │  external ( + ) : (i32) -> i32 = "add_i32"
         │                 -------------- + was defined here
       2 │  let test a = a + 1
-        │                 ^ expected to have type (i32, '_4) -> '_5, but has type (i32) -> i32.
+        │                 ^ this is expected to have type (i32, 'a) -> 'b, but has type i32 -> i32.
     |}];
   test {|let test a = a a|};
   [%expect
@@ -171,9 +175,9 @@ let test a = a + 1|};
     error: Type error
         ┌─ <test>:1:16
       1 │  let test a = a a
-        │           -   ^ ^ expected to have type '_3, but has type ('_3) -> '_4.
+        │           -   - ^ this is expected to have type 'a, but has type 'a -> 'b.
         │           │   │
-        │           │   has type ('_3) -> '_4.
+        │           │   this has type 'a -> 'b.
         │           a was defined here
         = This would create an infinitely nested type like `'a list list list list...`
         = we <3 recursion, but not _that_ much.
@@ -201,16 +205,16 @@ let test a =
   [%expect
     {|
     error: Type error
-        ┌─ <test>:5:5
+        ┌─ <test>:5:3
       1 │  external ( + ) : (i64, i64) -> i64 = "add_i64"
         │                 ------------------- + was defined here
         ·
       4 │    let x = 3 in
         │        - x was defined here
       5 │    x + a
-        │    ^ ^ has type (i64, i64) -> i64.
+        │    ^ - this has type (i64, i64) -> i64.
         │    │
-        │    expected to have type i64, but has type i32.
+        │    this is expected to have type i64, but has type i32.
         = Plain integers have type `i32`. `i64` literals look like `42L`.
     |}]
 ;;
@@ -230,6 +234,6 @@ let%expect_test "error: if expression" =
       2 │    let x = 3 in
 
       3 │    if a then x else a
-        │                     ^ expected to have type i32, but has type bool.
+        │                     ^ this is expected to have type i32, but has type bool.
     |}]
 ;;

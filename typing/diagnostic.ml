@@ -29,7 +29,6 @@ let with_note ~note t =
 ;;
 
 let with_annotations
-  ?mode
   ~(annotations : Annotation.t Nonempty_list.t)
   ~file_id
   ~normalize_ty
@@ -43,12 +42,14 @@ let with_annotations
       let ty = normalize_ty ty in
       let label =
         match but with
-        | None -> [%string "has type %{ty#Type}."]
+        | None -> [%string "this has type %{ty#Type}."]
         | Some but_ty ->
           let but_ty = normalize_ty but_ty in
-          [%string "expected to have type %{ty#Type}, but has type %{but_ty#Type}."]
+          [%string
+            "this is expected to have type %{ty#Type}, but has type %{but_ty#Type}."]
       in
-      let t = with_label t ?mode ~file_id ~loc:expr.loc ~label in
+      let mode = if List.is_empty t.labels then `Primary else `Secondary in
+      let t = with_label t ~mode ~file_id ~loc:expr.loc ~label in
       let t =
         (* If something is a variable, add an annotation showing where it was defined. *)
         match expr.desc, defined with
