@@ -9,7 +9,7 @@ let test text =
 ;;
 
 let%expect_test _ =
-  test {| let main _ : i32 = 10 + 32 |};
+  test {| let main (_ : i32) = 10 + 32 |};
   [%expect
     {|
     function mucaml_main ($0 (_): i32) {
@@ -21,7 +21,7 @@ let%expect_test _ =
         return $3
     }
     |}];
-  test {| let main _ : i32 = 100000 |};
+  test {| let main (_ : i32) = 100000 |};
   [%expect
     {|
     function mucaml_main ($0 (_): i32) {
@@ -32,7 +32,7 @@ let%expect_test _ =
     }
     |}];
   (* Negative constants are just [0 - (abs x)] *)
-  test {| let main _ : i32 = (~32) |};
+  test {| let main (_ : i32) = (~32) |};
   [%expect
     {|
     function mucaml_main ($0 (_): i32) {
@@ -50,7 +50,7 @@ let%expect_test _ =
     external led_on : i32 -> unit = "led_on"
     external led_off : i32 -> unit = "led_off"
 
-    let main x : i32 =
+    let main (x : i32) =
       let _ = sleep_ms 100 in
       let _ = led_on 7 in
       let _ = sleep_ms 100 in
@@ -83,7 +83,7 @@ let%expect_test _ =
   (* let bindings *)
   test
     {|
-    let main x : i32 =
+    let main (x : i32) =
       let x = 1 + 1 in
       let y = x + 2 in
       let z = y + x in

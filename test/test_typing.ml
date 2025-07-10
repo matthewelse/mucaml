@@ -19,19 +19,19 @@ let test_true a = true
 let test_false a = false|};
   [%expect
     {|
-    let test_i32 a : 'a =
+    let test_i32 a : 'a : i32 =
       42
 
-    let test_i64 a : 'a =
+    let test_i64 a : 'a : i64 =
       42
 
-    let test_unit a : 'a =
+    let test_unit a : 'a : unit =
       ()
 
-    let test_true a : 'a =
+    let test_true a : 'a : bool =
       true
 
-    let test_false a : 'a =
+    let test_false a : 'a : bool =
       false
     |}]
 ;;
@@ -39,7 +39,7 @@ let test_false a = false|};
 let%expect_test "example: identity function" =
   test "let test a = a";
   [%expect {|
-    let test a : 'a =
+    let test a : 'a : 'a =
       $a
     |}]
 ;;
@@ -51,7 +51,7 @@ let test a = a + 1|};
     {|
     external + : (i32, i32) -> i32 = "add_i32"
 
-    let test a : i32 =
+    let test a : i32 : i32 =
       app ($+, [$a, 1])
     |}]
 ;;
@@ -67,7 +67,7 @@ let test a =
     {|
     external + : (i32, i32) -> i32 = "add_i32"
 
-    let test a : i32 =
+    let test a : i32 : i32 =
       let x : i32 = 3 in
         let y : i32 = 2 in
           app ($+, [app ($+, [$a, $x]), $y])
@@ -84,7 +84,7 @@ let test a =
     {|
     external + : (i32, i32) -> i32 = "add_i32"
 
-    let test a : bool =
+    let test a : bool : i32 =
       let x : 'a = app ($+, [3, $x]) in
         if
           $a
@@ -105,7 +105,7 @@ let test a =
     {|
     external is_zero : i32 -> bool = "equal_i32"
 
-    let test a : i32 =
+    let test a : i32 : i32 =
       let x : i32 = 3 in
         if
           app ($is_zero, [$x])

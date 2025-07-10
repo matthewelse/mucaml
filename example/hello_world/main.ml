@@ -1,1 +1,1 @@
-let main x : i32 = 1000
+let main (x : i32) = 1000

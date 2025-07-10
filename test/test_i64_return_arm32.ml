@@ -27,7 +27,7 @@ let test_arm32_codegen text =
 ;;
 
 let%expect_test "i64 return on ARM32" =
-  test_arm32_codegen {| let main _ : i64 = 1234567890L |};
+  test_arm32_codegen {| let main (_ : i64) = 1234567890L |};
   [%expect
     {|
     === Original MIRL ===

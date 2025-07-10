@@ -347,7 +347,7 @@ let rec of_ast (ast : Typed_ast.t) =
   let functions, externs =
     List.partition_mapi ast ~f:(fun _ ast ->
       match ast with
-      | Function { name; params; body; loc = _ } ->
+      | Function { name; params; return_type = _; body; loc = _ } ->
         let params =
           List.map params ~f:(fun (param, ty) ->
             let ty : Type.t =

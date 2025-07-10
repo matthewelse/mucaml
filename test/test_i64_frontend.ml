@@ -23,7 +23,7 @@ let test_i64_parsing text =
 ;;
 
 let%expect_test "i64 literal parsing and legalization" =
-  test_i64_parsing {| let main _ : i64 = 42L |};
+  test_i64_parsing {| let main (_ : i64) = 42L |};
   [%expect
     {|
     === Original MIRL ===
@@ -58,7 +58,7 @@ let%expect_test "i64 literal parsing and legalization" =
 let%expect_test "i64 addition parsing and legalization" =
   test_i64_parsing
     {|external ( + ) : (i64, i64) -> i64 = "add_i64"
-let main a : i64 = a + 100L |};
+let main (a : i64) = a + 100L |};
   [%expect
     {|
     === Original MIRL ===
@@ -97,7 +97,7 @@ let main a : i64 = a + 100L |};
 ;;
 
 let%expect_test "i32 literal test" =
-  test_i64_parsing {| let main _ : i32 = 42 |};
+  test_i64_parsing {| let main (_ : i32) = 42 |};
   [%expect
     {|
     === Original MIRL ===

@@ -53,9 +53,10 @@ let prog :=
   ~ = toplevel*; EOF; <>
 
 let toplevel :=
-  | LET; name = VAR; ~ = param_list; type_annot?; EQ; body = expr;
+  | LET; name = VAR; ~ = param_list; return_type = type_annot?; EQ; body = expr;
     { let loc = mkloc $startpos $endpos in
-      Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; body; loc } }
+      let return_type = Option.map return_type ~f:(fun t -> ({ txt = t; loc = mkloc $startpos(return_type) $endpos(return_type) } : Type.t Located.t)) in
+      Toplevel.Function { name = { txt = mkid name; loc = mkloc $startpos(name) $endpos(name) }; params = param_list; return_type; body; loc } }
   | EXTERNAL; LPAREN; op = binop; RPAREN; type_ = type_annot; EQ; c_name = STRING;
     { let loc = mkloc $startpos $endpos in
   Toplevel.External { name = { txt = mkid op; loc = mkloc $startpos(op) $endpos(op) }; type_ = ({ txt = type_; loc = mkloc $startpos(type_) $endpos(type_) } : Type.t Located.t); c_name = { txt = c_name; loc = mkloc $startpos(c_name) $endpos(c_name) }; loc } 
@@ -95,10 +96,12 @@ let expr :=
     <> 
 
 let param_list :=
-  | ~ = separated_list(COMMA, param); <>
+  | ~ = list(param); <>
 
 let param :=
-  | var = VAR; type_annot = option(type_annot); 
+  | var = VAR; 
+    { (({ txt = mkid var; loc = mkloc $startpos(var) $endpos(var) } : _ Located.t), None) }
+  | LPAREN; var = VAR; type_annot = option(type_annot); RPAREN;
     { (({ txt = mkid var; loc = mkloc $startpos(var) $endpos(var) } : _ Located.t), type_annot) }
 
 let type_annot_loc :=

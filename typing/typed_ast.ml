@@ -107,6 +107,7 @@ module Toplevel = struct
     | Function of
         { name : Identifier.t Located.t
         ; params : (Identifier.t Located.t * Type.t) list
+        ; return_type : Type.t
         ; body : Expr.t
         ; loc : Location.t
         }
@@ -123,15 +124,16 @@ module Toplevel = struct
   ;;
 
   let to_string_hum ?(indent = "") = function
-    | Function { name; params; body; loc = _ } ->
+    | Function { name; params; return_type; body; loc = _ } ->
       let params_str =
         String.concat
           ~sep:", "
           (List.map params ~f:(fun (name, t) ->
              [%string "%{name.txt#Identifier} : %{t#Type}"]))
       in
+      let return_type_str = [%string " : %{return_type#Type}"] in
       let body = Expr.to_string_hum ~indent:(indent ^ "  ") body in
-      [%string "%{indent}let %{name.txt#Identifier} %{params_str} =\n%{body}"]
+      [%string "%{indent}let %{name.txt#Identifier} %{params_str}%{return_type_str} =\n%{body}"]
     | External { name; type_; c_name; loc = _ } ->
       [%string
         "%{indent}external %{name.txt#Identifier} : %{type_.txt#Type.Poly} = \

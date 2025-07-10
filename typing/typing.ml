@@ -224,9 +224,14 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
           in
           let env = Env.with_var env ~var:name.txt ~ty:type_ in
           Ok (env, Typed_ast.Toplevel.External { loc; type_; name; c_name } :: acc)
-        | Function { name; params; body; loc } ->
+        | Function { name; params; return_type; body; loc } ->
           let arg_types = List.map params ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
-          let ty : Type.t = Fun (arg_types, Var (Env.fresh_tv env)) in
+          let return_type_ty = 
+            match return_type with
+            | Some rt -> Type.of_ast rt.txt
+            | None -> Var (Env.fresh_tv env)
+          in
+          let ty : Type.t = Fun (arg_types, return_type_ty) in
           let env =
             Env.with_var env ~var:name.txt ~ty:{ txt = Type.Poly.mono ty; loc = name.loc }
           in
@@ -242,6 +247,7 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
           let constraints = Queue.to_list constraints in
           let solver = Solver.create () in
           let%bind env = Solver.solve solver constraints ~env ~file_id in
+          let typed_return_type = Solver.normalize_ty solver return_type_ty ~env in
           Ok
             ( env
             , Typed_ast.Toplevel.Function
@@ -249,6 +255,7 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
                 ; params =
                     List.map2_exn params arg_types ~f:(fun (ident, _) ty ->
                       ident, Solver.normalize_ty solver ty ~env)
+                ; return_type = typed_return_type
                 ; body
                 ; loc
                 }
