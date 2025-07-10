@@ -67,5 +67,14 @@ let test a b : i32 = a + b|};
     external + : (i32,i32) -> i32 = "add_i32"
     let test (a : _) (b : _) : i32 =
       app ($+, [$a, $b])
+    |}];
+  test {|external ( + ) : ('a : num). 'a -> 'a -> 'a = "add_num"|};
+  [%expect {|
+    external + : ('a : num). 'a -> 'a -> 'a = "add_num"
+    |}];
+  test {|external compare : ('a : ord, 'b : eq). 'a -> 'b -> bool = "compare"|};
+  [%expect
+    {|
+    external compare : ('a : ord, 'b : eq). 'a -> 'b -> bool = "compare"
     |}]
 ;;

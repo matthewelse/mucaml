@@ -24,6 +24,7 @@ let int32_literal = digit+
 let int64_literal = digit+ 'L'
 let boolean = "true" | "false"
 let identifier = ('_' | alpha) ('_' | alpha | digit)*
+let type_var = '\'' alpha ('_' | alpha | digit)*
 
 rule read = parse
   | whitespace
@@ -53,11 +54,13 @@ rule read = parse
   | "=>"               { DARROW }
   | ":"                { COLON }
   | ","                { COMMA }
+  | "."                { DOT }
   | "("                { LPAREN }
   | ")"                { RPAREN }
   | int32_literal as i { INT32 (Int.of_string i) }
   | int64_literal as i { INT64 (Int.of_string (String.sub i ~pos:0 ~len:(String.length i - 1))) }
   | boolean as b       { BOOL (bool_of_string b) }
+  | type_var as tv     { TYPE_VAR tv }
   | identifier as n    { VAR n }
   | eof                { EOF }
   | _                  { lexing_error lexbuf }

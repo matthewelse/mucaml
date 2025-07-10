@@ -33,6 +33,14 @@ let rec of_ast (ty : Mucaml_frontend.Type.t) =
   match ty with
   | Base b -> Base b
   | Fun (args, ret) -> Fun (List.map args ~f:of_ast, of_ast ret)
+  | Var _var_name -> 
+    (* FIXME: For now, we'll convert frontend type variables to a fresh type variable *)
+    (* This is a simplified approach - proper handling would require a var mapping *)
+    Var Var.zero
+  | Constrained (_constraints, ty) ->
+    (* FIXME: For now, we'll ignore constraints and just process the underlying type *)
+    (* Proper constraint handling would be implemented in the type checker *)
+    of_ast ty
 ;;
 
 let rec occurs t ~var =

@@ -12,6 +12,7 @@
 %token <int> INT64
 %token <bool> BOOL
 %token <string> VAR
+%token <string> TYPE_VAR
 %token <string> STRING
 %token UNARY_MINUS
 %token PLUS MINUS
@@ -22,7 +23,7 @@
 %token IF THEN ELSE
 %token FUN
 %token ARROW DARROW
-%token COLON COMMA
+%token COLON COMMA DOT
 %token EOF
 %token EXTERNAL
 
@@ -42,8 +43,10 @@
 %type <Ast.Expr.t> expr
 %type <Identifier.t Located.t * Type.t option> param
 %type <(Identifier.t Located.t * Type.t option) list> param_list
-%type <Type.t> type_annot type_name
-%type <Type.t Located.t> type_annot_loc 
+%type <Type.t> type_annot type_name constrained_type
+%type <Type.t Located.t> type_annot_loc
+%type <Type.Constraint.t> type_constraint
+%type <Type.Constraint.t list> type_constraint_list 
 
 %start prog
 
@@ -114,10 +117,25 @@ let type_annot :=
 
 let type_name:=
   | var = VAR; { Type.(Base (Base.of_string var)) }
+  | type_var = TYPE_VAR; { Type.Var (String.drop_prefix type_var 1) }
   | arg_type = type_name; ARROW; ret_type = type_name; 
     { Type.Fun ([ arg_type ], ret_type) }
   | LPAREN; arg_types = separated_list(COMMA, type_name); RPAREN; ARROW; ret_type = type_name; 
     { Type.Fun (arg_types, ret_type) }
+  | ~ = constrained_type; <>
+
+let constrained_type :=
+  | LPAREN; constraints = type_constraint_list; RPAREN; DOT; ty = type_name;
+    { Type.Constrained (constraints, ty) }
+
+let type_constraint :=
+  | var = TYPE_VAR; COLON; type_class = VAR;
+    { 
+      Type.Constraint.{ var; type_class } 
+    }
+
+let type_constraint_list :=
+  | ~ = separated_nonempty_list(COMMA, type_constraint); <>
 
 let binop == 
   | PLUS;  { "+" }
