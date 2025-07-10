@@ -116,7 +116,7 @@ and infer_let ~var ~type_ ~value ~body ~loc ~env ~constraints ~file_id ~recursiv
 and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
   let open Result.Let_syntax in
   let env, params =
-    List.fold_map (Nonempty_list.to_list params) ~init:env ~f:(fun env (name, ty) ->
+    Nonempty_list.fold_map params ~init:env ~f:(fun env (name, ty) ->
       let ty : Type.t =
         match ty with
         | None -> Var (Env.fresh_tv env)
@@ -125,7 +125,6 @@ and infer_func ~params ~body ~loc ~env ~constraints ~file_id =
       ( Env.with_var env ~var:name.txt ~ty:{ txt = Type.Poly.mono ty; loc = name.loc }
       , (name, ty) ))
   in
-  let params = Nonempty_list.of_list_exn params in
   let%bind body_typed_ast, body_type = infer' body ~env ~constraints ~file_id in
   let param_types = Nonempty_list.map params ~f:snd in
   Ok
@@ -264,11 +263,10 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
             , Typed_ast.Toplevel.Function
                 { name
                 ; params =
-                    List.map2_exn
-                      (Nonempty_list.to_list params)
-                      (Nonempty_list.to_list arg_types)
+                    Nonempty_list.map2_exn
+                      params
+                      arg_types
                       ~f:(fun (ident, _) ty -> ident, Solver.normalize_ty solver ty ~env)
-                    |> Nonempty_list.of_list_exn
                 ; return_type = typed_return_type
                 ; body
                 ; loc

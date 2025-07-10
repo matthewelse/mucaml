@@ -19,3 +19,13 @@ let of_list_exn = function
   | [] -> failwith "Tried to create a [Nonempty_list.t] from an empty list."
   | hd :: tl -> hd :: tl
 ;;
+
+let fold_map (hd :: tl) ~init ~f =
+  let acc, t = List.fold_map (hd :: tl) ~init ~f in
+  acc, of_list_exn t
+;;
+
+let map2_exn (hd1 :: tl1) (hd2 :: tl2) ~f =
+  let mapped_list = List.map2_exn (hd1 :: tl1) (hd2 :: tl2) ~f in
+  of_list_exn mapped_list
+;;
