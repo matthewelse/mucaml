@@ -22,8 +22,8 @@ module Register_types = struct
 
   let is_i64 types reg =
     match get_type types reg with
-    | Mirl.Type.I64 -> true
-    | Mirl.Type.I32 -> false
+    | I64 -> true
+    | I32 | Ptr -> false
   ;;
 end
 
@@ -120,9 +120,9 @@ let legalize_function config func =
             Identifier.of_string [%string "%{id#Identifier}%{suffix}"]
           in
           ({ name with txt = add_suffix name.txt "_low" }, Mirl.Type.I32)
-          :: ({ name with txt = add_suffix name.txt "_high" }, Mirl.Type.I32)
+          :: ({ name with txt = add_suffix name.txt "_high" }, I32)
           :: acc
-        | Mirl.Type.I32 -> (name, Mirl.Type.I32) :: acc)
+        | I32 | Ptr -> (name, ty) :: acc)
     in
     Mirl.Function.build
       ~name:func.name
@@ -139,10 +139,10 @@ let legalize_function config func =
              let _, high_reg, _ = List.nth_exn params (!param_index + 1) in
              Hashtbl.set pair_map ~key:orig_reg ~data:(low_reg, high_reg);
              param_index := !param_index + 2
-           | I32 ->
-             (* Map i32 parameter directly *)
-             let _, i32_reg, _ = List.nth_exn params !param_index in
-             Hashtbl.set pair_map ~key:orig_reg ~data:(i32_reg, i32_reg);
+           | I32 | Ptr ->
+             (* Map i32/string parameter directly *)
+             let _, reg, _ = List.nth_exn params !param_index in
+             Hashtbl.set pair_map ~key:orig_reg ~data:(reg, reg);
              param_index := !param_index + 1);
          (* Process each block *)
          Iarray.iter func.body ~f:(fun block ->

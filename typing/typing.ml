@@ -16,6 +16,7 @@ let infer_literal (literal : Ast.Literal.t) ~loc : (Typed_ast.Expr.t * Type.t, _
     | Int64 n -> Int64 n, I64
     | Bool b -> Bool b, Bool
     | Unit -> Unit, Unit
+    | String s -> String s, String
   in
   Ok ({ desc = Literal lit; loc }, Base ty)
 ;;

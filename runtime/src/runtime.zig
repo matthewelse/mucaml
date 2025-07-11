@@ -14,6 +14,9 @@ const device =
         };
 
 extern fn mucaml_main(i32) u32;
+export fn string_length(_: i32) i32 {
+    return 0;
+}
 
 pub fn main() !void {
     device.init();

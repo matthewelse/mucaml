@@ -16,8 +16,8 @@ module Registers = struct
 
   let is_i64 t register =
     match Hashtbl.find t.register_types register with
-    | Some Mirl.Type.I64 -> true
-    | Some Mirl.Type.I32 | None -> false
+    | Some I64 | Some Ptr -> true
+    | Some I32 | None -> false
   ;;
 end
 
@@ -93,6 +93,10 @@ let emit_block
           ~dst:dst_reg
           (Stdlib_upstream_compatible.Int64_u.of_int64 (Int64.of_int value))
       else mov_imm buf ~dst:dst_reg (I32.of_int value)
+    | Load_global_constant { dst; constant = _ } ->
+      let dst_reg = Registers.find_exn registers dst in
+      (* TODO: Implement proper string constant loading - for now just load 0 *)
+      mov_imm buf ~dst:dst_reg (I32.of_int 0)
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in

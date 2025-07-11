@@ -7,6 +7,7 @@ module Literal = struct
     | Int64 of i64
     | Bool of bool
     | Unit
+    | String of string
   [@@deriving sexp_of]
 
   let to_string_hum ?(indent = "") = function
@@ -14,6 +15,7 @@ module Literal = struct
     | Int64 i -> [%string "%{indent}%{i#I64}"]
     | Bool b -> [%string "%{indent}%{b#Bool}"]
     | Unit -> [%string "%{indent}()"]
+    | String s -> [%string "%{indent}\"%{s}\""]
   ;;
 end
 

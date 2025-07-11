@@ -62,6 +62,7 @@ struct
           consumes ~idx src1;
           consumes ~idx src2
         | Set { dst; value = _ } -> assigns ~idx dst
+        | Load_global_constant { dst; constant = _ } -> assigns ~idx dst
         | C_call { dst; func = _; args } ->
           assigns ~idx dst;
           List.iter args ~f:(fun reg -> consumes ~idx reg)
@@ -470,6 +471,10 @@ module%test _ = struct
         | Set { dst; value = _ } ->
           let dst_reg = Hashtbl.find_exn registers dst in
           print_endline [%string "%{dst_reg#Register} := <set value>"]
+        | Load_global_constant { dst; constant } ->
+          let dst_reg = Hashtbl.find_exn registers dst in
+          print_endline
+            [%string "%{dst_reg#Register} := &%{constant#Mirl.Global_constant}"]
         | C_call { dst; func = _; args } ->
           let dst_reg = Hashtbl.find_exn registers dst in
           let args_regs =

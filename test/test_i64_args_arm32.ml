@@ -92,7 +92,7 @@ let create_mixed_i32_i64_add_function () =
 let test_i64_args_mirl_codegen name create_func =
   printf "=== Testing %s ===\n" name;
   let func = create_func () in
-  let program = Mirl.{ functions = [ func ]; externs = [] } in
+  let program = Mirl.{ functions = [ func ]; externs = []; global_constants = [::] } in
   printf "=== Original MIRL ===\n";
   Mirl.to_string program |> print_endline;
   (* Apply ARM32 legalization *)
@@ -120,6 +120,8 @@ let%expect_test "i64 identity parameter on ARM32" =
     {|
     === Testing I64 Identity ===
     === Original MIRL ===
+
+
     function test_i64_identity ($0 (x): i64) {
     $0: i64
     block_0:
@@ -128,6 +130,8 @@ let%expect_test "i64 identity parameter on ARM32" =
 
 
     === Legalized MIRL ===
+
+
     function test_i64_identity ($0 (x_low): i32, $1 (x_high): i32) {
     $0: i32, $1: i32
     block_0:
@@ -160,6 +164,8 @@ let%expect_test "i64 add parameters on ARM32" =
     {|
     === Testing I64 Add ===
     === Original MIRL ===
+
+
     function test_i64_add ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -169,6 +175,8 @@ let%expect_test "i64 add parameters on ARM32" =
 
 
     === Legalized MIRL ===
+
+
     function test_i64_add ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
@@ -210,6 +218,8 @@ let%expect_test "mixed i32 i64 parameters on ARM32" =
     {|
     === Testing Mixed I32/I64 ===
     === Original MIRL ===
+
+
     function test_mixed_add ($0 (a): i32, $1 (b): i64) {
     $0: i32, $1: i64, $2: i64
     block_0:
@@ -219,6 +229,8 @@ let%expect_test "mixed i32 i64 parameters on ARM32" =
 
 
     === Legalized MIRL ===
+
+
     function test_mixed_add ($0 (a): i32, $1 (b_low): i32, $2 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32
     block_0:

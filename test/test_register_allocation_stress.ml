@@ -263,7 +263,7 @@ let%expect_test "register allocation stress tests" =
 let%expect_test "i64 register pressure on ARM32" =
   (* Test i64 legalization followed by register allocation *)
   let func = create_i64_high_pressure_function () in
-  let program = Mirl.{ functions = [ func ]; externs = [] } in
+  let program = Mirl.{ functions = [ func ]; externs = []; global_constants = [::] } in
   printf "=== Original i64 High Pressure ===\n";
   Mirl.to_string program |> print_endline;
   (* ARM32 legalization will double the register pressure *)
@@ -279,6 +279,8 @@ let%expect_test "i64 register pressure on ARM32" =
   [%expect
     {|
     === Original i64 High Pressure ===
+
+
     function test_i64_pressure ($0 (a): i64, $1 (b): i64, $2 (c): i64) {
     $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64, $6: i64, $7: i64, $8: i64
     block_0:
@@ -293,6 +295,8 @@ let%expect_test "i64 register pressure on ARM32" =
 
 
     === ARM32 Legalized (doubled registers) ===
+
+
     function test_i64_pressure ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32, $4 (c_low): i32, $5 (c_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32, $12: i32, $13: i32, $14: i32, $15: i32, $16: i32, $17: i32
     block_0:

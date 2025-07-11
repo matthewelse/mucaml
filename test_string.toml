@@ -1,0 +1,6 @@
+[target]
+arch = "arm64"
+cpu = "cortex-a55"
+
+[[sources]]
+path = "test_string.ml"

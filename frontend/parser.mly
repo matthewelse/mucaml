@@ -76,6 +76,8 @@ let expr :=
     { { Expr.desc = Literal (Int64 (I64.of_int n)); loc = mkloc $startpos $endpos } }
   | b = BOOL;                                 
     { { Expr.desc = Literal (Bool b); loc = mkloc $startpos $endpos } }
+  | s = STRING;                               
+    { { Expr.desc = Literal (String s); loc = mkloc $startpos $endpos } }
   | v = VAR;                                  
     { { Expr.desc = Var (mkid v); loc = mkloc $startpos $endpos } }
   | LPAREN; RPAREN;                           

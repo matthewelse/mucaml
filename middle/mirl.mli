@@ -15,10 +15,18 @@ module Label : sig
   end
 end
 
+module Global_constant : sig
+  type t : immediate [@@deriving equal, sexp_of, to_string]
+
+  val of_int_exn : int -> t
+  val to_int_exn : t -> int
+end
+
 module Type : sig
   type t =
     | I32
     | I64
+    | Ptr
   [@@deriving sexp_of, to_string]
 end
 
@@ -57,6 +65,10 @@ module Instruction : sig
     | Set of
         { dst : Virtual_register.t
         ; value : int
+        }
+    | Load_global_constant of
+        { dst : Virtual_register.t
+        ; constant : Global_constant.t
         }
     | Mov of
         { dst : Virtual_register.t
@@ -147,6 +159,7 @@ end
 type t =
   { functions : Function.t list
   ; externs : External.t list
+  ; global_constants : string iarray
   }
 [@@deriving sexp_of, to_string]
 

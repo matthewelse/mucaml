@@ -80,6 +80,12 @@ let emit_block
       (match Registers.find registers dst with
        | Some dst_reg -> mov_imm buf ~dst:dst_reg (I32.of_int value)
        | None -> (* Register is unused, skip instruction *) ())
+    | Load_global_constant { dst; constant = _ } ->
+      (match Registers.find registers dst with
+       | Some dst_reg ->
+         (* TODO: Implement proper string constant loading - for now just load 0 *)
+         mov_imm buf ~dst:dst_reg (I32.of_int 0)
+       | None -> (* Register is unused, skip instruction *) ())
     | Mov { dst; src } ->
       (match Registers.find registers dst with
        | Some dst_reg ->

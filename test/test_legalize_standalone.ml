@@ -23,7 +23,7 @@ let test_simple_i64_add () =
           Block.Builder.push_many block_builder instructions)
         [@nontail])
   in
-  let program = { functions = [ func ]; externs = [] } in
+  let program = { functions = [ func ]; externs = []; global_constants = [::] } in
   print_endline "=== Original MIRL ===";
   to_string program |> print_endline;
   let arm32_config = Mucaml_middle.Legalize.Config.{ supports_native_i64 = false } in
@@ -37,6 +37,8 @@ let%expect_test _ =
   [%expect
     {|
     === Original MIRL ===
+
+
     function test_add ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -46,6 +48,8 @@ let%expect_test _ =
 
 
     === ARM32 Legalized MIRL ===
+
+
     function test_add ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:

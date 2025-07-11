@@ -7,6 +7,7 @@ module Base = struct
     | I64
     | Bool
     | Unit
+    | String
   [@@deriving compare, equal, string ~capitalize:"snake_case", sexp_of]
 end
 

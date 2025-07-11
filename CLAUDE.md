@@ -8,17 +8,17 @@ This is an OCaml project using Dune as the build system.
 
 **Building:**
 - `dune build` - Build the entire project
-- `dune build bin/main.exe` - Build the mucaml executable
-- `dune exec bin/main.exe` - Build and run the mucaml executable
+- `dune build bin/mu.exe` - Build the mucaml executable
+- `dune exec bin/mu.exe` - Build and run the mucaml executable
 
 **Testing:**
 - `dune runtest` - Run all tests (includes inline tests)
 - `dune test` - Alternative command for running tests
 
 **Development workflow:**
-- `dune exec bin/main.exe -- repl` - Start the mucaml REPL
-- `dune exec bin/main.exe -- build --project path/to/mucaml.toml` - Build a mucaml project
-- `dune exec bin/main.exe -- run --project path/to/mucaml.toml` - Build and run a mucaml project
+- `dune exec bin/mu.exe -- repl` - Start the mucaml REPL
+- `dune exec bin/mu.exe -- build --project path/to/mucaml.toml` - Build a mucaml project
+- `dune exec bin/mu.exe -- run --project path/to/mucaml.toml` - Build and run a mucaml project
 
 **Code Formatting:**
 - `dune fmt` - Format OCaml code according to project style

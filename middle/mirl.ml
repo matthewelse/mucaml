@@ -28,10 +28,30 @@ end = struct
   end
 end
 
+module Global_constant : sig
+  type t : immediate [@@deriving equal, sexp_of, to_string]
+
+  val of_int_exn : int -> t
+  val to_int_exn : t -> int
+end = struct
+  type t = int [@@deriving equal]
+
+  let to_string t = [%string "str_%{t#Int}"]
+  let sexp_of_t t = Sexp.Atom (to_string t)
+
+  let of_int_exn t =
+    if t < 0 then raise_s [%message "Global_constant cannot be negative" (t : int)];
+    t
+  ;;
+
+  let to_int_exn t = t
+end
+
 module Type = struct
   type t =
     | I32
     | I64
+    | Ptr
   [@@deriving equal, sexp_of, to_string ~capitalize:"snake_case"]
 end
 
@@ -88,6 +108,10 @@ module Instruction = struct
         { dst : R.t
         ; value : int
         }
+    | Load_global_constant of
+        { dst : R.t
+        ; constant : Global_constant.t
+        }
     | Mov of
         { dst : R.t
         ; src : R.t
@@ -112,6 +136,7 @@ module Instruction = struct
     | Add_with_carry { src1; src2; _ } -> [ src1; src2 ]
     | Sub_with_carry { src1; src2; _ } -> [ src1; src2 ]
     | Set _ -> []
+    | Load_global_constant _ -> []
     | Mov { src; _ } -> [ src ]
     | C_call { args; _ } -> args
     | Jump _ -> []
@@ -126,6 +151,7 @@ module Instruction = struct
     | Add_with_carry { dst; _ }
     | Sub_with_carry { dst; _ }
     | Set { dst; _ }
+    | Load_global_constant { dst; _ }
     | Mov { dst; _ }
     | C_call { dst; _ } -> exclave_ Some dst
     | Jump _ -> None
@@ -147,6 +173,8 @@ module Instruction = struct
       [%string
         "%{dst#Virtual_register} := %{src1#Virtual_register} -c %{src2#Virtual_register}"]
     | Set { dst; value } -> [%string "%{dst#Virtual_register} := %{value#Int}"]
+    | Load_global_constant { dst; constant } ->
+      [%string "%{dst#Virtual_register} := &%{constant#Global_constant}"]
     | Mov { dst; src } -> [%string "%{dst#Virtual_register} := %{src#Virtual_register}"]
     | C_call { dst; func; args } ->
       let args_str =
@@ -320,6 +348,7 @@ end
 type t =
   { functions : Function.t list
   ; externs : External.t list
+  ; global_constants : string iarray
   }
 [@@deriving sexp_of]
 
@@ -336,14 +365,26 @@ module Env = struct
   let empty = Identifier.Map.empty
 end
 
-let to_string { functions; externs } =
-  String.concat ~sep:"\n\n" (List.map functions ~f:Function.to_string)
+let to_string { functions; externs; global_constants } =
+  let global_constants_str =
+    Iarray.mapi
+      ~f:(fun i value ->
+        let constant = Global_constant.of_int_exn i in
+        [%string "%{constant#Global_constant}: \"%{value}\""])
+      global_constants
+    |> Iarray.to_list
+    |> String.concat ~sep:", "
+  in
+  global_constants_str
+  ^ "\n\n"
+  ^ String.concat ~sep:"\n\n" (List.map functions ~f:Function.to_string)
   ^ "\n\n"
   ^ String.concat ~sep:"\n\n" (List.map externs ~f:External.to_string)
 ;;
 
 let rec of_ast (ast : Typed_ast.t) =
   let env = ref Env.empty in
+  let global_constants = Queue.create () in
   let functions, externs =
     List.partition_mapi ast ~f:(fun _ ast ->
       match ast with
@@ -374,7 +415,7 @@ let rec of_ast (ast : Typed_ast.t) =
              in
              Function.Builder.add_block' builder (fun acc ->
                let #(result, acc) @ local =
-                 walk_expr body ~function_builder:builder ~env ~acc
+                 walk_expr body ~function_builder:builder ~env ~acc ~global_constants
                in
                Block.Builder.push acc (Instruction.Return [ result ]) [@nontail])
              [@nontail]))
@@ -384,9 +425,10 @@ let rec of_ast (ast : Typed_ast.t) =
           | Fun (arg_types, return_type) ->
             let convert_type : Mucaml_typing.Type.t -> Type.t = function
               | Base I32 -> Type.I32
-              | Base I64 -> Type.I64
-              | Base Unit -> Type.I32
+              | Base I64 -> I64
+              | Base Unit -> I32
               | Base Bool -> failwith "todo: bools"
+              | Base String -> Ptr
               | Fun _ -> failwith "todo: unsupported nested function type"
               | Var _ ->
                 (* FIXME: monomorphisation *)
@@ -395,9 +437,10 @@ let rec of_ast (ast : Typed_ast.t) =
             let arg_types = List.map (Nonempty_list.to_list arg_types) ~f:convert_type in
             let return_type = convert_type return_type in
             arg_types, return_type
-          | Base (Unit | I32) -> [], Type.I32
-          | Base I64 -> [], Type.I64
+          | Base (Unit | I32) -> [], I32
+          | Base I64 -> [], I64
           | Base Bool -> failwith "todo: bools"
+          | Base String -> [], Ptr
           | Var _ ->
             (* FIXME: monomorphisation *)
             failwith "type variable left after typed ast."
@@ -410,13 +453,17 @@ let rec of_ast (ast : Typed_ast.t) =
           ; c_name = c_name.txt
           })
   in
-  { functions; externs }
+  let global_constants =
+    Queue.to_array global_constants |> Iarray.unsafe_of_array__promise_no_mutation
+  in
+  { functions; externs; global_constants }
 
 and walk_expr
   (expr : Typed_ast.Expr.t)
   ~(env : Env.t)
   ~(function_builder @ local)
   ~(acc : Block.Builder.t @ local)
+  ~global_constants
   : #(Virtual_register.t * Block.Builder.t) @ local
   = exclave_
   let open Block.Builder in
@@ -443,10 +490,16 @@ and walk_expr
     let reg = Function.Builder.fresh_register function_builder ~ty:I64 in
     push acc (Set { dst = reg; value = I64.to_int_trunc i });
     #(reg, acc)
+  | { desc = Literal (String s); _ } ->
+    let constant = Global_constant.of_int_exn (Queue.length global_constants) in
+    Queue.enqueue global_constants s;
+    let reg = Function.Builder.fresh_register function_builder ~ty:Ptr in
+    push acc (Load_global_constant { dst = reg; constant });
+    #(reg, acc)
   | { desc = App { func = { desc = Var op; _ }; args = [ e1; e2 ] }; _ }
     when String.equal (Identifier.to_string op) "+" ->
-    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
-    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
+    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc ~global_constants in
+    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc ~global_constants in
     let ty = require_type_equal reg1 reg2 in
     let dst = Function.Builder.fresh_register function_builder ~ty in
     let add_ins : Instruction.t = Add { dst; src1 = reg1; src2 = reg2 } in
@@ -454,17 +507,17 @@ and walk_expr
     #(dst, acc)
   | { desc = App { func = { desc = Var op; _ }; args = [ e1; e2 ] }; _ }
     when String.equal (Identifier.to_string op) "-" ->
-    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc in
-    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc in
+    let #(reg1, acc) = walk_expr e1 ~env ~function_builder ~acc ~global_constants in
+    let #(reg2, acc) = walk_expr e2 ~env ~function_builder ~acc ~global_constants in
     let ty = require_type_equal reg1 reg2 in
     let dst = Function.Builder.fresh_register function_builder ~ty in
     let sub_ins : Instruction.t = Sub { dst; src1 = reg1; src2 = reg2 } in
     push acc sub_ins;
     #(dst, acc)
   | { desc = Let { var; type_ = _; value; body }; _ } ->
-    let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc in
+    let #(reg1, acc) = walk_expr value ~env ~function_builder ~acc ~global_constants in
     let env = Map.set env ~key:var.txt ~data:(Value.Virtual_register reg1) in
-    let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc in
+    let #(reg2, acc) = walk_expr body ~env ~function_builder ~acc ~global_constants in
     #(reg2, acc)
   | { desc = App { func = { desc = Var var; _ }; args }; _ } ->
     let rec fold_map__local_acc ~init:(acc @ local) ~f = function
@@ -477,7 +530,9 @@ and walk_expr
     in
     let acc, { global = args } =
       fold_map__local_acc args ~init:acc ~f:(fun acc arg -> exclave_
-        let #(arg_reg, acc) = walk_expr arg ~env ~function_builder ~acc in
+        let #(arg_reg, acc) =
+          walk_expr arg ~env ~function_builder ~acc ~global_constants
+        in
         #(acc, { global = arg_reg }))
     in
     let func = Map.find_exn env var in
@@ -499,17 +554,19 @@ and walk_expr
        (match failwith "todo: global variables in expressions" with
         | (_ : Nothing.t) -> .))
   | { desc = If { condition; if_true; if_false }; _ } ->
-    let #(cond_reg, acc) = walk_expr condition ~env ~function_builder ~acc in
+    let #(cond_reg, acc) =
+      walk_expr condition ~env ~function_builder ~acc ~global_constants
+    in
     let then_block = Function.Builder.add_block function_builder ignore in
     let else_block = Function.Builder.add_block function_builder ignore in
     let after_block = Function.Builder.add_block function_builder ignore in
     let #(then_reg, then_block) =
       let acc = then_block in
-      walk_expr if_true ~env ~function_builder ~acc
+      walk_expr if_true ~env ~function_builder ~acc ~global_constants
     in
     let #(else_reg, else_block) =
       let acc = else_block in
-      walk_expr if_false ~env ~function_builder ~acc
+      walk_expr if_false ~env ~function_builder ~acc ~global_constants
     in
     let ty = require_type_equal then_reg else_reg in
     let dst = Function.Builder.fresh_register function_builder ~ty in

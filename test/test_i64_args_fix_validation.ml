@@ -23,7 +23,7 @@ let%expect_test "validate i64 parameter legalization fix" =
           Block.Builder.push_many block_builder instructions)
         [@nontail])
   in
-  let program = Mirl.{ functions = [ func ]; externs = [] } in
+  let program = Mirl.{ functions = [ func ]; externs = []; global_constants = [::] } in
   printf "=== Original Function ===\n";
   Mirl.to_string program |> print_endline;
   (* Apply ARM32 legalization *)
@@ -50,6 +50,8 @@ let%expect_test "validate i64 parameter legalization fix" =
   [%expect
     {|
     === Original Function ===
+
+
     function validate_fix ($0 (param): i64) {
     $0: i64
     block_0:
@@ -58,6 +60,8 @@ let%expect_test "validate i64 parameter legalization fix" =
 
 
     === After Legalization ===
+
+
     function validate_fix ($0 (param_low): i32, $1 (param_high): i32) {
     $0: i32, $1: i32
     block_0:

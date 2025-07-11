@@ -11,35 +11,35 @@ let create_guaranteed_spill_function () =
     Function.Builder.add_block' builder (fun block_builder ->
       (* Create 16 registers that are all live at the same time *)
       let regs =
-        Array.init 16 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:Type.I32)
+        Array.init 16 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:I32)
       in
       (* Initialize all registers *)
       let init_instructions =
         Array.mapi regs ~f:(fun i reg -> Instruction.Set { dst = reg; value = i + 1 })
       in
       (* Add them all together so they're all live simultaneously *)
-      let sum1 = Function.Builder.fresh_register builder ~ty:Type.I32 in
-      let sum2 = Function.Builder.fresh_register builder ~ty:Type.I32 in
-      let sum3 = Function.Builder.fresh_register builder ~ty:Type.I32 in
-      let final_sum = Function.Builder.fresh_register builder ~ty:Type.I32 in
-      let sum_instructions =
-        [ Instruction.Add { dst = sum1; src1 = regs.(0); src2 = regs.(1) }
-        ; Instruction.Add { dst = sum1; src1 = sum1; src2 = regs.(2) }
-        ; Instruction.Add { dst = sum1; src1 = sum1; src2 = regs.(3) }
-        ; Instruction.Add { dst = sum1; src1 = sum1; src2 = regs.(4) }
-        ; Instruction.Add { dst = sum2; src1 = regs.(5); src2 = regs.(6) }
-        ; Instruction.Add { dst = sum2; src1 = sum2; src2 = regs.(7) }
-        ; Instruction.Add { dst = sum2; src1 = sum2; src2 = regs.(8) }
-        ; Instruction.Add { dst = sum2; src1 = sum2; src2 = regs.(9) }
-        ; Instruction.Add { dst = sum3; src1 = regs.(10); src2 = regs.(11) }
-        ; Instruction.Add { dst = sum3; src1 = sum3; src2 = regs.(12) }
-        ; Instruction.Add { dst = sum3; src1 = sum3; src2 = regs.(13) }
-        ; Instruction.Add { dst = sum3; src1 = sum3; src2 = regs.(14) }
-        ; Instruction.Add { dst = sum3; src1 = sum3; src2 = regs.(15) }
+      let sum1 = Function.Builder.fresh_register builder ~ty:I32 in
+      let sum2 = Function.Builder.fresh_register builder ~ty:I32 in
+      let sum3 = Function.Builder.fresh_register builder ~ty:I32 in
+      let final_sum = Function.Builder.fresh_register builder ~ty:I32 in
+      let sum_instructions : Instruction.t list =
+        [ Add { dst = sum1; src1 = regs.(0); src2 = regs.(1) }
+        ; Add { dst = sum1; src1 = sum1; src2 = regs.(2) }
+        ; Add { dst = sum1; src1 = sum1; src2 = regs.(3) }
+        ; Add { dst = sum1; src1 = sum1; src2 = regs.(4) }
+        ; Add { dst = sum2; src1 = regs.(5); src2 = regs.(6) }
+        ; Add { dst = sum2; src1 = sum2; src2 = regs.(7) }
+        ; Add { dst = sum2; src1 = sum2; src2 = regs.(8) }
+        ; Add { dst = sum2; src1 = sum2; src2 = regs.(9) }
+        ; Add { dst = sum3; src1 = regs.(10); src2 = regs.(11) }
+        ; Add { dst = sum3; src1 = sum3; src2 = regs.(12) }
+        ; Add { dst = sum3; src1 = sum3; src2 = regs.(13) }
+        ; Add { dst = sum3; src1 = sum3; src2 = regs.(14) }
+        ; Add { dst = sum3; src1 = sum3; src2 = regs.(15) }
         ; (* Now all original registers should still be live for the final sum *)
-          Instruction.Add { dst = final_sum; src1 = sum1; src2 = sum2 }
-        ; Instruction.Add { dst = final_sum; src1 = final_sum; src2 = sum3 }
-        ; Instruction.Return [ final_sum ]
+          Add { dst = final_sum; src1 = sum1; src2 = sum2 }
+        ; Add { dst = final_sum; src1 = final_sum; src2 = sum3 }
+        ; Return [ final_sum ]
         ]
       in
       let all_instructions = Array.to_list init_instructions @ sum_instructions in
@@ -61,19 +61,19 @@ let create_extreme_i64_spill_function () =
           Instruction.Set { dst = reg; value = (i + 1) * 1000 })
       in
       (* Chain operations to keep all registers live *)
-      let temp1 = Function.Builder.fresh_register builder ~ty:Type.I64 in
-      let temp2 = Function.Builder.fresh_register builder ~ty:Type.I64 in
-      let result = Function.Builder.fresh_register builder ~ty:Type.I64 in
-      let chain_instructions =
-        [ Instruction.Add { dst = temp1; src1 = i64_regs.(0); src2 = i64_regs.(1) }
-        ; Instruction.Add { dst = temp1; src1 = temp1; src2 = i64_regs.(2) }
-        ; Instruction.Add { dst = temp1; src1 = temp1; src2 = i64_regs.(3) }
-        ; Instruction.Add { dst = temp2; src1 = i64_regs.(4); src2 = i64_regs.(5) }
-        ; Instruction.Add { dst = temp2; src1 = temp2; src2 = i64_regs.(6) }
-        ; Instruction.Add { dst = temp2; src1 = temp2; src2 = i64_regs.(7) }
+      let temp1 = Function.Builder.fresh_register builder ~ty:I64 in
+      let temp2 = Function.Builder.fresh_register builder ~ty:I64 in
+      let result = Function.Builder.fresh_register builder ~ty:I64 in
+      let chain_instructions : Instruction.t list =
+        [ Add { dst = temp1; src1 = i64_regs.(0); src2 = i64_regs.(1) }
+        ; Add { dst = temp1; src1 = temp1; src2 = i64_regs.(2) }
+        ; Add { dst = temp1; src1 = temp1; src2 = i64_regs.(3) }
+        ; Add { dst = temp2; src1 = i64_regs.(4); src2 = i64_regs.(5) }
+        ; Add { dst = temp2; src1 = temp2; src2 = i64_regs.(6) }
+        ; Add { dst = temp2; src1 = temp2; src2 = i64_regs.(7) }
         ; (* All i64_regs should still be live here *)
-          Instruction.Add { dst = result; src1 = temp1; src2 = temp2 }
-        ; Instruction.Return [ result ]
+          Add { dst = result; src1 = temp1; src2 = temp2 }
+        ; Return [ result ]
         ]
       in
       let all_instructions = Array.to_list init_instructions @ chain_instructions in
@@ -88,32 +88,29 @@ let create_call_spill_function () =
     Function.Builder.add_block' builder (fun block_builder ->
       (* Create many registers that need to survive multiple calls *)
       let vars =
-        Array.init 12 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:Type.I32)
+        Array.init 12 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:I32)
       in
       let call_results =
-        Array.init 3 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:Type.I32)
+        Array.init 3 ~f:(fun _ -> Function.Builder.fresh_register builder ~ty:I32)
       in
       let init_instructions =
         Array.mapi vars ~f:(fun i reg -> Instruction.Set { dst = reg; value = i * 10 })
       in
-      let call_instructions =
+      let call_instructions : Instruction.t list =
         [ (* First call - many vars should be live across it *)
-          Instruction.C_call
-            { dst = call_results.(0); func = "func1"; args = [ vars.(0) ] }
-        ; Instruction.Add { dst = vars.(1); src1 = vars.(1); src2 = call_results.(0) }
+          C_call { dst = call_results.(0); func = "func1"; args = [ vars.(0) ] }
+        ; Add { dst = vars.(1); src1 = vars.(1); src2 = call_results.(0) }
         ; (* Second call - even more pressure *)
-          Instruction.C_call
-            { dst = call_results.(1); func = "func2"; args = [ vars.(2) ] }
-        ; Instruction.Add { dst = vars.(3); src1 = vars.(3); src2 = call_results.(1) }
+          C_call { dst = call_results.(1); func = "func2"; args = [ vars.(2) ] }
+        ; Add { dst = vars.(3); src1 = vars.(3); src2 = call_results.(1) }
         ; (* Third call - maximum pressure *)
-          Instruction.C_call
-            { dst = call_results.(2); func = "func3"; args = [ vars.(4) ] }
+          C_call { dst = call_results.(2); func = "func3"; args = [ vars.(4) ] }
         ; (* Now use all remaining vars to keep them live *)
-          Instruction.Add { dst = vars.(5); src1 = vars.(5); src2 = vars.(6) }
-        ; Instruction.Add { dst = vars.(7); src1 = vars.(7); src2 = vars.(8) }
-        ; Instruction.Add { dst = vars.(9); src1 = vars.(9); src2 = vars.(10) }
-        ; Instruction.Add { dst = vars.(11); src1 = vars.(11); src2 = call_results.(2) }
-        ; Instruction.Return [ vars.(11) ]
+          Add { dst = vars.(5); src1 = vars.(5); src2 = vars.(6) }
+        ; Add { dst = vars.(7); src1 = vars.(7); src2 = vars.(8) }
+        ; Add { dst = vars.(9); src1 = vars.(9); src2 = vars.(10) }
+        ; Add { dst = vars.(11); src1 = vars.(11); src2 = call_results.(2) }
+        ; Return [ vars.(11) ]
         ]
       in
       let all_instructions = Array.to_list init_instructions @ call_instructions in
@@ -133,8 +130,8 @@ let analyze_spilling_requirements func_name create_func =
   let i64_count = ref 0 in
   Iarray.iter func.Mirl.Function.registers ~f:(fun { ty } ->
     match ty with
-    | Mirl.Type.I32 -> incr i32_count
-    | Mirl.Type.I64 -> incr i64_count);
+    | I32 | Ptr -> incr i32_count
+    | I64 -> incr i64_count);
   printf "i32 registers: %d, i64 registers: %d\n" !i32_count !i64_count;
   (* Test with different register capacities *)
   let test_capacity capacity =
@@ -192,7 +189,7 @@ let%expect_test "spilling requirement analysis" =
 
 let%expect_test "i64 extreme spilling on ARM32" =
   let func = create_extreme_i64_spill_function () in
-  let program = Mirl.{ functions = [ func ]; externs = [] } in
+  let program = Mirl.{ functions = [ func ]; externs = []; global_constants = [::] } in
   printf "=== Before ARM32 legalization ===\n";
   analyze_spilling_requirements "Extreme i64" (fun () -> func);
   (* Apply ARM32 legalization *)

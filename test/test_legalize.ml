@@ -207,7 +207,7 @@ let create_i64_edge_immediates_function () =
 
 let test_legalization name create_func =
   let func = create_func () in
-  let program = Mirl.{ functions = [ func ]; externs = [] } in
+  let program = Mirl.{ functions = [ func ]; externs = []; global_constants = [::] } in
   print_endline ("=== Original " ^ name ^ " ===");
   Mirl.to_string program |> print_endline;
   (* Test ARM32 legalization (no native i64) *)
@@ -228,6 +228,8 @@ let%expect_test "i64 addition legalization" =
   [%expect
     {|
     === Original i64 Add ===
+
+
     function test_i64_add ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -237,6 +239,8 @@ let%expect_test "i64 addition legalization" =
 
 
     === ARM32 Legalized i64 Add ===
+
+
     function test_i64_add ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
@@ -247,6 +251,8 @@ let%expect_test "i64 addition legalization" =
 
 
     === ARM64 Legalized i64 Add (should be unchanged) ===
+
+
     function test_i64_add ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -262,6 +268,8 @@ let%expect_test "i64 subtraction legalization" =
   [%expect
     {|
     === Original i64 Sub ===
+
+
     function test_i64_sub ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -271,6 +279,8 @@ let%expect_test "i64 subtraction legalization" =
 
 
     === ARM32 Legalized i64 Sub ===
+
+
     function test_i64_sub ($0 (a_low): i32, $1 (a_high): i32, $2 (b_low): i32, $3 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
@@ -281,6 +291,8 @@ let%expect_test "i64 subtraction legalization" =
 
 
     === ARM64 Legalized i64 Sub (should be unchanged) ===
+
+
     function test_i64_sub ($0 (a): i64, $1 (b): i64) {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -296,6 +308,8 @@ let%expect_test "i64 immediate legalization" =
   [%expect
     {|
     === Original i64 Immediate ===
+
+
     function test_i64_immediate () {
     $0: i64
     block_0:
@@ -305,6 +319,8 @@ let%expect_test "i64 immediate legalization" =
 
 
     === ARM32 Legalized i64 Immediate ===
+
+
     function test_i64_immediate () {
     $0: i32, $1: i32
     block_0:
@@ -315,6 +331,8 @@ let%expect_test "i64 immediate legalization" =
 
 
     === ARM64 Legalized i64 Immediate (should be unchanged) ===
+
+
     function test_i64_immediate () {
     $0: i64
     block_0:
@@ -330,6 +348,8 @@ let%expect_test "i64 move legalization" =
   [%expect
     {|
     === Original i64 Move ===
+
+
     function test_i64_move ($0 (x): i64) {
     $0: i64, $1: i64
     block_0:
@@ -339,6 +359,8 @@ let%expect_test "i64 move legalization" =
 
 
     === ARM32 Legalized i64 Move ===
+
+
     function test_i64_move ($0 (x_low): i32, $1 (x_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32
     block_0:
@@ -349,6 +371,8 @@ let%expect_test "i64 move legalization" =
 
 
     === ARM64 Legalized i64 Move (should be unchanged) ===
+
+
     function test_i64_move ($0 (x): i64) {
     $0: i64, $1: i64
     block_0:
@@ -364,6 +388,8 @@ let%expect_test "mixed i32 i64 legalization" =
   [%expect
     {|
     === Original Mixed i32/i64 ===
+
+
     function test_mixed ($0 (a): i32, $1 (b): i64) {
     $0: i32, $1: i64, $2: i32, $3: i32, $4: i64
     block_0:
@@ -375,6 +401,8 @@ let%expect_test "mixed i32 i64 legalization" =
 
 
     === ARM32 Legalized Mixed i32/i64 ===
+
+
     function test_mixed ($0 (a): i32, $1 (b_low): i32, $2 (b_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32
     block_0:
@@ -387,6 +415,8 @@ let%expect_test "mixed i32 i64 legalization" =
 
 
     === ARM64 Legalized Mixed i32/i64 (should be unchanged) ===
+
+
     function test_mixed ($0 (a): i32, $1 (b): i64) {
     $0: i32, $1: i64, $2: i32, $3: i32, $4: i64
     block_0:
@@ -404,6 +434,8 @@ let%expect_test "i64 large immediate legalization" =
   [%expect
     {|
     === Original i64 Large Immediate ===
+
+
     function test_i64_large_immediate () {
     $0: i64
     block_0:
@@ -413,6 +445,8 @@ let%expect_test "i64 large immediate legalization" =
 
 
     === ARM32 Legalized i64 Large Immediate ===
+
+
     function test_i64_large_immediate () {
     $0: i32, $1: i32
     block_0:
@@ -423,6 +457,8 @@ let%expect_test "i64 large immediate legalization" =
 
 
     === ARM64 Legalized i64 Large Immediate (should be unchanged) ===
+
+
     function test_i64_large_immediate () {
     $0: i64
     block_0:
@@ -438,6 +474,8 @@ let%expect_test "i64 chain operations legalization" =
   [%expect
     {|
     === Original i64 Chain ===
+
+
     function test_i64_chain ($0 (x): i64, $1 (y): i64) {
     $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64
     block_0:
@@ -450,6 +488,8 @@ let%expect_test "i64 chain operations legalization" =
 
 
     === ARM32 Legalized i64 Chain ===
+
+
     function test_i64_chain ($0 (x_low): i32, $1 (x_high): i32, $2 (y_low): i32, $3 (y_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32, $8: i32, $9: i32, $10: i32, $11: i32
     block_0:
@@ -466,6 +506,8 @@ let%expect_test "i64 chain operations legalization" =
 
 
     === ARM64 Legalized i64 Chain (should be unchanged) ===
+
+
     function test_i64_chain ($0 (x): i64, $1 (y): i64) {
     $0: i64, $1: i64, $2: i64, $3: i64, $4: i64, $5: i64
     block_0:
@@ -484,6 +526,8 @@ let%expect_test "i64 with function calls legalization" =
   [%expect
     {|
     === Original i64 with Calls ===
+
+
     function test_i64_with_calls ($0 (x): i64) {
     $0: i64, $1: i32, $2: i32, $3: i64, $4: i64
     block_0:
@@ -496,6 +540,8 @@ let%expect_test "i64 with function calls legalization" =
 
 
     === ARM32 Legalized i64 with Calls ===
+
+
     function test_i64_with_calls ($0 (x_low): i32, $1 (x_high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32, $6: i32, $7: i32
     block_0:
@@ -510,6 +556,8 @@ let%expect_test "i64 with function calls legalization" =
 
 
     === ARM64 Legalized i64 with Calls (should be unchanged) ===
+
+
     function test_i64_with_calls ($0 (x): i64) {
     $0: i64, $1: i32, $2: i32, $3: i64, $4: i64
     block_0:
@@ -528,6 +576,8 @@ let%expect_test "i64 edge immediate values legalization" =
   [%expect
     {|
     === Original i64 Edge Immediates ===
+
+
     function test_i64_edge_immediates () {
     $0: i64, $1: i64, $2: i64
     block_0:
@@ -539,6 +589,8 @@ let%expect_test "i64 edge immediate values legalization" =
 
 
     === ARM32 Legalized i64 Edge Immediates ===
+
+
     function test_i64_edge_immediates () {
     $0: i32, $1: i32, $2: i32, $3: i32, $4: i32, $5: i32
     block_0:
@@ -553,6 +605,8 @@ let%expect_test "i64 edge immediate values legalization" =
 
 
     === ARM64 Legalized i64 Edge Immediates (should be unchanged) ===
+
+
     function test_i64_edge_immediates () {
     $0: i64, $1: i64, $2: i64
     block_0:

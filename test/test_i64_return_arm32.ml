@@ -31,6 +31,8 @@ let%expect_test "i64 return on ARM32" =
   [%expect
     {|
     === Original MIRL ===
+
+
     function mucaml_main ($0 (_): i64) {
     $0: i64, $1: i64
     block_0:
@@ -40,6 +42,8 @@ let%expect_test "i64 return on ARM32" =
 
 
     === Legalized MIRL ===
+
+
     function mucaml_main ($0 (__low): i32, $1 (__high): i32) {
     $0: i32, $1: i32, $2: i32, $3: i32
     block_0:
