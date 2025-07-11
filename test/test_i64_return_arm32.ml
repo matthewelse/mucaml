@@ -8,7 +8,7 @@ let test_arm32_codegen text =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { board = Some "rp2350" }
+      { board = Some "rp2350"; backend = None }
     |> ok_exn
   in
   let ast = Helpers.typecheck text |> Option.value_exn in

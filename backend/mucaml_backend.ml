@@ -2,6 +2,7 @@ open! Core
 open Mucaml_backend_common
 module Arm = Mucaml_backend_arm
 module Arm64 = Mucaml_backend_arm64
+module Llvm = Mucaml_backend_llvm
 
 (* This module is the main entry point to constructing a target-specific backend. It's
    inspired by the way in which Cranelift constructs target ISA-specific backends.
@@ -13,9 +14,13 @@ module Arm64 = Mucaml_backend_arm64
    a generic representation of all possible settings, which we parse out as necessary. *)
 
 module Settings = struct
-  type t = { board : string option } [@@deriving fields ~getters]
+  type t =
+    { board : string option
+    ; backend : string option
+    }
+  [@@deriving fields ~getters]
 
-  let default = { board = None }
+  let default = { board = None; backend = None }
 
   let param =
     [%map_open.Command
@@ -24,13 +29,16 @@ module Settings = struct
           "board"
           (optional string)
           ~doc:"BOARD board to target (e.g. rp2350, stmf100rb, native)"
+      and backend =
+        flag "backend" (optional string) ~doc:"BACKEND backend to use (e.g. native, llvm)"
       in
-      { board }]
+      { board; backend }]
   ;;
 
   let of_toml (toml : Otoml.t) =
     let board = Otoml.find_opt toml Otoml.get_string [ "target"; "board" ] in
-    { board }
+    let backend = Otoml.find_opt toml Otoml.get_string [ "target"; "backend" ] in
+    { board; backend }
   ;;
 end
 
@@ -53,7 +61,7 @@ let create (triple : Triple.t) (settings : Settings.t) =
      messages about specifying the CPU in the TOML file, vs. via the command line. *)
   match triple.architecture with
   | Arm _ ->
-    let%tydi { board } = settings in
+    let%tydi { board; backend = _ } = settings in
     let%bind board =
       parse_req
         Arm.Runtime_target.of_string
@@ -65,17 +73,21 @@ let create (triple : Triple.t) (settings : Settings.t) =
     in
     Arm.build_target_isa triple { board }
   | Arm64 ->
-    let%tydi { board } = settings in
-    let%bind cpu =
-      match board with
-      | None | Some "native" -> Ok Arm64.Cpu.default
-      | Some board ->
-        Or_error.error_string
-          [%string
-            "Unknown target %{board}. To build for aarch64 linux, you can just omit the \
-             'target.board' field."]
-    in
-    Arm64.build_target_isa triple { cpu }
+    let%tydi { board; backend } = settings in
+    (match backend with
+     | Some "llvm" -> Llvm.build_target_isa triple ()
+     | None | Some "native" ->
+       let%bind cpu =
+         match board with
+         | None | Some "native" -> Ok Arm64.Cpu.default
+         | Some board ->
+           Or_error.error_string
+             [%string
+               "Unknown target %{board}. To build for aarch64 linux, you can just omit \
+                the 'target.board' field."]
+       in
+       Arm64.build_target_isa triple { cpu }
+     | Some backend -> Or_error.error_string [%string "Unknown backend '%{backend}'"])
 ;;
 
 let target_param =

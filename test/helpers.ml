@@ -30,7 +30,9 @@ let typecheck text =
 
 let compile ?(target = "thumbv8m.main-none-eabi") ?(board = Some "rp2350") text =
   let (module Target) =
-    Mucaml_backend.create (Mucaml_backend_common.Triple.of_string target) { board }
+    Mucaml_backend.create
+      (Mucaml_backend_common.Triple.of_string target)
+      { board; backend = None }
     |> ok_exn
   in
   match

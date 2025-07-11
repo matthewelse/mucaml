@@ -1,0 +1,5 @@
+(library
+ (name mucaml_backend_llvm)
+ (libraries core async mucaml_backend_common mucaml_middle grace)
+ (preprocess
+  (pps ppx_jane)))

@@ -8,7 +8,7 @@ let test_i64_args_codegen text =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { board = Some "rp2350" }
+      { board = Some "rp2350"; backend = None }
     |> ok_exn
   in
   let ast = Helpers.typecheck text |> Option.value_exn in
@@ -105,7 +105,7 @@ let test_i64_args_mirl_codegen name create_func =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { board = Some "rp2350" }
+      { board = Some "rp2350"; backend = None }
     |> ok_exn
   in
   let assembly = Target.build_program legalized |> Result.ok |> Option.value_exn in

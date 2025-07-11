@@ -36,7 +36,7 @@ let%expect_test "validate i64 parameter legalization fix" =
   let (module Target) =
     Mucaml_backend.create
       (Mucaml_backend_common.Triple.of_string target)
-      { board = Some "rp2350" }
+      { board = Some "rp2350"; backend = None }
     |> ok_exn
   in
   printf "=== Code Generation Test ===\n";

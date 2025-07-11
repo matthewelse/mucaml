@@ -2,3 +2,4 @@ name = "hello_world"
 
 [target]
 triple = "aarch64-unknown-linux-gnu"
+backend = "llvm"
