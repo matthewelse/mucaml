@@ -1,4 +1,0 @@
-name = "string_test"
-
-[target]
-triple = "aarch64-unknown-linux-gnu"

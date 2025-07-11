@@ -46,22 +46,22 @@ let build_target_isa (triple : Triple.t) ({ cpu } : Settings.t) =
       let triple = triple
       let build_program program = Ok (Emit.emit_mirl program)
 
-      let compile_and_link program ~env:(_ : Env.t) ~linker_args ~output_binary =
+      let compile_and_link program ~env ~linker_args ~output_binary =
         let open Async in
         let open Deferred.Result.Let_syntax in
-        let link_command = "gcc" in
-        (* TODO: Link a real runtime. For the time being, just call directly into the
-           main function. *)
+        let asm_command = "gcc" in
+        let object_name = Filename.basename output_binary ^ ".o" in
         let args =
-          linker_args
-          @ [ "-g"
-            ; "-mcpu=" ^ Cpu.to_string cpu
-            ; "-x"
-            ; "assembler"
-            ; "-"
-            ; "-o"
-            ; output_binary
-            ]
+          [ "-g"
+          ; "-ffunction-sections"
+          ; "-mcpu=" ^ Cpu.to_string cpu
+          ; "-x"
+          ; "assembler"
+          ; "-"
+          ; "-c"
+          ; "-o"
+          ; object_name
+          ]
         in
         let assembly =
           [%string
@@ -72,29 +72,35 @@ mov w0, #0
 b mucaml_main
 .size main, . - main
 
-.type mucaml_print, %function
-.globl mucaml_print
-mucaml_print:
-  stp     x29, x30, [sp, #-32]!
-  str     x19, [sp, #16]
-  mov     x29, sp
-  mov     w19, w0
-  adrp    x0, mucaml_print.str
-  add     x0, x0, :lo12:mucaml_print.str
-  mov     w1, w19
-  bl      printf
-  mov     w0, w19
-  ldr     x19, [sp, #16]
-  ldp     x29, x30, [sp], #32
-  ret
-
-mucaml_print.str:
-  .asciz "%d\n"
-
 %{program#Assembly}|}]
         in
         let%bind () =
-          Process.run_expect_no_output ~prog:link_command ~args ~stdin:assembly ()
+          Process.run_expect_no_output ~prog:asm_command ~args ~stdin:assembly ()
+          |> Deferred.Result.map_error ~f:(fun error : Grace.Diagnostic.t ->
+            { severity = Error
+            ; message =
+                (fun fmt -> Format.pp_print_string fmt (Error.to_string_hum error))
+            ; labels = []
+            ; notes = []
+            })
+        in
+        let link_command = "gcc" in
+        let args =
+          [ "-Wl,--gc-sections" ]
+          @ linker_args
+          @ [ (* It's important that [object_name] precedes the library, since it depends
+                 on [libmucaml_runtime]. *)
+              object_name
+            ; Env.runtime_lib_dir env ~board:"native" ^/ "libmucaml_runtime.a"
+            ]
+          @ [ "-o"; output_binary ]
+        in
+        let%bind () =
+          Process.run_expect_no_output
+            ~prog:link_command
+            ~args
+            ~stdin:(Assembly.to_string program)
+            ()
           |> Deferred.Result.map_error ~f:(fun error : Grace.Diagnostic.t ->
             { severity = Error
             ; message =

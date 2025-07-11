@@ -1,33 +1,31 @@
 const config = @import("config");
 const std = @import("std");
 
-const device =
-    if (std.mem.eql(u8, config.mu_target, "rp2350"))
-        @import("./rpi.zig")
-    else if (std.mem.eql(u8, config.mu_target, "stm32f100rb"))
-        @import("./stm32.zig")
-    else
-        struct {
-            pub fn init() void {}
-
-            pub fn loop() void {}
-
-            export fn mucaml_print(x: i32) void {
-                const out_file = std.io.getStdOut();
-                (out_file.writer().print("{d}", .{x})) catch {};
-            }
-        };
-
+// Core runtime functions that are available on all targets
 extern fn mucaml_main(i32) u32;
 
-export fn string_length(_: i32) i32 {
-    return 0;
+export fn string_length(s: [*]const u8) usize {
+    var length: usize = 0;
+    var ptr = s;
+
+    while (ptr[0] != 0) {
+        ptr += 1;
+        length += 1;
+    }
+
+    return length;
 }
 
-pub fn main() void {
-    device.init();
+// Native target print implementation (only compile for native)
+comptime {
+    if (std.mem.eql(u8, config.mu_target, "native")) {
+        @export(&mucaml_print_endline, .{ .name = "mucaml_print_endline", .linkage = .strong });
+    }
+}
 
-    _ = mucaml_main(0);
-
-    device.loop();
+fn mucaml_print_endline(x: [*]const u8) callconv(.C) i32 {
+    const out_file = std.io.getStdOut();
+    const len = string_length(x);
+    (out_file.writer().print("{s}\n", .{x[0..len]})) catch {};
+    return 0;
 }

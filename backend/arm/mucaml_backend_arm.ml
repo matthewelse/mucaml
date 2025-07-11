@@ -112,6 +112,8 @@ let build_target_isa (triple : Triple.t) ({ board } : Settings.t) =
                  on [libmucaml_runtime]. *)
               object_name
             ; Env.runtime_lib_dir env ~board:(Runtime_target.to_string board)
+              ^/ "libmucaml_micro.a"
+            ; Env.runtime_lib_dir env ~board:(Runtime_target.to_string board)
               ^/ "libmucaml_runtime.a"
             ]
           @ [ "-o"; output_binary ]
