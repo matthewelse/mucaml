@@ -136,15 +136,15 @@ and infer_app ~func ~args ~loc ~constraints ~env ~file_id =
   let open Result.Let_syntax in
   (* type_of([$function_($arg_values...)])
 
-       - [arg_values] is a list of expressions, so just infer the type of each expression.
-       - Infer the type of [function_].
-       - [check] that the inferred type of [function_] is [Fun _].
+     - [arg_values] is a list of expressions, so just infer the type of each expression.
+     - Infer the type of [function_].
+     - [check] that the inferred type of [function_] is [Fun _].
 
-       We do this in two phases: first we generate fresh type variables for each argument to the
-       function, and then we add constraints that check that each type variable is equal to the
-       inferred type of each value in [arg_values]. This pushes type errors "down" into each
-       argument, rather than checking the function as a whole, giving better error messages (at
-       the cost of more constraints to iterate through). *)
+     We do this in two phases: first we generate fresh type variables for each argument to the
+     function, and then we add constraints that check that each type variable is equal to the
+     inferred type of each value in [arg_values]. This pushes type errors "down" into each
+     argument, rather than checking the function as a whole, giving better error messages (at
+     the cost of more constraints to iterate through). *)
   let fresh_arg_tys = List.map args ~f:(fun _ : Type.t -> Var (Env.fresh_tv env)) in
   let return_ty = Type.var (Env.fresh_tv env) in
   let fresh_arg_tys_nonempty =
@@ -264,10 +264,8 @@ let type_ast (ast : Ast.t) ~file_id : (Typed_ast.t, _) result =
             , Typed_ast.Toplevel.Function
                 { name
                 ; params =
-                    Nonempty_list.map2_exn
-                      params
-                      arg_types
-                      ~f:(fun (ident, _) ty -> ident, Solver.normalize_ty solver ty ~env)
+                    Nonempty_list.map2_exn params arg_types ~f:(fun (ident, _) ty ->
+                      ident, Solver.normalize_ty solver ty ~env)
                 ; return_type = typed_return_type
                 ; body
                 ; loc
