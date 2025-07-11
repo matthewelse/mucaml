@@ -42,38 +42,26 @@ fn build_runtime_library(b: *std.Build, targets: []const Target) void {
         const options = b.addOptions();
         options.addOption([]const u8, "mu_target", mu_target.name);
 
-        switch (target_kind) {
-            .microzig => |mz_target| {
-                const target = mz_target.zig_target;
-                const root_module = b.createModule(.{ .root_source_file = b.path(root_source_file), .target = b.resolveTargetQuery(target) });
-                root_module.addOptions("config", options);
+        const target =
+            switch (target_kind) {
+                .microzig => |mz_target| b.resolveTargetQuery(mz_target.zig_target),
+                .native => b.standardTargetOptions(.{}),
+            };
 
-                const lib = b.addLibrary(.{
-                    .name = library_name,
-                    .root_module = root_module,
-                });
+        const root_module = b.createModule(.{ .root_source_file = b.path(root_source_file), .target = target });
+        root_module.addOptions("config", options);
 
-                const dest_dir = std.fmt.allocPrint(b.allocator, "lib/{s}", .{mu_target.name}) catch |err| {
-                    std.debug.panic("Failed to allocate dest_dir: {any}", .{err});
-                };
+        const lib = b.addLibrary(.{
+            .name = library_name,
+            .root_module = root_module,
+        });
 
-                const artifact = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = dest_dir } } });
-                b.getInstallStep().dependOn(&artifact.step);
-            },
-            .native => {
-                const target = b.standardTargetOptions(.{});
-                const root_module = b.createModule(.{ .root_source_file = b.path(root_source_file), .target = target });
-                root_module.addOptions("config", options);
+        const dest_dir = std.fmt.allocPrint(b.allocator, "lib/{s}", .{mu_target.name}) catch |err| {
+            std.debug.panic("Failed to allocate dest_dir: {any}", .{err});
+        };
 
-                const lib = b.addLibrary(.{
-                    .name = library_name,
-                    .root_module = root_module,
-                });
-
-                const artifact = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = "lib/native" } } });
-                b.getInstallStep().dependOn(&artifact.step);
-            },
-        }
+        const artifact = b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = dest_dir } } });
+        b.getInstallStep().dependOn(&artifact.step);
     }
 }
 

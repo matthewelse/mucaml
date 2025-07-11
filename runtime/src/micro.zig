@@ -12,8 +12,6 @@ const device =
 
 extern fn mucaml_main(i32) u32;
 
-// Note: mucaml_print implementations are provided by the device modules (rpi.zig, stm32.zig)
-
 pub fn main() void {
     device.init();
 
