@@ -1,4 +1,5 @@
-external string_length : string -> i32 = "string_length"
+external print_string : string -> i32 = "puts"
 
 let main (x : i32) = 
-  string_length "Hello, World!" 
+  let _ = print_string "Hello, World!\n"  in
+  0

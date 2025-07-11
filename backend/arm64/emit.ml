@@ -93,10 +93,9 @@ let emit_block
           ~dst:dst_reg
           (Stdlib_upstream_compatible.Int64_u.of_int64 (Int64.of_int value))
       else mov_imm buf ~dst:dst_reg (I32.of_int value)
-    | Load_global_constant { dst; constant = _ } ->
+    | Load_global_constant { dst; constant } ->
       let dst_reg = Registers.find_exn registers dst in
-      (* TODO: Implement proper string constant loading - for now just load 0 *)
-      mov_imm buf ~dst:dst_reg (I32.of_int 0)
+      mov_global_constant buf ~dst:dst_reg constant
     | Mov { dst; src } ->
       let dst_reg = Registers.find_exn registers dst in
       let src_reg = Registers.find_exn registers src in
@@ -170,6 +169,8 @@ let emit_function (func : Mirl.Function.t) buf =
 ;;
 
 let emit_mirl_without_prologue (program : Mirl.t) buf =
+  Iarray.iteri program.global_constants ~f:(fun id value ->
+    Arm_dsl.emit_global_constant buf id value);
   List.iter program.functions ~f:(fun func -> emit_function func buf);
   Arm_dsl.to_string buf
 ;;

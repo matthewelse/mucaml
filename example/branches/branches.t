@@ -1,4 +1,5 @@
   $ mu build -d assembly
+  .section .text
   .type mucaml_main, %function
   .globl mucaml_main
   mucaml_main:

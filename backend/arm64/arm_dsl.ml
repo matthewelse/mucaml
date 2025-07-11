@@ -15,12 +15,23 @@ let emit_line t line =
 let emit_program_prologue _ = ()
 
 let emit_function_prologue t ~name =
+  emit_line t [%string ".section .text"];
   emit_line t [%string ".type %{name}, %function"];
   emit_line t [%string ".globl %{name}"];
   emit_line t [%string "%{name}:"]
 ;;
 
 let emit_function_epilogue t ~name = emit_line t [%string ".size %{name}, . - %{name}"]
+
+let emit_global_constant t id value =
+  let name = [%string "global_str_%{id#Int}"] in
+  emit_line t [%string ".section .rodata, \"a\", @progbits"];
+  emit_line t [%string ".globl %{name}"];
+  emit_line t [%string "%{name}:"];
+  emit_line t [%string ".asciz \"%{value}\""];
+  emit_line t [%string ".size %{name}, . - %{name}"];
+  emit_line t ""
+;;
 
 let pop t regs =
   (* AArch64 stack pop: load from stack and increment SP, maintaining 16-byte alignment *)
@@ -101,6 +112,12 @@ let mov_imm_i64 t ~dst (value : I64.t) =
     then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w2#I64}, lsl #32"];
     if not (w3 = #0L)
     then emit_line t [%string "  movk %{dst#Register.Sixty_four}, #%{w3#I64}, lsl #48"])
+;;
+
+let mov_global_constant t ~dst value =
+  emit_line
+    t
+    [%string "  ldr %{dst#Register.Sixty_four}, =global_%{value#Mirl.Global_constant}"]
 ;;
 
 let ret t = emit_line t "  ret"

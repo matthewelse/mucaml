@@ -34,6 +34,13 @@ let emit_function_epilogue t ~name =
   emit_line t [%string ".size %{name}, . - %{name}"]
 ;;
 
+let emit_global_constant t id value =
+  emit_line t [%string ".section .rodata"];
+  emit_line t [%string "global_str_%{id#Int}:"];
+  emit_line t [%string ".asciz \"%{value}\""];
+  emit_line t ""
+;;
+
 let pop t regs =
   let regs = List.map regs ~f:Register.to_string |> String.concat ~sep:"," in
   emit_line t [%string "  pop {%{regs}}"]
@@ -63,6 +70,10 @@ let mov_imm t ~dst value =
     let hw = I32.O.(value lsr 16) in
     emit_line t [%string "  mov %{dst#Register}, #%{lw#I32}"];
     emit_line t [%string "  movt %{dst#Register}, #%{hw#I32}"])
+;;
+
+let mov_global_constant t ~dst value =
+  emit_line t [%string "  mov %{dst#Register}, global_%{value#Mirl.Global_constant}"]
 ;;
 
 let ret t = emit_line t "  bx lr"

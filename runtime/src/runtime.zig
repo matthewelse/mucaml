@@ -11,14 +11,20 @@ const device =
             pub fn init() void {}
 
             pub fn loop() void {}
+
+            export fn mucaml_print(x: i32) void {
+                const out_file = std.io.getStdOut();
+                (out_file.writer().print("{d}", .{x})) catch {};
+            }
         };
 
 extern fn mucaml_main(i32) u32;
+
 export fn string_length(_: i32) i32 {
     return 0;
 }
 
-pub fn main() !void {
+pub fn main() void {
     device.init();
 
     _ = mucaml_main(0);
